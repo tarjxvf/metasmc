@@ -1,0 +1,301 @@
+<h1 id="introduction">Introduction</h1>
+<p>MetaSMC is a simulator of shotgun sequencing reads from evolving microbial or tumour cell populations. MetaSMC simulates reads by first generating start and end positions of reads, then simulating sequence of local genealogies of reads, and finally impose mutations on genealogies to generate reads. The model for simulating local genealogies is Sequentially Markov Coalescent, and the models for simulating mutations include infinite-site model and various DNA substitution models, including Jukes-Cantor, K80, F81, HKY85, and Generalised time-reversible(GTR). MetaSMC supports all demographic models that supported by ms, as well as heterogeneous mutation model for different populations. MetaSMC provides a command-line program and library interface which can be used in more complex applications, such as metagenomics simulator.</p>
+<h1 id="installation">Installation</h1>
+<p>MetaSMC has to be installed on Unix-like environments such as GNU/Linux and FreeBSD. The following packages are required:</p>
+<ul>
+<li>Linear Algebra PACKage (LAPACK) for computing eigendecomposition of mutation matrix</li>
+<li>LAPACKE: C interface of LAPACK</li>
+<li>GNU make</li>
+<li>GNU C Complier (GCC) 4.8.3 or later</li>
+</ul>
+<!--
+If user want to compile user manual in PDF format, following packages are required:
+
+- Pandoc
+- LaTex
+- ps2pdf
+-->
+<p>After downloading and extracting the package, compile the program by typing:</p>
+<pre><code>$ cd metasmc/
+$ ./configure
+$ make
+$ make install</code></pre>
+<p>If you wish to change installation path, replace second command by</p>
+<pre><code>$ ./configure --prefix=&lt;installation_path&gt;</code></pre>
+<p>To remove installed programs, type</p>
+<pre><code>$ make uninstall</code></pre>
+<p>By default, MetaSMC use mt19937-64 to generate random numbers. To change random number generator, modify src/rand.c and modify the source file of mt19937-64 in src/Makefile.am. Seed of random number can be specified using <strong>-s</strong> switch (See below). If <strong>-s</strong> switch is not used, seed is automatically assigned using <strong>time(NULL)</strong>.</p>
+<h1 id="file-formats">File Formats</h1>
+<h2 id="format-of-read-profile">Format of read profile</h2>
+<p>A read profile begin by three lines of header. The first line is the path to FASTA file containing reference genome. The second line consists of two integer separated by a ','. The first number is the length of reference genome and the second one is number of fragments n. The third line consists of a sequence of numbers. The first is an integer <span class="math inline"><em>p</em></span> indicating number of subpopulations. If p &gt; 1$, <span class="math inline"><em>p</em></span> is followed by a sequence of <span class="math inline"><em>p</em> − 1</span> real number seperated by ',', which indicates size of each subpopulation relative to subpopulation <span class="math inline">1</span> (Note that size of first subpopulation is always <span class="math inline">1</span>).</p>
+<p>The header is followed by <span class="math inline"><em>n</em></span> lines describing fragments. Each line consists of fields separated by TAB characters. The first field is fragment id,the second is subpopulation number from which the fragment is sampled. The following two fields are start position and end position of this fragment. The next field is the number of reads <span class="math inline"><em>m</em></span> contained by this fragment. This is followed by <span class="math inline"><em>m</em></span> pairs of fields describing start and end position of each read.</p>
+<p>The following is a profile of 15 reads. All fragments contains only one read with position the same as that of the fragment. All reads are sampled from the same subpopulation. The length of reference genome is <span class="math inline">25</span>.</p>
+<pre><code>reference.fasta
+25,15
+1
+1   0   8   16  1   8   16
+2   0   0   8   1   0   8
+3   0   8   16  1   8   16
+4   0   3   11  1   3   11
+5   0   0   8   1   0   8
+6   0   3   11  1   3   11
+7   0   8   16  1   8   16
+8   0   3   11  1   3   11
+9   0   0   8   1   0   8
+10  0   12  20  1   12  20
+11  0   12  20  1   12  20
+12  0   12  20  1   12  20
+13  0   17  25  1   17  25
+14  0   17  25  1   17  25
+15  0   17  25  1   17  25</code></pre>
+<p>The following is a profile of another 15 fragments. These reads are sampled from two subpopulations. The size of second subpopulation is half of first subpopulation. Fragment 7-11 are sampled from second subpopulation (subpopulation 1) and other reads are sampled from first subpopulation (subpopulation 0). The first 8 fragments are sequenced by two reads. For example, the first fragment contains two reads, one ranges from 8 to 14 and another ranges from 10 to 16.</p>
+<pre><code>reference.fasta
+25,15
+2,0.5
+1   0   8   16  2   8   14  10  16
+2   0   0   8   2   0   6   2   8
+3   0   8   16  2   8   14  10  16
+4   0   3   11  2   3   9   5   11  
+5   0   0   8   2   0   8   2   8
+6   0   3   11  2   3   9   5   11
+7   1   8   16  2   8   14  10  16
+8   1   3   11  2   3   9   5   11
+9   1   0   8   1   0   8
+10  1   12  20  1   12  20
+11  1   12  20  1   12  20
+12  1   12  20  1   12  20
+13  0   17  25  1   17  25
+14  0   17  25  1   17  25
+15  0   17  25  1   17  25</code></pre>
+<h2 id="output-format">Output format</h2>
+<p>Output is a set of reads in FASTA format, as follows</p>
+<pre><code>&gt;fragment_number:&lt;i/i&gt; subpopulation, fragment_start-fragment_end, read_start-read_end
+TCATTGCGACAATGGG ...</code></pre>
+<h1 id="usage-of-command-line-programs">Usage of Command-Line Programs</h1>
+<h2 id="attached-read-sampler">Attached Read Sampler</h2>
+<p>MetaSMC take as input a read profile describing start positions and end positions of reads. Our package contains a default read sampler which generates reads of fixed lengths. Basic command line of read sampler is</p>
+<pre><code>$ sampler nfrags [Options]</code></pre>
+<p>where <strong>nfrags</strong> is the number of fragments to be simulated.</p>
+<h3 id="options-of-read-sampler">Options of Read Sampler</h3>
+<p>The following two switches are mandatory:</p>
+<p><strong>-g fasta_file</strong>: Set path to FASTA file containing reference genome.</p>
+<p><strong>-f fragment_size</strong>: Set fragment size.</p>
+<p>The following switches are optional</p>
+<p><strong>-n npop</strong>: Number of populations. Default value is 1.</p>
+<p><strong>-s size_1 size_2 ...</strong>: Relative size of population 1, 2...</p>
+<p><strong>-p</strong>: If this switch is used, sampler will generate paired-end reads.</p>
+<p><strong>-l read_length</strong>: If -p switch is used, user should specify read size using this switch. Otherwise, read length will equal to fragment length</p>
+<h2 id="coalescent-simulator">Coalescent Simulator</h2>
+<p>The basic command of coalescent simulator is</p>
+<pre><code>$ metasmc [Options]</code></pre>
+<h3 id="options-of-coalescent-simulator">Options of Coalescent Simulator</h3>
+<p><strong>-i profile_path</strong>: Assign path to read profile. If this switch is not used, the input is read from stdandard input.</p>
+<p><strong>-s seed</strong>: Assign seed of pseudorandom number generator. If this switch is not used, default seed is generated using time(NULL).</p>
+<p><strong>-F M</strong>: Set the maximum number of fragments per read group.</p>
+<p><strong>-t theta1,theta2,...</strong>: per-locus mutation rate of populations that exists at time 0. The number of thetas are equal to either 1 or the number of populations that exists at time 0. If only 1 theta is assigned, the value is assigned to all populations that exist at time 0.</p>
+<p><strong>-r rho</strong>: Per-locus recombination rate.</p>
+<p><strong>-T treefile</strong>: Print Newick-formatted coalescent trees to <strong>treefile</strong>.</p>
+<!--
+##-d tdiv : divergence time from reference genome.
+-->
+<p><strong>-m model1,model2,...</strong>: Assign DNA evolution models of population that exists at time 0, <strong>model1</strong> for population 1, <strong>model2</strong> for population 2, and so on. Available models are <strong>JC69</strong>, <strong>K80</strong>, <strong>F81</strong>, <strong>HKY85</strong>, <strong>T92</strong>, <strong>TN93</strong> and <strong>GTR</strong>. The description of these mutation models can be found in http://en.wikipedia.org/wiki/Models_of_DNA_evolution. Infinite-site model is assumed if user do not specify this switch. Under infinite-site model, mutant allele is chosen uniformly at random from three possible nucleotides.</p>
+<p><strong>-f freq1_A,freq1_C,freq1_G,freq_T;freq2_A,freq2_C,freq2_G,freq2_T;...</strong>: Base frequencies for mutation model. Prefix <strong>freq1</strong> stands for base frequencies of population 1, <strong>freq2</strong> stand for base frequencies of population 2, and so on.</p>
+<p><strong>-R par11,par12,...;par21,par22,...;...</strong>: Set parameters of mutation model. The length of parameter list depends on mutation model. parij indicate j-th parameter of population i. The length of parameter list is 0 for JC69, 1 for K80, 0 for F81, 1 for HKY85, 1 for T92, 2 for TN93 and 6 for GTR. The physical meanings of parameters can be seen in http://en.wikipedia.org/wiki/Models_of_DNA_evolution .</p>
+<p>The following are used to specify demographic model. Some switches have effect on specific population which is designated by 0-based index. For example, the first population specified in read profile has index 0, the second population has index 1, and so on.</p>
+<p><strong>-G alpha</strong>: Set exponential growth rate of all populations to <strong>alpha</strong> at time 0</p>
+<p><strong>-g i alpha</strong>: Set exponential growth rate of population <strong>i</strong> that exist at time 0.</p>
+<p><strong>-M m_12,m_13,...,m_21,m_23,...</strong>: Migration matrix at time 0.</p>
+<p>The following switches are used to set demographic events. <em>t</em> indicates the time when the event occurs.</p>
+<p><strong>-es t i proportion</strong>: Split population <strong>i</strong>. This generated a new population numbered according to the order appear in command line. For example, assume 2 population is specified in read profile and there are two another <strong>-es</strong> switch before current one, the newly generated population is numbered 4. <strong>proportion</strong> is probability that each lineage stays in population i.</p>
+<p><strong>-ej t i j</strong>: Join population i and population j without changing sizes and growth rates. Note that all lineages in population <strong>j</strong> are moved to population <strong>i</strong> after this event.</p>
+<p><strong>-eG t alpha</strong>: Set growth rate of all populations to <strong>alpha</strong>.</p>
+<p><strong>-eg t i alpha_i</strong>: Modify growth rate of population <strong>i</strong>.</p>
+<p><strong>-eM t mig_rate</strong>: Modify the mig matrix so all elements are <strong>mig_rate/(npop-1)</strong>, where <strong>npop</strong> is the number of population at time <span class="math inline"><em>t</em></span>.</p>
+<p><strong>-em t i j m_ij</strong>: Set migration rate between populations <strong>i</strong> and <strong>j</strong> to <strong>m_ij</strong></p>
+<p><strong>-eN t size_all</strong>: Modify all population sizes to <strong>size_all*N0</strong>, where <strong>N0</strong> is the size of population 0 at time 0.</p>
+<p><strong>-en t i size_i</strong>: Set size of population <strong>i</strong> to <strong>size_i*N0</strong>.</p>
+<!--
+**-et t i theta model parameter_list freq**: Reset mutation model of population *i*.
+-->
+<h2 id="example">Example</h2>
+<p>To simulate 100 single-end reads from single population with per-base mutation rate 0.01, type</p>
+<pre><code>$ sampler 100 -g reference.fasta -f 500 &gt;profile.txt
+$ metasmc -i profile.txt -t 0.01 &gt;read.fasta</code></pre>
+<p>The desired reads can be found in read.fasta and all reads have length 500.</p>
+<p>To simulate two populations with migration rate 0.1 from population 1 to 2 and 0.2 from 2 to 1, type</p>
+<pre><code>$ sampler 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
+$ metasmc -i profile.txt -t 0.01 -M 0.1,0.2 &gt;reads.fasta</code></pre>
+<p>If user wish to simulate two populations with different mutation models, type</p>
+<pre><code>$ sampler 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
+$ metasmc -i profile.txt -t 0.01 -M 0.1,0.2 -t 0.01 -m JC69,GTR -R :0.1,1,0.2,1,2,4 &gt;reads.fasta</code></pre>
+<p>In this example, both populations have mutation rate 0.01, but first population mutates according to Jukes-Cantor model whereas second population mutates according to Generalised time-reversible model. <strong>-R</strong> is used to assign model parameters and parameter lists for different populations are separated by ':'.</p>
+<p>To simulate completely isolation of two populations at time 0.1, type</p>
+<pre><code>$ sampler 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
+$ metasmc -i profile.txt -t 0.01 -M 0,0 -ej 0.1 0,1 &gt;reads.fasta</code></pre>
+<p>An interesting application of MetaSMC is to simulate change of mutation rate. This can be achieved by combining heterogeneous mutation rate and population splitting:</p>
+<pre><code>$ sampler 100 -g reference.fasta -f 500 &gt; profile.txt
+$ metasmc -i profile.txt -t 0.01,0.02 -m JC69 -es 0.1 0 0 &gt;reads.fasta</code></pre>
+<p>Initially, there is only 1 population (population 0) with mutation rate 0.01. At time 0.01, a splitting event causes all lineages moving to population 1 (the population index is automatically assigned) with mutation rate 0.02. Since migration between two populations is disallowed, population 0 is essentially replaced by population 1.</p>
+<h1 id="library-interface">Library Interface</h1>
+<h2 id="overview">Overview</h2>
+<p>This subsection gives an overview of the usage of the library interface. For detailed usage of each function, see API Reference. The library interface is defined in global.h, smc.h and mutation.h, which can be found in <strong>&lt;installation_path&gt;/include/</strong>. To use library interface, programmer need to add <strong>-lsmc</strong> and <strong>-L&lt;installation_path&gt;/lib</strong> in gcc command.</p>
+<p>To simulate reads from a species, the first step is to load read profile. This can be done by calling <strong>load_profile</strong>, which returns a object of type <strong>struct profile</strong>. Next, we need to set up configuration object by</p>
+<pre><code>struct config *create_config(struct profile *, int)</code></pre>
+<p><em>create_config</em> returns configuration object that contains basic configuration without demographic events, migration matrix and growth rates. After calling <strong>create_config</strong>, demographic events can be added using a set of functions. There are 8 types of demographic events described as follows:</p>
+<ul>
+<li>ggro: change growth rate of all populations</li>
+<li>grow: change growth rate of a specific population</li>
+<li>gmig: change migration rate between all pairs of populations</li>
+<li>rmig: change migration rate between a specific pair of populations</li>
+<li>gsiz: change size of all populations</li>
+<li>join: join two populations</li>
+<li>splt: split a population</li>
+<li>size: change size of a population <!--
+In addition, we supports a new type of event
+
+- mmut: change mutation model of a population
+--></li>
+</ul>
+<p>Events can be added by calling function <strong>add_event_&lt;event type&gt;</strong>. Migration matrix and growth rates can be added by</p>
+<pre><code>int set_growth_rates(struct config *, double *)</code></pre>
+<p>and</p>
+<pre><code>int set_migration_matrix(struct config *, double *)</code></pre>
+<p>If these functions are not used, all entries of migration matrix and growth rates are set to 0.</p>
+<!--
+Setting up mutation models
+-->
+<p>Next, we need to allocate genealogy object, which can be done by calling</p>
+<pre><code>struct genealogy *alloc_genealogy(struct config *, struct profile *)</code></pre>
+<p>Genealogy objects holds informations required during simulation process. After genealogy object is created, reads are simulated by calling</p>
+<pre><code>int simulate(struct genealogy *, struct profile *);.</code></pre>
+<p>Reads can be founded in profile object. See API Reference of <strong>load_profile</strong> to see how to extract reads from profile object. If user wish to reuse genealogy object, call</p>
+<pre><code>void clear_genealogy(struct genealogy *)</code></pre>
+<p>to reinitalize genealogy object.</p>
+<p>Profile objects, configuration objects and genealogy objects can be destroyed by calling</p>
+<pre><code>void destroy_genealogy(struct genealogy *);
+void destroy_config(struct config *);
+void unload_profile(struct profile *);</code></pre>
+<h2 id="api-reference">API Reference</h2>
+<h3 id="name">NAME</h3>
+<p><strong>#include &lt;global.h&gt;</strong></p>
+<p><strong>load_profile</strong>, <strong>unload_profile</strong> - loading and unloading read profile</p>
+<h3 id="synopsis">SYNOPSIS</h3>
+<pre><code>struct profile *load_profile(char *filename)
+void unload_profile(struct profile *prof)</code></pre>
+<h3 id="description">DESCRIPTION</h3>
+<p><strong>load_profile</strong> loads read profile in path <strong>filename</strong> and returns profile objects. Profile objects can be destroyed by <strong>unload_profile</strong>.</p>
+<p>Profile object also holds reads after simulation. Reads can be found in <strong>prof-&gt;fgset</strong>, which is of type <strong>struct frag</strong> defined as follows:</p>
+<pre><code>struct frag{
+    int id;
+    double start;
+    double end;
+    int pop;
+    int nread;
+    struct read *rd;
+};</code></pre>
+<p>This corresponds to fragment in read profile (See File Formats). <strong>struct read</strong> is defined as follows</p>
+<pre><code>struct read{
+    int start;
+    int end;
+    char *seq;
+    char *qual;
+};</code></pre>
+<p>This corresponds to actual read in read profile (See File Formats).</p>
+<h3 id="return-value">RETURN VALUE</h3>
+<p><strong>load_profile</strong> returns a pointer to profile object of type <strong>struct profile</strong> and returns <strong>NULL</strong> on error.</p>
+<h3 id="name-1">NAME</h3>
+<p><strong>#include &lt;global.h&gt;</strong></p>
+<p><strong>create_config</strong>, <strong>destroy_config</strong> - Handling Configuration Object</p>
+<h3 id="synopsis-1">SYNOPSIS</h3>
+<pre><code>struct config *create_config(struct profile *prof, int print_tree)
+void destroy_config(struct config *cfg)</code></pre>
+<h3 id="description-1">DESCRIPTION</h3>
+<p><strong>prof</strong>: Pointer to profile object</p>
+<p><strong>print_tree</strong>: A flag which is set to 1 if the programmer wants to output tree.</p>
+<p><strong>cfg</strong>: Pointer to configuration object.</p>
+<h3 id="return-value-1">RETURN VALUE</h3>
+<p><strong>create_config</strong> returns pointer to configuration object of type <strong>struct config</strong> and returns <strong>NULL</strong> on error.</p>
+<h3 id="name-2">NAME</h3>
+<p><strong>#include &lt;global.h&gt;</strong></p>
+<p><strong>#include &lt;mutation.h&gt;</strong></p>
+<p><strong>add_event_ggro</strong>, <strong>add_event_grow</strong>, <strong>add_event_gmig</strong>, <strong>add_event_rmig</strong>, <strong>add_event_gsiz</strong>, <strong>add_event_join</strong>, <strong>add_event_splt</strong>, <strong>add_event_size</strong> - adding events to configuration object</p>
+<h3 id="synopsis-2">SYNOPSIS</h3>
+<pre><code>int add_event_ggro(struct config *cfg, double t, double alpha);
+int add_event_grow(struct config *cfg, double t, int pop, double alpha);
+int add_event_gmig(struct config *cfg, double t, double rmig);
+int add_event_rmig(struct config *cfg, double t, int popi, int popj);
+int add_event_gsiz(struct config *cfg, double t, double size);
+int add_event_join(struct config *cfg, double t, int popi, int popj);
+int add_event_splt(struct config *cfg, double t, int pop, double prop);
+int add_event_size(struct config *cfg, double t, int pop, double size);</code></pre>
+<h3 id="description-2">DESCRIPTION</h3>
+<p><strong>cfg</strong>: Pointer to configuration object.</p>
+<p><strong>t</strong>: Event time</p>
+<p><strong>pop</strong>: When the event involves only one population, <strong>pop</strong> is the index of the involved population.</p>
+<p><strong>alpha</strong>: Growth rate.</p>
+<p><strong>popi</strong>, <strong>popj</strong>: In the case of rmig event, <strong>popi</strong> is the source population and <em>popj</em> is destination population. In the case of join event, <strong>popi</strong> and <strong>popj</strong> are populations to be joined.</p>
+<p><strong>rmig</strong>: Migration rate between all pairs of populations.</p>
+<p><strong>size</strong>: Population size.</p>
+<p><strong>prop</strong>: Proportion of lineages that move to new population upon splt event.</p>
+<h3 id="return-value-2">RETURN VALUE</h3>
+<p>All functions returns 0 on success and returns -1 on error.</p>
+<h3 id="name-3">NAME</h3>
+<p><strong>#include &lt;global.h&gt;</strong></p>
+<p><strong>set_growth_rates</strong> - set growth rates at time 0</p>
+<h3 id="synopsis-3">SYNOPSIS</h3>
+<pre><code>int set_growth_rates(struct config *cfg, double *grate)</code></pre>
+<h3 id="description-3">DESCRIPTION</h3>
+<p><strong>cfg</strong>: Pointer to configuration object.</p>
+<p><strong>grate</strong>: If there is <span class="math inline"><em>n</em><em>p</em><em>o</em><em>p</em></span> populations at time 0, <strong>grate</strong> is a vector of length <span class="math inline"><em>n</em><em>p</em><em>o</em><em>p</em></span> that contains exponential growth rates of the populations.</p>
+<h3 id="return-value-3">RETURN VALUE</h3>
+<p><strong>set_growth_rates</strong> returns 0 on success and returns -1 on error.</p>
+<h3 id="name-4">NAME</h3>
+<p><strong>#include &lt;global.h&gt;</strong></p>
+<p><strong>set_migration_matrix</strong> - set migration matrix at time 0</p>
+<h3 id="synopsis-4">SYNOPSIS</h3>
+<pre><code>int set_migration_matrix(struct config *cfg, double *mmig)</code></pre>
+<h3 id="description-4">DESCRIPTION</h3>
+<p><strong>cfg</strong>: Pointer to configuration object.</p>
+<p><strong>mmig</strong>: If there is <span class="math inline"><em>n</em><em>p</em><em>o</em><em>p</em></span> populations at time 0, <strong>mmig</strong> is a <span class="math inline"><em>n</em><em>p</em><em>o</em><em>p</em></span> <span class="math inline"><em>x</em></span> <span class="math inline"><em>n</em><em>p</em><em>o</em><em>p</em></span> matrix that contains migration rates between populations.</p>
+<h3 id="return-value-4">RETURN VALUE</h3>
+<p><strong>set_migration_matrix</strong> returns 0 on success and returns -1 on error.</p>
+<h3 id="name-5">NAME</h3>
+<p><strong>#include &lt;smc.h&gt;</strong></p>
+<p><strong>alloc_genealogy</strong>, <strong>destroy_genealogy</strong>, <strong>clear_genealogy</strong> - handling genealogy object</p>
+<h3 id="synopsis-5">SYNOPSIS</h3>
+<pre><code>struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
+void destroy_genealogy(struct genealogy *G)
+void clear_genealogy(struct genealogy *G)</code></pre>
+<h3 id="description-5">DESCRIPTION</h3>
+<p><strong>cfg</strong>: Pointer to configuration object.</p>
+<p><strong>prof</strong>: Pointer to profile object.</p>
+<p><strong>G</strong>: Pointer to genealogy object.</p>
+<h3 id="return-value-5">RETURN VALUE</h3>
+<p><strong>alloc_genealogy</strong> returns pointer to object of type <strong>struct genealogy</strong> and returns <strong>NULL</strong> on error.</p>
+<h3 id="name-6">NAME</h3>
+<p><strong>#include &lt;global.h&gt;</strong></p>
+<p><strong>#include &lt;mutation.h&gt;</strong></p>
+<p><strong>register_mutation_model</strong> - Register mutation model to configuration object.</p>
+<h3 id="synopsis-6">SYNOPSIS</h3>
+<pre><code>int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut)</code></pre>
+<h3 id="description-6">DESCRIPTION</h3>
+<p>This function assigns mutation model <strong>mmut</strong> to population <strong>pop</strong>. Mutation model object is defined as follows:</p>
+<pre><code>struct mutation {
+    int model;
+    double theta;
+    double mpar[SQNUCS - NUM_NUCS];
+    double pi[NUM_NUCS];
+    double D[NUM_NUCS];
+    double Cijk[NUM_NUCS][NUM_NUCS][NUM_NUCS];
+};</code></pre>
+<p>Programmer need to specify <strong>model</strong>, <strong>theta</strong>, <strong>mpar</strong> and <strong>pi</strong>. <strong>D</strong> and <strong>Cijk</strong> can be computed by calling <strong>init_mutation_model</strong>. The value of <strong>model</strong> can be <strong>MODEL_JC69</strong>, <strong>MODEL_K80</strong>, <strong>MODEL_F81</strong>, <strong>MODEL_HKY85</strong>, <strong>MODEL_T92</strong>, <strong>MODEL_TN93</strong> and <strong>MODEL_GTR</strong>. <strong>theta</strong> is new scaled mutation rate, <strong>mpar</strong> are parameter list whose length depends on mutation model, and <strong>pi</strong> is equilibrium allele frequency.</p>
+<h3 id="return-value-6">RETURN VALUE</h3>
+<h3 id="name-7">NAME</h3>
+<p><strong>#include &lt;global.h&gt;</strong></p>
+<p><strong>#include &lt;mutation.h&gt;</strong></p>
+<p><strong>init_mutation_model</strong> - initialize mutation model.</p>
+<h3 id="synopsis-7">SYNOPSIS</h3>
+<pre><code>void init_mutation_model(struct mutation *mmut)</code></pre>
+<h3 id="description-7">DESCRIPTION</h3>
+<p>This function computes <strong>D</strong> and <strong>Cijk</strong> in <strong>struct mutation</strong>, through eigenvalue decomposition. After calling this function, <strong>Cijk</strong> holds coefficient of <span class="math inline"><strong>e</strong><sup><strong>Q</strong><strong>t</strong></sup></span> where <span class="math inline"><strong>Q</strong></span> is rate matrix of mutation model, and <span class="math inline"><strong>D</strong></span> holds eigenvalues of <span class="math inline"><strong>Q</strong></span>.</p>
+<h3 id="return-value-7">RETURN VALUE</h3>
