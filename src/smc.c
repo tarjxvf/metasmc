@@ -2878,8 +2878,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //	fprintf(stderr, "cnt_rec=%d\n", cnt_rec);
 
-//	fprintf(stderr, "%.10f\n", like);
-//	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
+	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
 
 //	if(ub < prof->reflen){
 //		return -Inf;
