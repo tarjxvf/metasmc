@@ -190,9 +190,10 @@ struct read{
 /* Fragment of paired-end reads. */
 struct frag{
 	int id;
+//	int chr;	// Chromosome number
 //	double start;
 //	double end;
-	int start;
+	int start;	// Chromosome start position
 	int end;
 	int pop;
 	int nread;
@@ -202,28 +203,38 @@ struct frag{
 
 struct reference {
 	FILE *filp;
-	int seq_start;
+	int nchr;
+	int *seq_start;	// Start position of each chromosome
+	int *chrlen;
+	int currchr;
 	int curr;
 };
 
 struct reference *load_reference(char *file);
 void unload_reference(struct reference *ref);
-void reload_reference(struct reference *ref);
+void reload_reference(struct reference *ref, int chrnum);
 
 #define NUM_NUCS	4
 #define SQNUCS	NUM_NUCS * NUM_NUCS
 
 struct profile {
 	int npop;
-	double *popsize;
+//	double *popsize;
 
 	char *reffile;
-	int reflen;
+//	int nchr;
+//	int reflen;
+	struct reference *ref;
+	int chrnum;	// Index of chromosome in the reference;
 
+	int *nfrag_pop;
 	int nfrag;
 	struct frag *fgset;
 };
 
+int fgcompar(const void *a, const void *b);
+void print_profile(struct profile *prof);
+struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrags, int fraglen, int paired, int rdlen);
 struct profile *load_profile(FILE *filp);
 void unload_profile(struct profile *prof);
 

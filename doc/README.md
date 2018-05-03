@@ -53,24 +53,20 @@ File Formats
 Format of read profile
 ----------------------
 
-A read profile begin by three lines of header. The first line is the path to FASTA file containing reference genome.
-The second line consists of two integer separated by a ','. The first number is the length of reference genome and the second
-one is number of fragments n. The third line consists of a sequence of numbers. The first is an integer $p$ indicating
-number of subpopulations. If p > 1$, $p$ is followed by a sequence of $p - 1$ real number seperated by ',', which indicates
-size of each subpopulation relative to subpopulation $1$ (Note that size of first subpopulation is always $1$).
-
+A read profile begin by two lines of header. The first line is the path to FASTA file containing reference genome, followed by the 0-based index of chromosome in the file.
+The second line begin with a number of subpopulations, followed by number of fragments of each subpopulation.
+The numbers are separated by ','.
 The header is followed by $n$ lines describing fragments. Each line consists of fields separated by TAB characters.
 The first field is fragment id,the second is subpopulation number from which the fragment is sampled. The following two
 fields are start position and end position of this fragment. The next field is the number of reads $m$ contained by this
 fragment. This is followed by $m$ pairs of fields describing start and end position of each read.
 
 The following is a profile of 15 reads. All fragments contains only one read with position the same as that of the fragment.
-All reads are sampled from the same subpopulation. The length of reference genome is $25$.
+All reads are sampled from the same subpopulation.
 
 ```
-reference.fasta
-25,15
-1
+reference.fasta,0
+1,15
 1	0	8	16	1	8	16
 2	0	0	8	1	0	8
 3	0	8	16	1	8	16
@@ -88,14 +84,14 @@ reference.fasta
 15	0	17	25	1	17	25
 ```
 
-The following is a profile of another 15 fragments. These reads are sampled from two subpopulations. The size of second subpopulation is half of first subpopulation.
-Fragment 7-11 are sampled from second subpopulation (subpopulation 1) and other reads are sampled from first subpopulation (subpopulation 0). The first 8 fragments
-are sequenced by two reads. For example, the first fragment contains two reads, one ranges from 8 to 14 and another ranges from 10 to 16.
+The following is a profile of another 15 fragments. These reads are sampled from two subpopulations.
+Fragment 7-11 are sampled from second subpopulation (subpopulation 1) and other reads are sampled from first subpopulation (subpopulation 0).
+The first 8 fragments are sequenced by two reads.
+For example, the first fragment contains two reads, one ranges from 8 to 14 and another ranges from 10 to 16.
 
 ```
-reference.fasta
-25,15
-2,0.5
+reference.fasta,0
+2,9,6
 1	0	8	16	2	8	14	10	16
 2	0	0	8	2	0	6	2	8
 3	0	8	16	2	8	14	10	16
@@ -132,10 +128,8 @@ MetaSMC take as input a read profile describing start positions and end position
 Our package contains a default read sampler which generates reads of fixed lengths. Basic command line of read sampler is
 
 ```
-$ sampler nfrags [Options]
+$ sampler [Options]
 ```
-
-where **nfrags** is the number of fragments to be simulated.
 
 ### Options of Read Sampler
 
@@ -143,13 +137,15 @@ The following two switches are mandatory:
 
 **-g fasta_file**: Set path to FASTA file containing reference genome.
 
+**-c chr_num**: 0-based index of chromosome in genome_file. Default is 0.
+
 **-f fragment_size**: Set fragment size.
+
+**-r nfrag_1,nfrag_2,...**: Number of reads of each subpopulations.
 
 The following switches are optional
 
 **-n npop**: Number of populations. Default value is 1.
-
-**-s size_1 size_2 ...**: Relative size of population 1, 2...
 
 **-p**: If this switch is used, sampler will generate paired-end reads.
 
@@ -194,6 +190,8 @@ The following are used to specify demographic model. Some switches have effect o
 
 **-g i alpha**: Set exponential growth rate of population **i** that exist at time 0.
 
+**-S size_1,size_2,...**: Size of each subpopulation at time 0. All sizes are set to 1 if this switch is ignored.
+
 **-M m_12,m_13,...,m_21,m_23,...**: Migration matrix at time 0.
 
 The following switches are used to set demographic events. *t* indicates the time when the event occurs.
@@ -225,7 +223,7 @@ Example
 To simulate 100 single-end reads from single population with per-base mutation rate 0.01, type
 
 ```
-$ sampler 100 -g reference.fasta -f 500 >profile.txt
+$ sampler -r 100 -g reference.fasta -f 500 >profile.txt
 $ metasmc -i profile.txt -t 0.01 >read.fasta
 ```
 
@@ -234,14 +232,14 @@ The desired reads can be found in read.fasta and all reads have length 500.
 To simulate two populations with migration rate 0.1 from population 1 to 2 and 0.2 from 2 to 1, type
 
 ```
-$ sampler 100 -g reference.fasta -f 500 -n 2 > profile.txt
+$ sampler -r 100 -g reference.fasta -f 500 -n 2 > profile.txt
 $ metasmc -i profile.txt -t 0.01 -M 0.1,0.2 >reads.fasta
 ```
 
 If user wish to simulate two populations with different mutation models, type
 
 ```
-$ sampler 100 -g reference.fasta -f 500 -n 2 > profile.txt
+$ sampler -r 100 -g reference.fasta -f 500 -n 2 > profile.txt
 $ metasmc -i profile.txt -t 0.01 -M 0.1,0.2 -t 0.01 -m JC69,GTR -R :0.1,1,0.2,1,2,4 >reads.fasta
 ```
 
@@ -250,14 +248,14 @@ In this example, both populations have mutation rate 0.01, but first population 
 To simulate completely isolation of two populations at time 0.1, type
 
 ```
-$ sampler 100 -g reference.fasta -f 500 -n 2 > profile.txt
+$ sampler -r 100 -g reference.fasta -f 500 -n 2 > profile.txt
 $ metasmc -i profile.txt -t 0.01 -M 0,0 -ej 0.1 0,1 >reads.fasta
 ```
 
 An interesting application of MetaSMC is to simulate change of mutation rate. This can be achieved by combining heterogeneous mutation rate and population splitting:
 
 ```
-$ sampler 100 -g reference.fasta -f 500 > profile.txt
+$ sampler -r 100 -g reference.fasta -f 500 > profile.txt
 $ metasmc -i profile.txt -t 0.01,0.02 -m JC69 -es 0.1 0 0 >reads.fasta
 ```
 

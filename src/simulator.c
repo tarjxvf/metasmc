@@ -11,11 +11,6 @@
 #include "mutation.h"
 #include "slab.h"
 
-int fgcompar(const void *a, const void *b)
-{
-	return ((struct frag *)a)->start - ((struct frag *)b)->start;
-}
-
 #define NEXT_NOBLANK(fp, ch)    while(isblank((ch) = fgetc(fp)))
 
 /*int read_integer(FILE *filp, int *val)
@@ -72,6 +67,7 @@ void usage(char *prog)
 	fprintf(stderr, "-R pars1;pars2;...: Set parameters of mutation model. Number of parameters depends on mutation model.\n");
 	fprintf(stderr, "-G alpha: Default exponential growth rate (at time 0)\n");
 	fprintf(stderr, "-g i alpha: Default exponential growth rate (at time 0) of subpopulation i\n");
+	fprintf(stderr, "-S size_1,size_2,...: Size of each subpopulation at time 0. All sizes are set to 1 if this switch is ignored.\n");
 	fprintf(stderr, "-M m_12,m_13,...,m_21,m_23,...: Default migration matrix (at time 0)\n");
 	fprintf(stderr, "-eG t alpha  (Modify growth rate of all pop's.)\n");
 	fprintf(stderr, "-eg t i alpha_i  (Modify growth rate of pop i.)\n");
@@ -160,6 +156,10 @@ int main(int argc, char *argv[])
 
 				case 'F':
 					maxfrag = atoi(argv[++i]);
+					break;
+
+				case 'S':
+					i++;
 					break;
 
 				case 'M':case 'g':case 'G':
@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
 		if(*ptr == '-'){
 			ptr++;
 			switch(*ptr){
-				case 'i': case 'r': case 'R': case 'f': case 'F': case 'M': case 'G': case 'g': case 'e': case 'T': case 's':
+				case 'i': case 'r': case 'R': case 'f': case 'F': case 'M': case 'G': case 'g': case 'e': case 'T': case 's': case 'S':
 					i++;
 					break;
 
@@ -490,6 +490,15 @@ int main(int argc, char *argv[])
 						for(j = 1; j < cfg->npop_all; j++){
 							memcpy(mmut[j].pi, mmut[0].pi, sizeof(double) * NUM_NUCS);
 						}
+					}
+
+					break;
+
+				case 'S':	/* Specify subpopulation sizes at time 0. */
+					begptr = endptr = argv[++i];
+					for(j = 0; j < npop; j++){
+						cfg->size[j] = strtod(begptr, &endptr);
+						begptr = endptr + 1;
 					}
 
 					break;

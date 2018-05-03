@@ -214,6 +214,97 @@ void print_event(struct event *ev)
 	fprintf(stderr, "]");
 }
 
+int fgcompar(const void *a, const void *b)
+{
+	return ((struct frag *)a)->start - ((struct frag *)b)->start;
+}
+
+void print_profile(struct profile *prof)
+{
+	int i, j;
+
+	printf("%s,%d\n", prof->reffile, prof->chrnum);
+
+	printf("%d", prof->npop);
+	for(i = 0; i < prof->npop; i++)
+		printf(",%d", prof->nfrag_pop[i]);
+	printf("\n");
+
+	for(i = 0; i < prof->nfrag; i++){
+		printf("%d\t%d\t%d\t%d\t%d", prof->fgset[i].id, prof->fgset[i].pop, prof->fgset[i].start, prof->fgset[i].end, prof->fgset[i].nread);
+		for(j = 0; j < prof->fgset[i].nread; j++){
+			printf("\t%d\t%d", prof->fgset[i].rd[j].start, prof->fgset[i].rd[j].end);
+		}
+		printf("\n");
+	}
+}
+
+struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrags, int fraglen, int paired, int rdlen)
+{
+	struct reference *ref;
+	struct profile *prof;
+	int len, reflen, nfrag, nread, i, j;
+
+	if(paired == 0)
+		nread = 1;
+	else
+		nread = 2;
+
+	prof = malloc(sizeof(struct profile));
+	len = strlen(reffile);
+
+	prof->reffile = malloc(sizeof(char) * (len + 1));
+	strncpy(prof->reffile, reffile, len);
+	prof->reffile[len] = '\0';
+
+	prof->ref = load_reference(reffile);
+	prof->chrnum = chrnum;
+	prof->npop = npop;
+
+	prof->nfrag_pop = malloc(sizeof(int) * npop);
+	memcpy(prof->nfrag_pop, nfrags, sizeof(int) * npop);
+
+	nfrag = 0;
+	for(i = 0; i < npop; i++)
+		nfrag += nfrags[i];
+	prof->fgset = malloc(sizeof(struct frag) * nfrag);
+
+	reflen = prof->ref->chrlen[chrnum];
+	nfrag = 0;
+	for(i = 0; i < npop; i++){
+		for(j = 0; j < nfrags[i]; j++, nfrag++){
+			int fragpos, readpos, k;
+
+			fragpos = dunif(reflen - fraglen);
+			readpos = fragpos;
+			prof->fgset[nfrag].pop = i;
+			prof->fgset[nfrag].start = fragpos;
+			prof->fgset[nfrag].end = fragpos + fraglen;
+			prof->fgset[nfrag].nread = nread;
+			prof->fgset[nfrag].rd = malloc(sizeof(struct read) * nread);
+			prof->fgset[nfrag].trunk = 0;
+
+			readpos = fragpos;
+			for(k = 0; k < nread; k++){
+				prof->fgset[nfrag].rd[k].start = readpos;
+				prof->fgset[nfrag].rd[k].end = readpos + rdlen;
+				readpos = fragpos + fraglen - rdlen;
+				prof->fgset[nfrag].rd[k].seq = NULL;
+				prof->fgset[nfrag].rd[k].qual = NULL;
+			}
+		}
+	}
+	prof->nfrag = nfrag;
+
+	// Sort fragments by position
+	qsort(prof->fgset, nfrag, sizeof(struct frag), fgcompar);
+	for(i = 0; i < nfrag; i++)
+		prof->fgset[i].id = i + 1;
+//	unload_reference(prof->ref);
+
+	return prof;
+}
+
 /* Destroy object of read profile */
 void unload_profile(struct profile *prof)
 {
@@ -231,9 +322,12 @@ void unload_profile(struct profile *prof)
 
 		free(prof->fgset[i].rd);
 	}
+	unload_reference(prof->ref);
+	free(prof->nfrag_pop);
+//	free(prof->reflen);
 	free(prof->fgset);
 	free(prof->reffile);
-	free(prof->popsize);
+//	free(prof->popsize);
 	free(prof);
 }
 
@@ -251,38 +345,59 @@ struct profile *load_profile(FILE *filp)
 
 	/* Read reference file name. */
 	i = 0;
-	while((ch = fgetc(filp)) != '\n') file[i++] = ch;
+	while((ch = fgetc(filp)) != ',') file[i++] = ch;
 	file[i] = '\0';
 	prof->reffile = malloc(sizeof(char) * (i + 1));
 	strncpy(prof->reffile, (char *)file, (size_t)(i + 1));
+	prof->ref = load_reference(prof->reffile);
+	ch = read_integer(filp, &prof->chrnum);
 
 	/* Read length of reference genome. */
-	ch = read_integer(filp, &prof->reflen);
+/*	ch = read_integer(filp, &prof->reflen);
 	if(ch != ','){
 		fprintf(stderr, "Expect for , after reference genome length.\n");
 		goto abnormal;
-	}
-
-	/* Read number of fragments. */
-	ch = read_integer(filp, &nfrag);
-	prof->nfrag = nfrag;
-	if(ch != '\n'){
-		fprintf(stderr, "Expect for , after number of fragments.\n");
-		goto abnormal;
-	}
+	}*/
 
 	/* Read number of subpopulations. */
 	ch = read_integer(filp, &npop);
 	prof->npop = npop;
+	if(ch != ','){
+		fprintf(stderr, "Expect for , after number of subpopulations.\n");
+		goto abnormal;
+	}
+
+	prof->nfrag_pop = malloc(sizeof(int) * npop);
+	nfrag = 0;
+	for(i = 0; i < npop; i++){
+		/* Read number of fragments. */
+		ch = read_integer(filp, &prof->nfrag_pop[i]);
+		nfrag += prof->nfrag_pop[i];
+		if(ch != ',' && ch != '\n'){
+			fprintf(stderr, "Expect ',' or newline in line 2.\n");
+			goto abnormal;
+		}
+	}
+	if(i < npop){
+		fprintf(stderr, "Too few number of subpopulations.\n");
+		goto abnormal;
+	}
+	prof->nfrag = nfrag;
+	while(ch != '\n') ch = fgetc(filp);
+
+	/* Read number of subpopulations. */
+//	ch = read_integer(filp, &npop);
+//	prof->npop = npop;
 
 	/* Read default population size. */
-	prof->popsize = malloc(sizeof(double) * npop);
-	prof->popsize[0] = 1;
-	for(i = 1; i < npop; i++)
-		ch = read_double(filp, &prof->popsize[i]);
+//	prof->popsize = malloc(sizeof(double) * npop);
+//	prof->popsize[0] = 1;
+//	for(i = 1; i < npop; i++)
+//	for(i = 0; i < npop; i++)
+//		ch = read_double(filp, &prof->popsize[i]);
 
 	if(ch != '\n'){
-		fprintf(stderr, "Expect for , after number of subpopulations.\n");
+		fprintf(stderr, "Expect for , after read numbers.\n");
 		goto abnormal;
 	}
 
@@ -297,6 +412,7 @@ struct profile *load_profile(FILE *filp)
 
 		ch = read_integer(filp, &fg->id);
 		ch = read_integer(filp, &fg->pop);
+//		ch = read_integer(filp, &fg->chr);
 //		ch = read_double(filp, &fg->start);
 //		ch = read_double(filp, &fg->end);
 		ch = read_integer(filp, &fg->start);
@@ -328,11 +444,16 @@ finish:
 	return prof;
 
 abnormal:
+	if(prof->ref)
+		unload_reference(prof->ref);
+
 	if(prof->reffile)
 		free(prof->reffile);
 
-	if(prof->popsize)
-		free(prof->popsize);
+	if(prof->nfrag_pop)
+		free(prof->nfrag_pop);
+//	if(prof->popsize)
+//		free(prof->popsize);
 
 	free(prof);
 	prof = NULL;
@@ -391,7 +512,9 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	memset(cfg->mmut, 0, sizeof(struct mutation) * cfg->npop);
 
 	cfg->size = malloc(prof->npop * sizeof(double));
-	memcpy(cfg->size, prof->popsize, prof->npop * sizeof(double));
+	for(i = 0; i < prof->npop; i++)
+		cfg->size[i] = 1;
+//	memcpy(cfg->size, prof->popsize, prof->npop * sizeof(double));
 
 	cfg->grate = malloc(sizeof(double) * npop);
 	memset(cfg->grate, 0, sizeof(double) * npop);
@@ -735,31 +858,55 @@ int add_event_size(struct config *cfg, double t, int pop, double size)
 struct reference *load_reference(char *file)
 {
 	struct reference *ref;
-	int ch;
+	int ch, nchr, maxchr;
+
+	maxchr = 40;
+	nchr = 0;
 
 	ref = malloc(sizeof(struct reference));
+	ref->seq_start = malloc(sizeof(int) * maxchr);
+	ref->chrlen = malloc(sizeof(int) * maxchr);
 
 	/* Skip header of reference genome. */
 	ref->filp = fopen(file, "r");
-	while((ch = fgetc(ref->filp)) != EOF && ch != '\n');
-	if(ch == EOF){
-		fprintf(stderr, "No sequence in reference file.");
+	ch = fgetc(ref->filp);
+	while(ch == '>'){
+		double chrlen;
+
+		// Load chromosome header
+		while((ch = fgetc(ref->filp)) != EOF && ch != '\n');
+		if(ch == EOF){
+			fprintf(stderr, "No sequence in reference file.");
+		}
+
+		// Load chromosome sequence
+		ref->seq_start[nchr] = ftell(ref->filp);
+		chrlen = 0;
+//		ref->curr = 0;
+		ch = fgetc(ref->filp);
+		while(ch != EOF && ch != '>'){
+			chrlen++;
+			while((ch = fgetc(ref->filp)) != '\n') chrlen++;
+			ch = fgetc(ref->filp);
+		}
+		ref->chrlen[nchr++] = chrlen;;
 	}
-	ref->seq_start = ftell(ref->filp);
-	ref->curr = 0;
+	ref->nchr = nchr;
 
 	return ref;
 }
 
 void unload_reference(struct reference *ref)
 {
+	free(ref->seq_start);
+	free(ref->chrlen);
 	fclose(ref->filp);
 	free(ref);
 }
 
-void reload_reference(struct reference *ref)
+void reload_reference(struct reference *ref, int chrnum)
 {
-	fseek(ref->filp, ref->seq_start, SEEK_SET);
+	fseek(ref->filp, ref->seq_start[chrnum], SEEK_SET);
 	ref->curr = 0;
 }
 

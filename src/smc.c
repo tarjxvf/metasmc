@@ -2494,7 +2494,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct list_head *l;
 	struct frag *fgset;
 	int f, pop, npop_all, ilast;
-	int nfrag;
+	int nfrag, reflen;
 	struct list *F, R, Rold;
 	struct timespec begin, end;
 	double like, rho;
@@ -2506,11 +2506,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 	nfrag = prof->nfrag;
 	fgset = prof->fgset;
 
-	ref = load_reference(prof->reffile);
-	if(ref == NULL){
+//	ref = load_reference(prof->reffile);
+/*	if(ref == NULL){
 		fprintf(stderr, "Error opening reference file.");
 		return -1;
-	}
+	}*/
+	ref = prof->ref;
+	reflen = prof->ref->chrlen[prof->chrnum];
+	reload_reference(ref, prof->chrnum);
 
 	cfg = G->cfg;
 #ifdef DEBUG
@@ -2545,7 +2548,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 	seed();
 	F = malloc(sizeof(struct list) * npop_all);
-//	rho = cfg->rho * prof->reflen;
+//	rho = cfg->rho * reflen;
 	rho = cfg->rho;
 	lb = ub = 0;
 	ilast = 0;
@@ -2580,8 +2583,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 			list_init(&F[i]);
 
 		if(lb >= ub){
-			lb = (double)fgset[f].start / prof->reflen;
-			ub = (double)fgset[f].end / prof->reflen;
+			lb = (double)fgset[f].start / reflen;
+			ub = (double)fgset[f].end / reflen;
 		}
 
 //		for(i = 0; i < MAXFRAG && f < nfrag && fgset[f].start < ub; i++, f++){
@@ -2591,12 +2594,12 @@ int simulate(struct genealogy *G, struct profile *prof)
 			list_append(&R, GET_OBJ(l));
 //			list_add(&R, GET_OBJ(l));
 
-			if((double)fg->end / prof->reflen > ub)
-				ub = (double)fg->end / prof->reflen;
+			if((double)fg->end / reflen > ub)
+				ub = (double)fg->end / reflen;
 		}
 
 		if(f < nfrag){
-			ub = (double)fgset[f].start / prof->reflen;
+			ub = (double)fgset[f].start / reflen;
 
 		}else{
 			ub = 1;
@@ -2672,8 +2675,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 		like += sublike;
 		if(isinf(sublike))
 			break;
-		build_trunk_e(G, lb * prof->reflen);
-//		build_trunk(G, lb * prof->reflen);
+		build_trunk_e(G, lb * reflen);
+//		build_trunk(G, lb * reflen);
 
 
 #ifdef DEBUG
@@ -2726,7 +2729,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "%d: G->total=%.6f, lb=%.6f, ub=%.6f, x=%d, r=%d\n", __LINE__, G->total, lb, ub, x, r);
 #endif
 			x = MIN(x + r, ub);
-			inext = x * prof->reflen - ilast;
+			inext = x * reflen - ilast;
 
 #ifdef DEBUG
 			fprintf(stderr, "\nL=%.10f, getRate()=%.10f, curPos=%.10f, off=%.10f, inext=%d, ilast=%d\n", G->total, rrho, x, r, inext, ilast);
@@ -2736,7 +2739,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 			if(inext > 0){	// If next recombination doesn't occur on current nucleotide position, output local tree or sequence
 //			if(r >= 1){	// If next recombination doesn't occur on current nucleotide position, output local tree or sequence
-				to = x * prof->reflen;
+				to = x * reflen;
 				if(cfg->print_tree){
 					fprintf(cfg->treefp, "[%d]", to - ilast);
 					print_tree(cfg->treefp, G->localMRCA);
@@ -2814,13 +2817,13 @@ int simulate(struct genealogy *G, struct profile *prof)
 			struct list_head *tmp;
 			tmp = fgl->next;
 			fg = *((struct frag **)GET_OBJ(fgl));
-			if((double)fg->end / prof->reflen > ub)
-				ub = (double)fg->end / prof->reflen;
+			if((double)fg->end / reflen > ub)
+				ub = (double)fg->end / reflen;
 #ifdef DEBUG
 			fprintf(stderr, "Fragment %d, nread=%d\n", fg->id, fg->nread);
 #endif
-			if(fg->end <= lb * prof->reflen && fg->trunk == 0){
-//			if(fg->end <= lb * prof->reflen){
+			if(fg->end <= lb * reflen && fg->trunk == 0){
+//			if(fg->end <= lb * reflen){
 
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fg->id);
@@ -2868,7 +2871,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	}
 
 	free(F);
-	unload_reference(ref);
+//	unload_reference(ref);
 
 	clock_gettime(CLOCK_MONOTONIC, &end);
 
@@ -2878,9 +2881,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //	fprintf(stderr, "cnt_rec=%d\n", cnt_rec);
 
-	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
+//	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
 
-//	if(ub < prof->reflen){
+//	if(ub < reflen){
 //		return -Inf;
 
 //	}else{
