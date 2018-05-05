@@ -29,6 +29,21 @@ void *search_interval(void *pos, void *base, int nmemb, size_t size, int (*compa
 //	return base + pivot * size;
 }
 
+int read2_integer(FILE *filp, int ch0, int *val)
+{
+	int ch;
+
+	ch = ch0;
+	NEXT_NOBLANK_2(filp, ch);
+	if(!isdigit(ch)){
+		fprintf(stderr, "Syntax error: invalid integer.\n");
+		return -1;
+	}
+	*val = (ch - '0');
+	while(isdigit(ch = fgetc(filp))) *val = *val * 10 + (ch - '0');
+	return ch;
+}
+
 int read_integer(FILE *filp, int *val)
 {
 	int ch;

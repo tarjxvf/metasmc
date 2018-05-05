@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 	sd = time(NULL);
 	init_rand(sd);
 	prof = generate_profile(file, chrnum, npop, nfrag_pop, fraglen, paired, rdlen);
-	print_profile(prof);
+	print_profile(prof, stdout);
 	unload_profile(prof);
 
 //	free(size);

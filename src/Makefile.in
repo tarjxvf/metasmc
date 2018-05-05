@@ -90,7 +90,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = sampler$(EXEEXT) metasmc$(EXEEXT)
+bin_PROGRAMS = sampler$(EXEEXT) metasmc$(EXEEXT) abundance$(EXEEXT)
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -146,6 +146,12 @@ libsmc_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libsmc_la_CFLAGS) \
 	$(CFLAGS) $(libsmc_la_LDFLAGS) $(LDFLAGS) -o $@
 PROGRAMS = $(bin_PROGRAMS)
+am_abundance_OBJECTS = abundance.$(OBJEXT)
+abundance_OBJECTS = $(am_abundance_OBJECTS)
+abundance_DEPENDENCIES = libsmc.la
+abundance_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(abundance_LDFLAGS) $(LDFLAGS) -o $@
 am_metasmc_OBJECTS = simulator.$(OBJEXT)
 metasmc_OBJECTS = $(am_metasmc_OBJECTS)
 metasmc_DEPENDENCIES = libsmc.la
@@ -192,9 +198,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libsmc_la_SOURCES) $(metasmc_SOURCES) $(sampler_SOURCES)
-DIST_SOURCES = $(libsmc_la_SOURCES) $(metasmc_SOURCES) \
+SOURCES = $(libsmc_la_SOURCES) $(abundance_SOURCES) $(metasmc_SOURCES) \
 	$(sampler_SOURCES)
+DIST_SOURCES = $(libsmc_la_SOURCES) $(abundance_SOURCES) \
+	$(metasmc_SOURCES) $(sampler_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -353,6 +360,9 @@ libsmc_la_CFLAGS = $(LAPACK_CFLAGS)
 sampler_SOURCES = sampler.c
 sampler_LDADD = libsmc.la
 sampler_LDFLAGS = -lrt -lm
+abundance_SOURCES = abundance.c
+abundance_LDADD = libsmc.la
+abundance_LDFLAGS = -lrt -lm
 metasmc_SOURCES = simulator.c
 metasmc_LDADD = libsmc.la
 metasmc_LDFLAGS = -lrt -lm
@@ -485,6 +495,10 @@ clean-binPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
+abundance$(EXEEXT): $(abundance_OBJECTS) $(abundance_DEPENDENCIES) $(EXTRA_abundance_DEPENDENCIES) 
+	@rm -f abundance$(EXEEXT)
+	$(AM_V_CCLD)$(abundance_LINK) $(abundance_OBJECTS) $(abundance_LDADD) $(LIBS)
+
 metasmc$(EXEEXT): $(metasmc_OBJECTS) $(metasmc_DEPENDENCIES) $(EXTRA_metasmc_DEPENDENCIES) 
 	@rm -f metasmc$(EXEEXT)
 	$(AM_V_CCLD)$(metasmc_LINK) $(metasmc_OBJECTS) $(metasmc_LDADD) $(LIBS)
@@ -501,6 +515,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/abundance.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-global.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-mutation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-rand.Plo@am__quote@

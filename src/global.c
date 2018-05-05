@@ -219,23 +219,23 @@ int fgcompar(const void *a, const void *b)
 	return ((struct frag *)a)->start - ((struct frag *)b)->start;
 }
 
-void print_profile(struct profile *prof)
+void print_profile(struct profile *prof, FILE *outfp)
 {
 	int i, j;
 
-	printf("%s,%d\n", prof->reffile, prof->chrnum);
+	fprintf(outfp, "%s,%d\n", prof->reffile, prof->chrnum);
 
-	printf("%d", prof->npop);
+	fprintf(outfp, "%d", prof->npop);
 	for(i = 0; i < prof->npop; i++)
-		printf(",%d", prof->nfrag_pop[i]);
-	printf("\n");
+		fprintf(outfp, ",%d", prof->nfrag_pop[i]);
+	fprintf(outfp, "\n");
 
 	for(i = 0; i < prof->nfrag; i++){
-		printf("%d\t%d\t%d\t%d\t%d", prof->fgset[i].id, prof->fgset[i].pop, prof->fgset[i].start, prof->fgset[i].end, prof->fgset[i].nread);
+		fprintf(outfp, "%d\t%d\t%d\t%d\t%d", prof->fgset[i].id, prof->fgset[i].pop, prof->fgset[i].start, prof->fgset[i].end, prof->fgset[i].nread);
 		for(j = 0; j < prof->fgset[i].nread; j++){
-			printf("\t%d\t%d", prof->fgset[i].rd[j].start, prof->fgset[i].rd[j].end);
+			fprintf(outfp, "\t%d\t%d", prof->fgset[i].rd[j].start, prof->fgset[i].rd[j].end);
 		}
-		printf("\n");
+		fprintf(outfp, "\n");
 	}
 }
 

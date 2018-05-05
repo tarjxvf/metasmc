@@ -23,6 +23,9 @@ void *search_interval(void *pos, void *base, int nmemb, size_t size, int (*compa
 /* Read an integer from filp. */
 int read_integer(FILE *filp, int *val);
 
+/* Read an integer from filp. */
+int read2_integer(FILE *filp, int ch, int *val);
+
 /* Read an double from filp. */
 int read_double(FILE *filp, double *val);
 
