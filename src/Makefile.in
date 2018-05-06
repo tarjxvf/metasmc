@@ -90,7 +90,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = sampler$(EXEEXT) metasmc$(EXEEXT) metagenome$(EXEEXT)
+bin_PROGRAMS = sampler$(EXEEXT) metasmc$(EXEEXT) metaprof$(EXEEXT)
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -146,12 +146,12 @@ libsmc_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libsmc_la_CFLAGS) \
 	$(CFLAGS) $(libsmc_la_LDFLAGS) $(LDFLAGS) -o $@
 PROGRAMS = $(bin_PROGRAMS)
-am_metagenome_OBJECTS = metagenome.$(OBJEXT)
-metagenome_OBJECTS = $(am_metagenome_OBJECTS)
-metagenome_DEPENDENCIES = libsmc.la
-metagenome_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+am_metaprof_OBJECTS = metaprof.$(OBJEXT)
+metaprof_OBJECTS = $(am_metaprof_OBJECTS)
+metaprof_DEPENDENCIES = libsmc.la
+metaprof_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(metagenome_LDFLAGS) $(LDFLAGS) -o $@
+	$(metaprof_LDFLAGS) $(LDFLAGS) -o $@
 am_metasmc_OBJECTS = simulator.$(OBJEXT)
 metasmc_OBJECTS = $(am_metasmc_OBJECTS)
 metasmc_DEPENDENCIES = libsmc.la
@@ -198,9 +198,9 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libsmc_la_SOURCES) $(metagenome_SOURCES) \
-	$(metasmc_SOURCES) $(sampler_SOURCES)
-DIST_SOURCES = $(libsmc_la_SOURCES) $(metagenome_SOURCES) \
+SOURCES = $(libsmc_la_SOURCES) $(metaprof_SOURCES) $(metasmc_SOURCES) \
+	$(sampler_SOURCES)
+DIST_SOURCES = $(libsmc_la_SOURCES) $(metaprof_SOURCES) \
 	$(metasmc_SOURCES) $(sampler_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -360,9 +360,9 @@ libsmc_la_CFLAGS = $(LAPACK_CFLAGS)
 sampler_SOURCES = sampler.c
 sampler_LDADD = libsmc.la
 sampler_LDFLAGS = -lrt -lm
-metagenome_SOURCES = metagenome.c
-metagenome_LDADD = libsmc.la
-metagenome_LDFLAGS = -lrt -lm
+metaprof_SOURCES = metaprof.c
+metaprof_LDADD = libsmc.la
+metaprof_LDFLAGS = -lrt -lm
 metasmc_SOURCES = simulator.c
 metasmc_LDADD = libsmc.la
 metasmc_LDFLAGS = -lrt -lm
@@ -495,9 +495,9 @@ clean-binPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-metagenome$(EXEEXT): $(metagenome_OBJECTS) $(metagenome_DEPENDENCIES) $(EXTRA_metagenome_DEPENDENCIES) 
-	@rm -f metagenome$(EXEEXT)
-	$(AM_V_CCLD)$(metagenome_LINK) $(metagenome_OBJECTS) $(metagenome_LDADD) $(LIBS)
+metaprof$(EXEEXT): $(metaprof_OBJECTS) $(metaprof_DEPENDENCIES) $(EXTRA_metaprof_DEPENDENCIES) 
+	@rm -f metaprof$(EXEEXT)
+	$(AM_V_CCLD)$(metaprof_LINK) $(metaprof_OBJECTS) $(metaprof_LDADD) $(LIBS)
 
 metasmc$(EXEEXT): $(metasmc_OBJECTS) $(metasmc_DEPENDENCIES) $(EXTRA_metasmc_DEPENDENCIES) 
 	@rm -f metasmc$(EXEEXT)
@@ -521,7 +521,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-slab.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-smc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-util.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/metagenome.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/metaprof.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sampler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simulator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@mt19937-64/$(DEPDIR)/libsmc_la-mt19937-64.Plo@am__quote@

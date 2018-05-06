@@ -1,7 +1,7 @@
 
 AUTOMAKE_OPTIONS=foreign subdir-objects
 
-bin_PROGRAMS=sampler metasmc metagenome
+bin_PROGRAMS=sampler metasmc metaprof
 lib_LTLIBRARIES=libsmc.la
 include_HEADERS=util.h global.h mutation.h smc.h slab.h
 
@@ -13,9 +13,9 @@ sampler_SOURCES=sampler.c
 sampler_LDADD=libsmc.la
 sampler_LDFLAGS=-lrt -lm
 
-metagenome_SOURCES=metagenome.c
-metagenome_LDADD=libsmc.la
-metagenome_LDFLAGS=-lrt -lm
+metaprof_SOURCES=metaprof.c
+metaprof_LDADD=libsmc.la
+metaprof_LDFLAGS=-lrt -lm
 
 metasmc_SOURCES=simulator.c
 metasmc_LDADD=libsmc.la
