@@ -910,3 +910,22 @@ void reload_reference(struct reference *ref, int chrnum)
 	ref->curr = 0;
 }
 
+void load_chr(struct reference *ref, int chrnum, char **strp)
+{
+	int reflen, i, curr, ch;
+	char *str;
+
+	reload_reference(ref, chrnum);
+	reflen = ref->chrlen[chrnum];
+
+	str = malloc(sizeof(char) * (reflen + 1));
+	curr = 0;
+	while(curr < reflen){
+		while(!isalpha(ch = fgetc(ref->filp)) && ch > 0) curr++;
+		str[curr++] = ch;
+	}
+
+	str[curr] = '\0';
+	*strp = str;
+}
+

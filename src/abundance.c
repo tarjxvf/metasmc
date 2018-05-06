@@ -215,11 +215,12 @@ int main(int argc, char *argv[])
 	struct database *db;
 	char *afile, *dbfile, *outdir, *prefix, *ptr;
 	double *weights, wsum;
-	int ntax, npop, nfrags, *nfrag_pop, *nf, i, j, fraglen, rdlen, paired, tax, sd, proflen;
+	int ntax, npop, nfrags, *nfrag_pop, *nf, i, j, fraglen, rdlen, paired, tax, sd, proflen, nread;
 	char *profpath;
 
 	db = abdf = NULL;
 	paired = fraglen = rdlen = 0;
+	nread = 1;
 	i = 1;
 	while(i < argc){
 		ptr = argv[i];
@@ -247,6 +248,7 @@ int main(int argc, char *argv[])
 
 				case 'p':	/* Paired-end read. */
 					paired = 1;
+					nread = 2;
 					break;
 
 				case 'f':	/* Read length */
@@ -294,6 +296,13 @@ int main(int argc, char *argv[])
 		goto abnormal;
 	}
 
+	if((paired && rdlen == 0) || (paired == 0 && rdlen > 0)){
+		fprintf(stderr, "-p and -l must be used simultaneously.\n");
+		goto abnormal;
+	}
+
+	if(paired == 0)
+		rdlen = fraglen;
 	sd = time(NULL);
 //	sd = 1525493755;
 	srand(sd);

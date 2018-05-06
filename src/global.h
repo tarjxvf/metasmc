@@ -213,6 +213,7 @@ struct reference {
 struct reference *load_reference(char *file);
 void unload_reference(struct reference *ref);
 void reload_reference(struct reference *ref, int chrnum);
+void load_chr(struct reference *ref, int chrnum, char **strp);
 
 #define NUM_NUCS	4
 #define SQNUCS	NUM_NUCS * NUM_NUCS
