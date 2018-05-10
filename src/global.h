@@ -229,6 +229,7 @@ struct profile {
 	int chrnum;	// Index of chromosome in the reference;
 
 	int *nfrag_pop;
+	int *ntrunks;
 	int nfrag;
 	struct frag *fgset;
 };

@@ -227,7 +227,7 @@ void print_profile(struct profile *prof, FILE *outfp)
 
 	fprintf(outfp, "%d", prof->npop);
 	for(i = 0; i < prof->npop; i++)
-		fprintf(outfp, ",%d", prof->nfrag_pop[i]);
+		fprintf(outfp, ",%d", prof->nfrag_pop[i] + prof->ntrunks[i]);
 	fprintf(outfp, "\n");
 
 	for(i = 0; i < prof->nfrag; i++){
@@ -264,15 +264,18 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	prof->nfrag_pop = malloc(sizeof(int) * npop);
 	memcpy(prof->nfrag_pop, nfrags, sizeof(int) * npop);
 
+	prof->ntrunks = malloc(sizeof(int) * npop);
+	memcpy(prof->ntrunks, ntrunks, sizeof(int) * npop);
+
 	nfrag = 0;
 	for(i = 0; i < npop; i++)
-		nfrag += nfrags[i];
+		nfrag += nfrags[i] + ntrunks[i];
 	prof->fgset = malloc(sizeof(struct frag) * nfrag);
 
 	reflen = prof->ref->chrlen[chrnum];
 
-	for(i = 0; i < npop; i++){
-		for(nfrag = 0; nfrag < ntrunks[i]; nfrag++){
+	for(i = nfrag = 0; i < npop; i++){
+		for(j = 0; j < ntrunks[i]; j++, nfrag++){
 			prof->fgset[nfrag].pop = i;
 			prof->fgset[nfrag].start = 0;
 			prof->fgset[nfrag].end = reflen;
@@ -339,6 +342,7 @@ void unload_profile(struct profile *prof)
 		free(prof->fgset[i].rd);
 	}
 	unload_reference(prof->ref);
+	free(prof->ntrunks);
 	free(prof->nfrag_pop);
 //	free(prof->reflen);
 	free(prof->fgset);

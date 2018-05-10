@@ -346,6 +346,7 @@ int main(int argc, char *argv[])
 					break;
 			}
 		}
+		i++;
 	}
 
 	/* Compute weight of each subpopulation. */
@@ -504,6 +505,7 @@ int main(int argc, char *argv[])
 	}
 
 	free(nfrag_pop);
+	free(ntrunks);
 	free(weights);
 	unload_abdfile(abdf);
 	unload_database(db);

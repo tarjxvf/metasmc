@@ -168,6 +168,7 @@ int main(int argc, char *argv[])
 					begptr = argv[++i];
 					for(j = 0; j < npop; j++){
 						ntrunks[j] = strtol(begptr, &endptr, 10);
+						nfrag += ntrunks[j];
 						begptr = endptr + 1;
 					}
 
@@ -190,6 +191,7 @@ int main(int argc, char *argv[])
 	unload_profile(prof);
 
 //	free(size);
+	free(ntrunks);
 	free(nfrag_pop);
 //	fclose(filp);
 	return 0;
