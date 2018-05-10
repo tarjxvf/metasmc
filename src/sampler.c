@@ -3,12 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #include "global.h"
 
 void usage(char *prog)
 {
-	fprintf(stderr, "Usage: %s -g genome_file -c chr_num -f frag_size -r nfrag_1,nfrag_2,... [-n npop -p -l read_len]\n", prog);
+	fprintf(stderr, "Usage: %s -g genome_file -c chr_num -f frag_size -r nfrag_1,nfrag_2,... [-n npop -p -l read_len -t ntrunk1,ntrunk2,...]\n", prog);
 	fprintf(stderr, "-g genome_file: FASTA file of reference genome.\n");
 	fprintf(stderr, "-c chr_num: 0-based index of chromosome in genome_file. Default is 0.\n");
 	fprintf(stderr, "-f frag_size: Fragment size.\n");
@@ -16,11 +17,12 @@ void usage(char *prog)
 	fprintf(stderr, "-r nfrag_1,nfrag_2,...: Number of reads of each subpopulations.\n");
 	fprintf(stderr, "-p: If this switch is used, sampler will generate paired-end reads. Default value is 0.\n");
 	fprintf(stderr, "-l read_len: If paired-read is switched on, user need to specify read size by this switch. If paired-end is not used, read length will equal to fragment length.\n");
+	fprintf(stderr, "-t ntrunk1,ntrunk2,...: Number of whole chromosome in each subpopulation.");
 }
 
 int main(int argc, char *argv[])
 {
-	int nfrag, npop, paired, nread, reflen, fraglen, rdlen, i, j, *nfrag_pop, chrnum;
+	int nfrag, npop, paired, nread, reflen, fraglen, rdlen, i, j, *nfrag_pop, chrnum, *ntrunks;
 	struct reference *ref;
 	struct profile *prof;
 	struct frag *fgset;
@@ -98,6 +100,10 @@ int main(int argc, char *argv[])
 					rdlen = atoi(argv[++i]);
 					break;
 
+				case 't':
+					i++;
+					break;
+
 				default:
 					fprintf(stderr, "Unknown switch -%c\n", *ptr);
 					goto abnormal;
@@ -137,6 +143,8 @@ int main(int argc, char *argv[])
 //	size = malloc(sizeof(double) * npop);
 //	size[0] = allsize = 1;
 	nfrag_pop = malloc(sizeof(int) * npop);
+	ntrunks = malloc(sizeof(int) * npop);
+	memset(ntrunks, 0, sizeof(int) * npop);
 	j = 0;
 	while(i < argc){
 		char *begptr, *endptr;
@@ -155,6 +163,15 @@ int main(int argc, char *argv[])
 						begptr = endptr + 1;
 					}
 					break;
+
+				case 't':
+					begptr = argv[++i];
+					for(j = 0; j < npop; j++){
+						ntrunks[j] = strtol(begptr, &endptr, 10);
+						begptr = endptr + 1;
+					}
+
+					break;
 			}
 		}
 		i++;
@@ -168,7 +185,7 @@ int main(int argc, char *argv[])
 
 	sd = time(NULL);
 	init_rand(sd);
-	prof = generate_profile(file, chrnum, npop, nfrag_pop, fraglen, paired, rdlen);
+	prof = generate_profile(file, chrnum, npop, nfrag_pop, fraglen, paired, rdlen, ntrunks);
 	print_profile(prof, stdout);
 	unload_profile(prof);
 

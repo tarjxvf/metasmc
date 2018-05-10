@@ -239,7 +239,7 @@ void print_profile(struct profile *prof, FILE *outfp)
 	}
 }
 
-struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrags, int fraglen, int paired, int rdlen)
+struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrags, int fraglen, int paired, int rdlen, int *ntrunks)
 {
 	struct reference *ref;
 	struct profile *prof;
@@ -270,7 +270,23 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	prof->fgset = malloc(sizeof(struct frag) * nfrag);
 
 	reflen = prof->ref->chrlen[chrnum];
-	nfrag = 0;
+
+	for(i = 0; i < npop; i++){
+		for(nfrag = 0; nfrag < ntrunks[i]; nfrag++){
+			prof->fgset[nfrag].pop = i;
+			prof->fgset[nfrag].start = 0;
+			prof->fgset[nfrag].end = reflen;
+			prof->fgset[nfrag].nread = 1;
+			prof->fgset[nfrag].rd = malloc(sizeof(struct read) * 1);
+			prof->fgset[nfrag].trunk = 0;
+
+			prof->fgset[nfrag].rd[0].start = 0;
+			prof->fgset[nfrag].rd[0].end = reflen;
+			prof->fgset[nfrag].rd[0].seq = NULL;
+			prof->fgset[nfrag].rd[0].qual = NULL;
+		}
+	}
+
 	for(i = 0; i < npop; i++){
 		for(j = 0; j < nfrags[i]; j++, nfrag++){
 			int fragpos, readpos, k;

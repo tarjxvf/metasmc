@@ -32,7 +32,16 @@ struct abdfile {
 
 void usage(char *prog)
 {
-	fprintf(stderr, "%s -d <database> -a <abundance profile> -o <output directory> -x <prefix> -P <platform> -f <Fragment length> -n <Number of fragments> [-p -r <Paired-end read length>]\n", prog);
+	fprintf(stderr, "%s -d dbpath -a abpath -o outdir -x prefix -P <platform> -f fraglen -n <Number of fragments> [-p -r readlen -t ntrunk]\n", prog);
+	fprintf(stderr, "-d dbpath: Path to database file.\n");
+	fprintf(stderr, "-a abpath: Path to abundance profile.\n");
+	fprintf(stderr, "-o outdir: Output directory.\n");
+	fprintf(stderr, "-x prefix: Prefix of output file.\n");
+	fprintf(stderr, "-f fraglen: Length of the fragments.\n");
+	fprintf(stderr, "-n nfrag: Total numbr of fragments. The number of fragment of each subpopulation is drawn from multinomial distribution.\n");
+	fprintf(stderr, "-p: Generate paired-end reads.\n");
+	fprintf(stderr, "-r readlen: If -p is open, this option must be used to specify length of paired-end reads.\n");
+	fprintf(stderr, "-t ntrunk: Number of complete chromosomes in trunk genealogy.\n");
 }
 
 int dbcompar(struct dbentry *a, struct dbentry *b)
@@ -215,7 +224,7 @@ int main(int argc, char *argv[])
 	struct database *db;
 	char *afile, *dbfile, *outdir, *prefix, *ptr;
 	double *weights, wsum;
-	int ntax, npop, nfrags, *nfrag_pop, *nf, i, j, fraglen, rdlen, paired, tax, sd, proflen, nread;
+	int ntax, npop, nfrags, *nfrag_pop, *nf, i, j, fraglen, rdlen, paired, tax, sd, proflen, nread, *ntrunks;
 	char *profpath;
 
 	db = abdf = NULL;
@@ -261,6 +270,10 @@ int main(int argc, char *argv[])
 
 				case 'n':	/* Total number of reads. */
 					nfrags = atoi(argv[++i]);
+					break;
+
+				case 't':
+					i++;
 					break;
 
 				default:
@@ -313,6 +326,27 @@ int main(int argc, char *argv[])
 
 	npop = abdf->npop;
 	weights = malloc(sizeof(double) * npop);
+	ntrunks = malloc(sizeof(int) * npop);
+	memset(ntrunks, 0, sizeof(int) * npop);
+	i = 1;
+	while(i < argc){
+		char *begptr, *endptr;
+
+		ptr = argv[i];
+		if(*ptr == '-'){
+			ptr++;
+			switch(*ptr){
+				case 't':
+					begptr = argv[++i];
+					for(j = 0; j < npop; j++){
+						ntrunks[j] = strtol(begptr, &endptr, 10);
+						begptr = endptr + 1;
+					}
+
+					break;
+			}
+		}
+	}
 
 	/* Compute weight of each subpopulation. */
 	wsum = 0;
@@ -456,7 +490,7 @@ int main(int argc, char *argv[])
 				goto abnormal;
 			}
 
-			prof = generate_profile(dbe->reffile, k, npop_tax, nf2, fraglen, paired, rdlen);
+			prof = generate_profile(dbe->reffile, k, npop_tax, nf2, fraglen, paired, rdlen, ntrunks);
 			print_profile(prof, proffp);
 			unload_profile(prof);
 			fclose(proffp);
