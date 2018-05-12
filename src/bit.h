@@ -19,7 +19,7 @@ static inline double bit_total(struct bit *tree)
 }
 
 double bit_getvalue(struct bit *tree, int ix);
-int bit_getindex_old(struct bit *tree, double prob);
+//int bit_getindex_old(struct bit *tree, double prob);
 int bit_getindex(struct bit *tree, double freq);
 void bit_free(struct bit *tree);
 void bit_append(struct bit *tree, double val);

@@ -78,13 +78,12 @@ double bit_getvalue(struct bit *tree, int ix)
 }
 
 /* Original algorithm in Fenwick 1994. This is obsoleted because it does not support zero values. */
-/*int bit_getindex_old(struct bit *tree, double prob)
+int bit_getindex(struct bit *tree, double prob)
 {
 	int index, testix, mask;
 
 	index = 0;
 	mask = tree->maxnode >> 1;
-//	while(mask > tree->n) mask >>= 1;
 	if(prob > tree->freq[0]){
 		while(mask > 0){
 			testix = index + mask;
@@ -96,10 +95,10 @@ double bit_getvalue(struct bit *tree, int ix)
 		}
 	}
 
-	return index;
-}*/
+	return index + 1;
+}
 
-int bit_getindex(struct bit *tree, double freq)
+int bit_getindex_new(struct bit *tree, double freq)
 {
 	int baseix, testix, half, size;
 
