@@ -136,7 +136,8 @@ libsmc_la_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libsmc_la_OBJECTS = libsmc_la-smc.lo libsmc_la-util.lo \
 	libsmc_la-mutation.lo libsmc_la-global.lo libsmc_la-rand.lo \
-	libsmc_la-slab.lo mt19937-64/libsmc_la-mt19937-64.lo
+	libsmc_la-slab.lo libsmc_la-bit.lo \
+	mt19937-64/libsmc_la-mt19937-64.lo
 libsmc_la_OBJECTS = $(am_libsmc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -353,8 +354,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 lib_LTLIBRARIES = libsmc.la
-include_HEADERS = util.h global.h mutation.h smc.h slab.h
-libsmc_la_SOURCES = smc.c util.c mutation.c global.c rand.c slab.c mt19937-64/mt19937-64.c
+include_HEADERS = util.h global.h mutation.h smc.h slab.h bit.h
+libsmc_la_SOURCES = smc.c util.c mutation.c global.c rand.c slab.c bit.c mt19937-64/mt19937-64.c
 libsmc_la_LDFLAGS = -shared -fPIC $(LAPACK_LIBS) -lrt -lm -lgfortran -llapack -llapacke
 libsmc_la_CFLAGS = $(LAPACK_CFLAGS)
 sampler_SOURCES = sampler.c
@@ -515,6 +516,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-bit.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-global.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-mutation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-rand.Plo@am__quote@
@@ -591,6 +593,13 @@ libsmc_la-slab.lo: slab.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='slab.c' object='libsmc_la-slab.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -c -o libsmc_la-slab.lo `test -f 'slab.c' || echo '$(srcdir)/'`slab.c
+
+libsmc_la-bit.lo: bit.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -MT libsmc_la-bit.lo -MD -MP -MF $(DEPDIR)/libsmc_la-bit.Tpo -c -o libsmc_la-bit.lo `test -f 'bit.c' || echo '$(srcdir)/'`bit.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libsmc_la-bit.Tpo $(DEPDIR)/libsmc_la-bit.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='bit.c' object='libsmc_la-bit.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -c -o libsmc_la-bit.lo `test -f 'bit.c' || echo '$(srcdir)/'`bit.c
 
 mt19937-64/libsmc_la-mt19937-64.lo: mt19937-64/mt19937-64.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -MT mt19937-64/libsmc_la-mt19937-64.lo -MD -MP -MF mt19937-64/$(DEPDIR)/libsmc_la-mt19937-64.Tpo -c -o mt19937-64/libsmc_la-mt19937-64.lo `test -f 'mt19937-64/mt19937-64.c' || echo '$(srcdir)/'`mt19937-64/mt19937-64.c
