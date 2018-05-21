@@ -158,7 +158,7 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 #endif
 			for(i = 0, p = lb; p < ub && i < rd->end - rd->start; i++, j++, p++){
 #ifdef DEBUG
-				fprintf(stderr, "%d: p=%d, j=%d\n", __LINE__, p, j);
+//				fprintf(stderr, "%d: p=%d, j=%d\n", __LINE__, p, j);
 #endif
 				if(ances[j] != deriv[j]){	/* j is a polymorphic site */
 					if(isdesc(G, nmut[j], (struct node *)n)){

@@ -90,7 +90,7 @@ struct edge {
 	struct node *top;
 	struct node *bot;
 	int itop;
-	int id;
+	int xtid;	// Index of edge in binary indexed tree
 	int idx;	// Index of the edge in eptr array of population
 };
 
@@ -113,6 +113,23 @@ struct population {
 	struct list idx_queue;	// Queue of index in eptrs
 };
 
+/* Tree size index. */
+struct tsindex {
+	struct bit *index;
+	int nedges;	// Equals to the number of occupied nodes in binary indexed tree
+	int maxnodes;	// Equals to n in binary indexed tree
+	int maxedges;
+	struct edge **edges;
+	struct list free_list;
+};
+
+struct tsindex *tsindex_alloc(int nedges);
+void tsindex_reset(struct tsindex *tr);
+void tsindex_add(struct tsindex *tr, struct edge *e);
+void tsindex_update(struct tsindex *tr, struct edge *e, double diff);
+void tsindex_clear(struct tsindex *tr, struct edge *e);
+void tsindex_free(struct tsindex *tr);
+
 struct genealogy {
 	int nsam;
 	struct config *cfg;
@@ -132,6 +149,8 @@ struct genealogy {
 
 	struct edge **pTreeEdgesToCoalesceArray;
 	struct node *localMRCA;
+
+	struct tsindex *tr_xover;
 };
 
 //int simulate(struct reference *, struct genealogy *, int, struct frag *);
