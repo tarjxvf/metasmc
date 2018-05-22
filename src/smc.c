@@ -1609,12 +1609,14 @@ double recombination(struct genealogy *G)
 						__remove_edge(G, poprm, erm);
 						free_edge(G, erm);
 						poprm = nrm->pop;
-						remove_event(G, (struct event *)nrm->ev);
+						if(nrm->ev->type != EVENT_SPLT && nrm->ev->type != EVENT_JOIN)
+							remove_event(G, (struct event *)nrm->ev);
 						erm = nrm->in;
 						free_node(G, nrm);
 					}
 					nrm = ndum;
-					remove_event(G, ndum->ev);
+					if(nrm->ev->type != EVENT_SPLT && nrm->ev->type != EVENT_JOIN)
+						remove_event(G, ndum->ev);
 					edum->top = ndum = alloc_node(G, NODE_FLOAT, nrm->pop, INFINITY);
 					AS_DUMMY_NODE(ndum)->out = edum;
 					AS_DUMMY_NODE(ndum)->in = NULL;
@@ -1637,7 +1639,6 @@ double recombination(struct genealogy *G)
 				__remove_edge(G, edum->bot->pop, edum);
 				list_add(&F[edum->bot->pop], edum);
 				list_add(&F[pop], ef);
-				G->pops[edum->bot->pop].n--;
 
 				G->root = G->localMRCA = NULL;	// localMRCA is cancelled because new local MRCA must be above current root
 
