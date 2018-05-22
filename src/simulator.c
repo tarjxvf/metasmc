@@ -78,7 +78,7 @@ void usage(char *prog)
 	fprintf(stderr, "-es t i proportion  (Split: pop i -> pop-i + pop-npop, npop increases by 1.\n");
 	fprintf(stderr, "        proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.\n");
 	fprintf(stderr, "        Size of pop npop is set to N0 and alpha = 0.0 , size and alpha of pop i are unchanged.\n");
-	fprintf(stderr, "-ej t i j   ( Join lineages in pop i and pop j into pop j\n");
+	fprintf(stderr, "-ej t i j   ( Join lineages in pop i and pop j into pop i\n");
 	fprintf(stderr, "        size, alpha and M are unchanged.\n");
 }
 

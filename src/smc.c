@@ -360,7 +360,7 @@ void dump_edges(struct genealogy *G)
 	fprintf(stderr, "Global edge list");
 	while(l){
 		e = (struct edge *)GET_OBJ(l);
-		fprintf(stderr, "->%x(%.10f, %.10f, xtid=%d)", e, e->bot->t, e->top->t, e->xtid);
+		fprintf(stderr, "->%x(bot=%x(%.10f, %d), top=%x(%.10f, %d), xtid=%d)", e, e->bot, e->bot->t, e->bot->pop, e->top, e->top->t, e->top->pop, e->xtid);
 		l = l->next;
 	}
 	fprintf(stderr, "\n");
@@ -1187,6 +1187,7 @@ void reset_populations(struct genealogy *G)
 	/* Reset populations existing at time 0. */
 	for(pop = 0; pop < cfg->npop; pop++){
 		G->pops[pop].n = G->pops[pop].nsam;
+		G->pops[pop].enabled = 1;
 		G->pops[pop].grate = cfg->grate[pop];
 		G->pops[pop].size = cfg->size[pop];
 		for(i = 0; i < cfg->npop; i++)
@@ -1202,6 +1203,7 @@ void reset_populations(struct genealogy *G)
 		G->pops[pop].grate = 0;
 		G->pops[pop].size = 0;
 		G->pops[pop].tlast = 0;
+		G->pops[pop].enabled = 0;
 		memset(G->pops[pop].mrate, 0, sizeof(double) * (cfg->npop + cfg->nsplt));
 	}
 }
@@ -1669,45 +1671,6 @@ double recombination(struct genealogy *G)
 		}
 	}while(!coalesced);
 
-#ifdef DEBUG
-	/* Print current population size. */
-	fprintf(stderr, "%d: Current population size:[", __LINE__);
-	for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-		fprintf(stderr, "%.6f,", G->pops[i].size);
-	fprintf(stderr, "]\n");
-
-	/* Print current growth rate. */
-	fprintf(stderr, "%d: Current growth rate:[", __LINE__);
-	for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-		fprintf(stderr, "%.6f,", G->pops[i].grate);
-	fprintf(stderr, "]\n");
-
-	/* Print current migration matrix. */
-	fprintf(stderr, "Current migration matrix:[\n");
-	for(i = 0; i < cfg->npop + cfg->nsplt; i++){
-		int j;
-		for(j = 0; j < cfg->npop + cfg->nsplt; j++)
-			fprintf(stderr, "%.6f,", G->pops[i].mrate[j]);
-		fprintf(stderr, "\n");
-	}
-	fprintf(stderr, "]\n");
-
-	fprintf(stderr, "%d:", __LINE__);
-	{
-		struct list_head *el;
-		el = G->e_list.front;
-		fprintf(stderr, "Edge list in tree:\n");
-		while(el){
-			struct edge *et;
-			et = (struct edge *)GET_OBJ(el);
-			fprintf(stderr, "->[%x, %x, bot=(%x, %d, %.6f), top=(%x, %d, %.6f)]\n", el, et, et->bot, et->bot->type, et->bot->t, et->top, et->top->type, et->top->t);
-			el = el->next;
-		}
-		fprintf(stderr, "\n");
-	}
-	fprintf(stderr, "Finishing %s\n\n", __func__);
-#endif
-
 	return like;
 }
 
@@ -1809,62 +1772,6 @@ double merge_floating(struct genealogy *G, struct list *F)
 			minz = INFINITY;
 		}
 
-#ifdef DEBUG
-		fprintf(stderr, "%d: Floating lineages:\n", __LINE__);
-		for(i = 0; i < cfg->npop; i++){
-			struct list_head *l;
-
-			l = F[i].front;
-			fprintf(stderr, "Subpopulation %d: n=%d, ", i, F[i].n);
-			while(l){
-				struct sam_node *n1;
-				struct edge *e;
-
-				e = (struct edge *)GET_OBJ(l);
-				n1 = (struct sam_node *)e->bot;
-				fprintf(stderr, "->%x[prev=%x, next=%x, sam_node=%x, dummy_node=%x, edge=%x, fg=%x]", l, l->prev, l->next, n1, e->top, e, n1->fg);
-				l = l->next;
-			}
-			fprintf(stderr, "\n");
-		}
-
-		dump_edges(G);
-
-		fprintf(stderr, "%d:", __LINE__);
-		for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-			fprintf(stderr, ",G->pops[%d].n=%d, G->pops[%d].enabled=%d", i, G->pops[i].n, i, G->pops[i].enabled);
-		fprintf(stderr, "\n");
-
-		/* Print current population size. */
-		fprintf(stderr, "%d: Current population size:[", __LINE__);
-		for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-			fprintf(stderr, "%.6f,", G->pops[i].size);
-		fprintf(stderr, "]\n");
-
-		/* Print current growth rate. */
-		fprintf(stderr, "%d: Current growth rate:[", __LINE__);
-		for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-			fprintf(stderr, "%.6f,", G->pops[i].grate);
-		fprintf(stderr, "]\n");
-
-		/* Print current migration matrix. */
-		fprintf(stderr, "Current migration matrix:[\n");
-		for(i = 0; i < cfg->npop + cfg->nsplt; i++){
-			int j;
-			for(j = 0; j < cfg->npop + cfg->nsplt; j++)
-				fprintf(stderr, "%.6f,", G->pops[i].mrate[j]);
-			fprintf(stderr, "\n");
-		}
-		fprintf(stderr, "]\n");
-
-		fprintf(stderr, "%d: t=%.6f, upop=%d, minu=%.6f, vpop=%d, minv=%.6f, zpop=%d, minz=%.6f\n", __LINE__, t, upop, minu, vpop, minv, zpop, minz);
-		fprintf(stderr, "sumnF=%d", sumnF);
-		for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-			fprintf(stderr, ", nF[%d]=%d", i, F[i].n);
-		fprintf(stderr, "\n");
-
-#endif
-
 		ev = (struct event *)GET_OBJ(evl);
 		if(isinf(minu) && isinf(minv) && isinf(minz) && isinf(ev->t)){
 			like = -INFINITY;
@@ -1950,7 +1857,7 @@ finish_selection:
 				struct join_event *jev;
 				struct list_head *f;
 
-				/* Force all lineages in population i moving to population j */
+				/* Force all lineages in population j moving to population i */
 				jev = (struct join_event *)ev;
 				f = F[jev->popj].front;
 				while(f){
@@ -2637,7 +2544,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 //			r = (double)1 / 100;
 
 #ifdef DEBUG
-			fprintf(stderr, "%d: G->total=%.6f, lb=%.6f, ub=%.6f, x=%d, r=%d\n", __LINE__, G->total, lb, ub, x, r);
+			fprintf(stderr, "%d: G->total=%.6f, lb=%.6f, ub=%.6f, x=%.6f, r=%.6f\n", __LINE__, G->total, lb, ub, x, r);
 #endif
 			x = MIN(x + r, ub);
 			inext = x * reflen - ilast;
