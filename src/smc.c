@@ -1984,19 +1984,23 @@ finish_selection:
 		e = (struct edge *)GET_OBJ(f);
 		e->top->type = NODE_DUMMY;
 		e->top->t = e->bot->t;
+		e->top->pop = e->bot->pop;
 		__add_edge(G, e->bot->pop, e);
 
-		if(G->troot > e->top->t){
-			e->top->t = G->troot;
+//		if(G->troot > e->top->t){
+//			e->top->t = G->troot; // Change on 2018/05/23: This leads to missing of migration by population join/split.
 
-		}else{
+//		}else{
 			G->troot = e->top->t;
-		}
+//		}
 
 		G->root = e->top;
 		G->localMRCA = e->bot;
 
 		evnew = alloc_event(G->cfg, EVENT_DUMY, e->top->t);
+		// Change on 2018/05/23: This is necessary because the next event may be demographic events before G->troot (old TMRCA).
+		while(((struct event *)GET_OBJ(evl))->t < evnew->t)
+			evl = evl->next;
 		list_insbefore(evl, evnew);
 		e->top->ev = evnew;
 	}

@@ -696,7 +696,7 @@ int main(int argc, char *argv[])
 
 	/* Print reads */
 	for(i = 0; i < prof->nfrag; i++){
-		print_fragment(stdout, &prof->fgset[i]);
+//		print_fragment(stdout, &prof->fgset[i]);
 	}
 
 	free(mmut);
