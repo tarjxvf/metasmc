@@ -1694,7 +1694,7 @@ double merge_floating(struct genealogy *G, struct list *F)
 	t = G->t;
 //	t = 0;
 	sumnF = 0;
-	for(pop = 0; pop < cfg->npop; pop++){
+	for(pop = 0; pop < cfg->npop_all; pop++){
 //		G->pops[pop].nsam += F[pop].n;
 //		G->nsam += F[pop].n;
 		sumnF += F[pop].n;
