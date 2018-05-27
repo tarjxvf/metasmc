@@ -3,6 +3,7 @@
 
 #include "global.h"
 #include "mutation.h"
+#include "trb.h"
 
 #define NODE_COAL	0
 #define NODE_MIGR	1
@@ -111,6 +112,9 @@ struct population {
 	int maxedges;
 	struct edge **eptrs;		// Array of edge pointers
 	struct list idx_queue;	// Queue of index in eptrs
+
+	/***** Red-black tree index of edges. The tree is ordered by times of top nodes. *****/
+	struct trb_table *etree;
 };
 
 /* Tree size index. */

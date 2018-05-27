@@ -687,7 +687,7 @@ int main(int argc, char *argv[])
 	/* Sort fragments according to start positions. */
 	qsort((void *)fgset, (size_t)nfrag, sizeof(struct frag), fgcompar);
 
-	fprintf(stderr, "seed=%d\n", sd);
+//	fprintf(stderr, "seed=%d\n", sd);
 	init_rand(sd);
 
 //	dump_config(cfg);
