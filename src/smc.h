@@ -95,6 +95,12 @@ struct edge {
 	int idx;	// Index of the edge in eptr array of population
 };
 
+struct edge_set {
+	int maxn;
+	int n;
+	struct edge **edges;
+};
+
 struct population {
 	int n;
 	double grate;			// Growth rate at tlast
