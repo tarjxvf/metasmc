@@ -121,7 +121,8 @@ struct edge *tsindex_search(struct tsindex *tr, double g, double *cum)
 {
 	int eid;
 
-	if(tsindex_dirty(tr)){
+//	if(tsindex_dirty(tr)){
+	if(tsindex_isrebuild(tr)){
 		/* Search operation is disabled when dirty bit is set. */
 		return NULL;
 
@@ -135,7 +136,7 @@ struct edge *tsindex_search(struct tsindex *tr, double g, double *cum)
 
 double tsindex_size(struct tsindex *tr)
 {
-	if(tsindex_dirty(tr))
+	if(tsindex_isrebuild(tr))
 		return -1;
 	else
 		return bit_total(tr->index);
@@ -153,7 +154,7 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 	if(queue->front == NULL){
 		/* Allocate a new node in binary indexed tree. */
 		if(tsindex_isrebuild(tr)){
-			tsindex_setflag(tr, TSINDEX_DIRTY);
+//			tsindex_setflag(tr, TSINDEX_DIRTY);
 			id = tr->maxnodes + 1;
 
 		}else{
@@ -177,10 +178,10 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 		__list_remove(queue, l);
 		free(l);
 
-		if(tsindex_isrebuild(tr)){
-			tsindex_setflag(tr, TSINDEX_DIRTY);
-
-		}else{
+		if(!tsindex_isrebuild(tr)){
+//			tsindex_setflag(tr, TSINDEX_DIRTY);
+//
+//		}else{
 			bit_update(tr->index, id, diff);
 		}
 	}
@@ -192,9 +193,9 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 
 void tsindex_update(struct tsindex *tr, struct edge *e, double diff)
 {
-	if(tsindex_isrebuild(tr))
-		tsindex_setflag(tr, TSINDEX_DIRTY);
-	else
+	if(!tsindex_isrebuild(tr))
+//		tsindex_setflag(tr, TSINDEX_DIRTY);
+//	else
 		bit_update(tr->index, e->xtid, diff);
 }
 
@@ -206,10 +207,10 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 	double diff;
 
 	id = e->xtid;
-	if(tsindex_isrebuild(tr)){
-		tsindex_setflag(tr, TSINDEX_DIRTY);
-
-	}else{
+	if(!tsindex_isrebuild(tr)){
+//		tsindex_setflag(tr, TSINDEX_DIRTY);
+//
+//	}else{
 		diff = bit_getvalue(tr->index, id);
 		bit_update(tr->index, id, -diff);
 	}
