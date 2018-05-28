@@ -1989,7 +1989,7 @@ double merge_floating(struct genealogy *G, struct edge_set *F)
 
 			}else{	// Migration
 				struct edge *em;
-				double sum, x;
+				double sum, x, inc;
 				int c;
 
 				t += minz;
@@ -1997,12 +1997,15 @@ double merge_floating(struct genealogy *G, struct edge_set *F)
 
 				sum = 0;
 				for(zpop = 0; zpop < cfg->npop_all; zpop++){
-					for(c = 0; c < F[zpop].n; c++){
-						sum += G->pops[zpop].mrate[zpop];
-						if(x < sum)
-							goto finish_selection;
-					}
+					inc = G->pops[zpop].mrate[zpop] * F[zpop].n;
+					if(x < sum + inc)
+						break;
+					else
+						sum += inc;
 				}
+
+				c = (int)((x - sum) / G->pops[zpop].mrate[zpop]);
+
 finish_selection:
 
 				// Find the lineage to be migrated
