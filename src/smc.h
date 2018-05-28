@@ -142,7 +142,7 @@ struct genealogy {
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
 
 	int nedges;		// Number of edges in local tree
-	struct list e_list;	// List of edges in the local tree
+//	struct list e_list;	// List of edges in the local tree
 	struct list n_list;	// List of sample nodes
 
 	struct list_head *evlcurr;
