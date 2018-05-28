@@ -114,7 +114,8 @@ struct population {
 	struct list idx_queue;	// Queue of index in eptrs
 
 	/***** Red-black tree index of edges. The tree is ordered by times of top nodes. *****/
-	struct trb_table *etree;
+//	struct trb_table *etree;
+	struct rbindex *eidx;
 };
 
 /* Tree size index. */
@@ -157,6 +158,34 @@ void tsindex_add(struct tsindex *tr, struct edge *e);
 void tsindex_update(struct tsindex *tr, struct edge *e, double diff);
 void tsindex_clear(struct tsindex *tr, struct edge *e);
 void tsindex_free(struct tsindex *tr);
+
+#define RBINDEX_BATCH	0x1	/* If this flag is set, the index is in batch mode. The red-black tree will not be built until rbindex_build is called. */
+typedef struct trb_traverser rb_traverser;
+struct rbindex {
+	int flags;
+	struct trb_table *tree;
+	struct list ls;
+
+	/* For batch mode. */
+	int maxobj;
+	int nobj;
+	void **objs;
+};
+
+static inline void rbindex_setflag(struct rbindex *eidx, int flag)
+{
+	eidx->flags |= flag;
+}
+
+static inline void rbindex_clearflag(struct rbindex *eidx, int flag)
+{
+	eidx->flags &= ~flag;
+}
+
+static inline int rbindex_isbatch(struct rbindex *eidx)
+{
+	return eidx->flags & RBINDEX_BATCH;
+}
 
 struct genealogy {
 	int nsam;

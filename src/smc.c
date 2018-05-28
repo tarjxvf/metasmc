@@ -221,7 +221,7 @@ void tsindex_dump(struct tsindex *tr)
 }
 
 /***** LIBAVL allocator of population-wise edge index. *****/
-int eindex_compar(struct edge *a, struct edge *b)
+int rbindex_compar(struct edge *a, struct edge *b)
 {
 	double diff, diff2;
 
@@ -243,46 +243,76 @@ int eindex_compar(struct edge *a, struct edge *b)
 	}
 }
 
-void *eindex_alloc(struct libavl_allocator *allocator, size_t size)
+void *rbindex_alloc(struct libavl_allocator *allocator, size_t size)
 {
 	return malloc(size);
 }
 
-void eindex_free(struct libavl_allocator *allocator, void *block)
+void rbindex_free(struct libavl_allocator *allocator, void *block)
 {
 	free(block);
 }
 
-struct libavl_allocator eindex_allocator = {eindex_alloc, eindex_free};
+struct libavl_allocator rbindex_allocator = {rbindex_alloc, rbindex_free};
 
-static inline void **eindex_insert(struct trb_table *etree, struct edge *e)
+static inline void **rbindex_insert(struct rbindex *eidx, void *obj)
 {
-//	return trb_probe(etree, e2);
+	return trb_probe(eidx->tree, obj);
 }
 
-static inline void *eindex_delete(struct trb_table *etree, struct edge *e)
+static inline void *rbindex_delete(struct rbindex *eidx, void *obj)
 {
-//	return trb_delete(etree, e);
+	return trb_delete(eidx->tree, obj);
 }
 
-static inline void *eindex_find(struct trb_traverser *trav, struct trb_table *etree, struct edge *e)
+static inline void *rbindex_find(rb_traverser *trav, struct rbindex *eidx, void *obj)
 {
-//	return trb_t_find(trav, etree, e);
+	return trb_t_find(trav, eidx->tree, obj);
 }
 
-static inline void *eindex_next(struct trb_traverser *trav)
+static inline void *rbindex_next(rb_traverser *trav)
 {
-//	return trb_t_next(trav);
+	return trb_t_next(trav);
 }
 
-static inline void eindex_destroy(struct trb_table *etree)
+void rbindex_destroy(struct rbindex *eidx)
 {
-//	trb_destroy(etree, NULL)
+	trb_destroy(eidx->tree, NULL);
+	free(eidx->objs);
+	free(eidx);
 }
 
-static inline struct trb_table *eindex_create(trb_comparison_func *compare, void *param, struct libavl_allocator *allocator)
+struct rbindex *rbindex_create(trb_comparison_func *compare, void *param, struct libavl_allocator *allocator)
 {
-//	return trb_create(compare, param, allocator);
+	struct rbindex *eidx;
+
+	eidx = malloc(sizeof(struct rbindex));
+	eidx->flags = 0;
+	eidx->tree = trb_create(compare, param, allocator);
+	list_init(&eidx->ls);
+
+	eidx->maxobj = 10000;
+	eidx->nobj = 0;
+	eidx->objs = malloc(sizeof(void *) * eidx->maxobj);
+	memset(eidx->objs, 0, sizeof(void *) * eidx->maxobj);
+
+	return eidx;
+}
+
+/* Set up batch mode. */
+void rbindex_batch(struct rbindex *eidx, int maxobj)
+{
+	rbindex_setflag(eidx, RBINDEX_BATCH);
+}
+
+/* Add object when batch mode is on. Incoming objects are assumed to be in order. */
+static inline void rbindex_batch_add(struct rbindex *eidx, void *obj)
+{
+}
+
+void rbindex_batch_build(struct rbindex *eidx)
+{
+	rbindex_clearflag(eidx, RBINDEX_BATCH);
 }
 
 void free_node(struct genealogy *G, struct node *nd)
@@ -555,7 +585,7 @@ void dump_edges(struct genealogy *G)
 
 	for(i = 0; i < cfg->npop_all; i++){
 		sprintf(title, "red-black index of pop %d", i);
-		print_whole_tree(G->pops[i].etree, title);
+		print_whole_tree(G->pops[i].eidx->tree, title);
 		fprintf(stderr, "\n");
 	}
 
@@ -645,7 +675,7 @@ void insert_migr_node(struct genealogy *G, struct edge *e, struct migr_node *nd)
 	nd->in = e;
 	nd->out = e2;
 	add_edge(G, pop, e2);
-	eindex_insert(G->pops[e2->bot->pop].etree, e2);
+	rbindex_insert(G->pops[e2->bot->pop].eidx, e2);
 }
 
 /* Erase dangling lineage until a coalescent node is reached. */
@@ -664,15 +694,15 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	/* Remove dangling edges from red-black trees. */
 	etmp = e;
 	while(etmp->top->type == NODE_MIGR){
-		eindex_delete(G->pops[etmp->bot->pop].etree, etmp);
+		rbindex_delete(G->pops[etmp->bot->pop].eidx, etmp);
 		etmp = etmp->top->in;
 	}
-	eindex_delete(G->pops[etmp->bot->pop].etree, etmp);
+	rbindex_delete(G->pops[etmp->bot->pop].eidx, etmp);
 	ntop = (struct coal_node *)etmp->top;
 	eabove = ntop->in;
-	eindex_delete(G->pops[eabove->bot->pop].etree, eabove);
+	rbindex_delete(G->pops[eabove->bot->pop].eidx, eabove);
 	ebelow = ntop->out[1 - etmp->itop];
-	eindex_delete(G->pops[ebelow->bot->pop].etree, ebelow);
+	rbindex_delete(G->pops[ebelow->bot->pop].eidx, ebelow);
 
 	/* Remove dangling edges. */
 	pop = e->bot->pop;
@@ -737,7 +767,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	}
 
 	remove_edge(G, pop, e);
-	eindex_insert(G->pops[eabove->bot->pop].etree, eabove);
+	rbindex_insert(G->pops[eabove->bot->pop].eidx, eabove);
 #ifdef DEBUG
 	fprintf(stderr, "%s finisned\n", __func__);
 #endif
@@ -795,7 +825,7 @@ struct edge *choose_tedge(struct genealogy *G, struct population *pop, double t)
 	/* Calculate red-black index threshold. */
 
 	nthres = 0;	// Disable red-black index
-//	nthres = n;	// Disable naive sampling
+	nthres = n;	// Disable naive sampling
 //	avg1 = (double)pop->nedges / n;
 //	avg2 = (double)(2 * n - 3) / 2;
 #ifdef DEBUG
@@ -812,7 +842,7 @@ struct edge *choose_tedge(struct genealogy *G, struct population *pop, double t)
 		}while(e == NULL || !(e->bot->t < t && e->top->t > t));
 
 	}else{	// Choose edge using red-black index
-		struct trb_traverser tr;
+		rb_traverser tr;
 		struct node top, bot;
 		struct edge key;
 		int u, c;
@@ -821,7 +851,7 @@ struct edge *choose_tedge(struct genealogy *G, struct population *pop, double t)
 		bot.t = 0;
 		key.top = &top;
 		key.bot = &bot;
-		e = eindex_find(&tr, pop->etree, &key);
+		e = rbindex_find(&tr, pop->eidx, &key);
 		u = pop->n * dunif01();
 		c = 0;
 #ifdef DEBUG
@@ -834,7 +864,7 @@ struct edge *choose_tedge(struct genealogy *G, struct population *pop, double t)
 				else
 					break;
 			}
-			e = eindex_next(&tr);
+			e = rbindex_next(&tr);
 		}
 #ifdef DEBUG
 		fprintf(stderr, "Choosed: (%x(%.6f, %d), %x(%.6f, %d))\n", e->bot, e->bot->t, e->bot->pop, e->top, e->top->t, e->top->pop);
@@ -859,7 +889,7 @@ struct event *__absorption(struct genealogy *G, struct edge *e, struct edge *f, 
 //	nabs++;
 	fprintf(stderr, "Entering function %s: e=%x, f=%x, pop=%d, t=%.6f\n", __func__, e, f, pop, t);
 #endif
-	eindex_delete(G->pops[e->bot->pop].etree, e);
+	rbindex_delete(G->pops[e->bot->pop].eidx, e);
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
 
 	if(t > G->localMRCA->t){
@@ -911,9 +941,9 @@ struct event *__absorption(struct genealogy *G, struct edge *e, struct edge *f, 
 	nd->ev = ev;
 
 	add_edge(G, pop, f);
-	eindex_insert(G->pops[e->bot->pop].etree, e);
-	eindex_insert(G->pops[f->bot->pop].etree, f);
-	eindex_insert(G->pops[nd->out[0]->bot->pop].etree, nd->out[0]);
+	rbindex_insert(G->pops[e->bot->pop].eidx, e);
+	rbindex_insert(G->pops[f->bot->pop].eidx, f);
+	rbindex_insert(G->pops[nd->out[0]->bot->pop].eidx, nd->out[0]);
 
 //	G->localMRCA = (struct node *)nd;
 
@@ -1033,7 +1063,7 @@ fprintf(stderr, "\n");
 
 	e_new = nd->out[0];
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node.
-	eindex_insert(G->pops[e_new->bot->pop].etree, e_new);
+	rbindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
 
 	/* Set up another branch below the coalescent node */
 	nd->out[1] = e2;
@@ -1044,7 +1074,7 @@ fprintf(stderr, "\n");
 
 	list_remove(&F[pop], e2);
 	add_edge(G, pop, e2);
-	eindex_insert(G->pops[e2->bot->pop].etree, e2);
+	rbindex_insert(G->pops[e2->bot->pop].eidx, e2);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev->pop = pop;
@@ -1584,7 +1614,7 @@ double recombination(struct genealogy *G)
 	fprintf(stderr, "Next event: evl=%x, ev=%x, type=%d, t=%6f\n", evl, ev, ev->type, ev->t);
 #endif
 
-	eindex_delete(G->pops[e->bot->pop].etree, e);
+	rbindex_delete(G->pops[e->bot->pop].eidx, e);
 
 	/* Generate recombination node */
 	nxover = (struct xover_node *)alloc_node(G, NODE_XOVER, pop, t);
@@ -1602,7 +1632,7 @@ double recombination(struct genealogy *G)
 	nf->out = ef;
 	nxover->in_new = ef;
 	tsindex_update(G->tr_xover, e, -(e_below_xover->top->t - e_below_xover->bot->t));
-	eindex_insert(G->pops[e->bot->pop].etree, e);
+	rbindex_insert(G->pops[e->bot->pop].eidx, e);
 
 	/* Iterate until floating lineage is absorbed. */
 	coalesced = 0;
@@ -1654,18 +1684,18 @@ double recombination(struct genealogy *G)
 				fprintf(stderr, "%d: Absorb floating lineage %x to %x, e=%x\n", __LINE__, ef, e2, e);
 #endif
 
-				eindex_delete(G->pops[nxover->pop].etree, nxover->in);
+				rbindex_delete(G->pops[nxover->pop].eidx, nxover->in);
 				evnew = __absorption(G, e2, ef, pop, t);
 
 				list_insbefore(evl, evnew);
-				eindex_delete(G->pops[nxover->pop].etree, nxover->in_new);
+				rbindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
 
 				if(e2 == e){	// Floating lineage is absorbed to the same lineage (loop in ARG)
 					struct edge *e_old;
 
-					eindex_delete(G->pops[pop].etree, e);
-					eindex_delete(G->pops[pop].etree, AS_COAL_NODE(e2->bot)->out[0]);
-					eindex_delete(G->pops[pop].etree, AS_COAL_NODE(e2->bot)->out[1]);
+					rbindex_delete(G->pops[pop].eidx, e);
+					rbindex_delete(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[0]);
+					rbindex_delete(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[1]);
 
 					nxover->in = AS_COAL_NODE(e2->bot)->out[0];
 					e_old = nxover->in;
@@ -1673,7 +1703,7 @@ double recombination(struct genealogy *G)
 //					// e_old->top is the new coalescent node which has to be removed. In this case, e2 must be in local genealogy, so tsindex must be updated
 					remove_coal_node(G, AS_COAL_NODE(e_old->top), e_old->itop, 1);
 					remove_edge(G, pop, e_old);
-					eindex_insert(G->pops[pop].etree, e);
+					rbindex_insert(G->pops[pop].eidx, e);
 
 				}else{
 					struct edge *e_new;	// The new edge allocated by insert_coal_node
@@ -1687,12 +1717,12 @@ double recombination(struct genealogy *G)
 					struct edge *e_new, *e_below;
 
 					e_new = nxover->in_new;
-					eindex_delete(G->pops[e_new->bot->pop].etree, e_new);
+					rbindex_delete(G->pops[e_new->bot->pop].eidx, e_new);
 					e_below = nxover->out;
 					tsindex_update(G->tr_xover, e_new, e_below->top->t - e_below->bot->t);
 					e_new->bot = e_below->bot;
 					e_new->bot->in = e_new;
-					eindex_insert(G->pops[e_new->bot->pop].etree, e_new);
+					rbindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
 //					remove_edge(G, e_below->bot->pop, e_below);
 					free_edge(G, e_below);
 					free_node(G, (struct node *)nxover);
@@ -1765,8 +1795,8 @@ double recombination(struct genealogy *G)
 
 				troot_old = G->root->t;
 
-				eindex_delete(G->pops[nxover->pop].etree, nxover->in);
-				eindex_delete(G->pops[nxover->pop].etree, nxover->in_new);
+				rbindex_delete(G->pops[nxover->pop].eidx, nxover->in);
+				rbindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
 
 #ifdef DEBUG
 				if(ev->type == EVENT_DUMY){
@@ -1786,7 +1816,7 @@ double recombination(struct genealogy *G)
 					edum = ndum->in;
 					ndum = edum->top;
 				}
-				eindex_delete(G->pops[edum->bot->pop].etree, edum);
+				rbindex_delete(G->pops[edum->bot->pop].eidx, edum);
 
 				// Remove remaining edges in dummy edge list
 				if(ev->type == EVENT_DXVR){
@@ -1797,7 +1827,7 @@ double recombination(struct genealogy *G)
 					/* Remove dangling edges above dummy recombination event from red-black tree. */
 					erm = ndum->in;
 					while(erm){
-						eindex_delete(G->pops[erm->bot->pop].etree, erm);
+						rbindex_delete(G->pops[erm->bot->pop].eidx, erm);
 						erm = erm->top->in;
 					}
 
@@ -1849,8 +1879,8 @@ double recombination(struct genealogy *G)
 				{
 					struct edge *e_new, *e_below;
 
-					eindex_delete(G->pops[nxover->pop].etree, nxover->in);
-					eindex_delete(G->pops[nxover->pop].etree, nxover->in_new);
+					rbindex_delete(G->pops[nxover->pop].eidx, nxover->in);
+					rbindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
 					erase_dangling2(G, nxover->in);
 
 					e_new = nxover->in_new;
@@ -1861,7 +1891,7 @@ double recombination(struct genealogy *G)
 //					remove_edge(G, e_below->bot->pop, e_below);
 					free_edge(G, e_below);
 					free_node(G, (struct node *)nxover);
-					eindex_insert(G->pops[e_new->bot->pop].etree, e_new);
+					rbindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
 				}
 
 				free(F);
@@ -2128,7 +2158,7 @@ finish_selection:
 					edum = ndum->in;
 					ndum = edum->top;
 				}
-				eindex_delete(G->pops[edum->bot->pop].etree, edum);
+				rbindex_delete(G->pops[edum->bot->pop].eidx, edum);
 
 				// Remove remaining edges in dummy edge list
 				if(ev->type == EVENT_DXVR){
@@ -2139,7 +2169,7 @@ finish_selection:
 					/* Remove dangling edges above dummy recombination event from red-black tree. */
 					erm = ndum->in;
 					while(erm){
-						eindex_delete(G->pops[erm->bot->pop].etree, erm);
+						rbindex_delete(G->pops[erm->bot->pop].eidx, erm);
 						erm = erm->top->in;
 					}
 
@@ -2296,7 +2326,7 @@ void destroy_pop(struct population *p)
 
 	free(p->mrate);
 	free(p->eptrs);
-	eindex_destroy(p->etree);
+	rbindex_destroy(p->eidx);
 }
 
 void clear_genealogy(struct genealogy *G)
@@ -2339,8 +2369,8 @@ void clear_genealogy(struct genealogy *G)
 		memset(G->pops[pop].eptrs, 0, sizeof(struct edge *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
 		G->pops[pop].nsam = G->pops[pop].n = 0;
-		eindex_destroy(G->pops[pop].etree);
-		G->pops[pop].etree = eindex_create(eindex_compar, NULL, &eindex_allocator);
+		rbindex_destroy(G->pops[pop].eidx);
+		G->pops[pop].eidx = rbindex_create(rbindex_compar, NULL, &rbindex_allocator);
 	}
 }
 
@@ -2373,7 +2403,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		list_init(&G->pops[pop].idx_queue);
 		G->pops[pop].eptrs = NULL;
 		G->pops[pop].maxedges = G->pops[pop].nedges = 0;
-		G->pops[pop].etree = eindex_create(eindex_compar, NULL, &eindex_allocator);
+		G->pops[pop].eidx = rbindex_create(rbindex_compar, NULL, &rbindex_allocator);
 	}
 	list_init(&G->n_list);
 //	list_init(&G->e_list);
