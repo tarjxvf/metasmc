@@ -299,35 +299,54 @@ struct libavl_allocator rbindex_allocator = {rbindex_alloc, rbindex_free};
 
 static inline void **rbindex_insert(struct rbindex *eidx, void *obj)
 {
-//	return trb_probe(eidx->tree, obj);
+	struct trb_traverser trav;
+	void *next;
+
+	next = trb_t_find(&trav, eidx->tree, obj);
+	if(next){
+		list_insbefore(GET_LIST(next), obj);
+		eidx->ls.n++;
+
+	}else{
+		list_append(&eidx->ls, obj);
+	}
+
+	return trb_probe(eidx->tree, obj);
 }
 
-static inline void *rbindex_delete(struct rbindex *eidx, void *obj)
+static inline void rbindex_delete(struct rbindex *eidx, void *obj)
 {
-//	return trb_delete(eidx->tree, obj);
+	if(trb_delete(eidx->tree, obj))
+		list_remove(&eidx->ls, obj);
 }
 
-static inline void *rbindex_find(rb_traverser *trav, struct rbindex *eidx, void *obj)
+/* Find the first object after the key. */
+static inline void *rbindex_find(rb_traverser *it, struct rbindex *eidx, void *key)
 {
-//	return trb_t_find(trav, eidx->tree, obj);
+	struct trb_traverser trav;
+	void *obj;
+
+	obj = trb_t_find(&trav, eidx->tree, key);
+	*it = GET_LIST(obj);
+	return obj;
 }
 
-static inline void *rbindex_next(rb_traverser *trav)
+static inline void *rbindex_next(rb_traverser *it)
 {
-//	return trb_t_next(trav);
+	*it = (*it)->next;
+	return GET_OBJ(*it);
 }
 
 void rbindex_destroy(struct rbindex *eidx)
 {
-/*	trb_destroy(eidx->tree, NULL);
+	trb_destroy(eidx->tree, NULL);
 	free(eidx->objs);
 	free(eidx);
-*/
 }
 
 struct rbindex *rbindex_create(trb_comparison_func *compare, void *param, struct libavl_allocator *allocator)
 {
-/*	struct rbindex *eidx;
+	struct rbindex *eidx;
 
 	eidx = malloc(sizeof(struct rbindex));
 	eidx->flags = 0;
@@ -339,7 +358,7 @@ struct rbindex *rbindex_create(trb_comparison_func *compare, void *param, struct
 	eidx->objs = malloc(sizeof(void *) * eidx->maxobj);
 	memset(eidx->objs, 0, sizeof(void *) * eidx->maxobj);
 
-	return eidx;*/
+	return eidx;
 }
 
 /* Set up batch mode. */
@@ -830,7 +849,7 @@ struct edge *choose_tedge(struct genealogy *G, struct population *pop, double t)
 	/* Calculate red-black index threshold. */
 
 	nthres = 0;	// Disable red-black index
-//	nthres = n;	// Disable naive sampling
+	nthres = n;	// Disable naive sampling
 //	avg1 = (double)pop->nedges / n;
 //	avg2 = (double)(2 * n - 3) / 2;
 #ifdef DEBUG

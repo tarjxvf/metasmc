@@ -166,7 +166,9 @@ void tsindex_clear(struct tsindex *tr, struct edge *e);
 void tsindex_free(struct tsindex *tr);
 
 #define RBINDEX_BATCH	0x1	/* If this flag is set, the index is in batch mode. The red-black tree will not be built until rbindex_build is called. */
-typedef struct trb_traverser rb_traverser;
+//typedef struct trb_traverser rb_traverser;
+typedef struct list_head * rb_traverser;
+
 struct rbindex {
 	int flags;
 	struct trb_table *tree;

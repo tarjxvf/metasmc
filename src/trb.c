@@ -635,7 +635,7 @@ trb_t_find (struct trb_traverser *trav, struct trb_table *tree, void *item)
       }else if(dir > 0){
 	     p =  p->trb_link[dir];
 	     trav->trb_node = p;
-	     return p->trb_data;
+	     return p?p->trb_data:NULL;
       }else{
 	      trav->trb_node = p;
 	      return p->trb_data;
