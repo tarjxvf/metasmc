@@ -299,10 +299,9 @@ struct libavl_allocator rbindex_allocator = {rbindex_alloc, rbindex_free};
 
 static inline void **rbindex_insert(struct rbindex *eidx, void *obj)
 {
-	struct trb_traverser trav;
 	void *next;
 
-	next = trb_t_find(&trav, eidx->tree, obj);
+	next = rb_isam_find(eidx->tree, obj);
 	if(next){
 		list_insbefore(GET_LIST(next), obj);
 		eidx->ls.n++;
@@ -311,22 +310,21 @@ static inline void **rbindex_insert(struct rbindex *eidx, void *obj)
 		list_append(&eidx->ls, obj);
 	}
 
-	return trb_probe(eidx->tree, obj);
+	return rb_probe(eidx->tree, obj);
 }
 
 static inline void rbindex_delete(struct rbindex *eidx, void *obj)
 {
-	if(trb_delete(eidx->tree, obj))
+	if(rb_delete(eidx->tree, obj))
 		list_remove(&eidx->ls, obj);
 }
 
 /* Find the first object after the key. */
 static inline void *rbindex_find(rb_traverser *it, struct rbindex *eidx, void *key)
 {
-	struct trb_traverser trav;
 	void *obj;
 
-	obj = trb_t_find(&trav, eidx->tree, key);
+	obj = rb_isam_find(eidx->tree, key);
 	*it = GET_LIST(obj);
 	return obj;
 }
@@ -339,18 +337,18 @@ static inline void *rbindex_next(rb_traverser *it)
 
 void rbindex_destroy(struct rbindex *eidx)
 {
-	trb_destroy(eidx->tree, NULL);
+	rb_destroy(eidx->tree, NULL);
 	free(eidx->objs);
 	free(eidx);
 }
 
-struct rbindex *rbindex_create(trb_comparison_func *compare, void *param, struct libavl_allocator *allocator)
+struct rbindex *rbindex_create(rb_comparison_func *compare, void *param, struct libavl_allocator *allocator)
 {
 	struct rbindex *eidx;
 
 	eidx = malloc(sizeof(struct rbindex));
 	eidx->flags = 0;
-	eidx->tree = trb_create(compare, param, allocator);
+	eidx->tree = rb_create(compare, param, allocator);
 	list_init(&eidx->ls);
 
 	eidx->maxobj = 10000;
@@ -554,7 +552,7 @@ void dump_events(struct genealogy *G)
 }
 
 void
-print_tree_structure (struct trb_node *node, int level)
+print_tree_structure (struct rb_node *node, int level)
 {
   int i;
 
@@ -567,16 +565,13 @@ print_tree_structure (struct trb_node *node, int level)
       return;
     }
 
-  fprintf (stderr, "%x(", node->trb_data);
+  fprintf (stderr, "%x(", node->rb_data);
 
   for (i = 0; i <= 1; i++)
     {
-      if (node->trb_tag[i] == TRB_CHILD)
+      if (node->rb_link[i])
         {
-          if (node->trb_link[i] == node)
-            fprintf (stderr, "loop");
-          else
-            print_tree_structure (node->trb_link[i], level + 1);
+            print_tree_structure (node->rb_link[i], level + 1);
         }
       else
         fprintf (stderr, "NULL");
@@ -590,10 +585,10 @@ print_tree_structure (struct trb_node *node, int level)
 
 /* Prints the entire structure of |tree| with the given |title|. */
 void
-print_whole_tree (const struct trb_table *tree, const char *title)
+print_whole_tree (const struct rb_table *tree, const char *title)
 {
   fprintf (stderr, "%s: ", title);
-  print_tree_structure (tree->trb_root, 0);
+  print_tree_structure (tree->rb_root, 0);
   fprintf(stderr, "\n");
 }
 

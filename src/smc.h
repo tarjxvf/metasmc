@@ -3,7 +3,7 @@
 
 #include "global.h"
 #include "mutation.h"
-#include "trb.h"
+#include "rb.h"
 
 #define NODE_COAL	0
 #define NODE_MIGR	1
@@ -120,7 +120,7 @@ struct population {
 	struct list idx_queue;	// Queue of index in eptrs
 
 	/***** Red-black tree index of edges. The tree is ordered by times of top nodes. *****/
-//	struct trb_table *etree;
+//	struct rb_table *etree;
 	struct rbindex *eidx;
 };
 
@@ -166,12 +166,12 @@ void tsindex_clear(struct tsindex *tr, struct edge *e);
 void tsindex_free(struct tsindex *tr);
 
 #define RBINDEX_BATCH	0x1	/* If this flag is set, the index is in batch mode. The red-black tree will not be built until rbindex_build is called. */
-//typedef struct trb_traverser rb_traverser;
+//typedef struct rb_traverser rb_traverser;
 typedef struct list_head * rb_traverser;
 
 struct rbindex {
 	int flags;
-	struct trb_table *tree;
+	struct rb_table *tree;
 	struct list ls;
 
 	/* For batch mode. */
