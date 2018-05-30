@@ -281,7 +281,7 @@ int eindex_compar(struct edge *a, struct edge *b)
 		else if(diff2 > 0)
 			return 1;
 		else
-			return a - b;
+			return a->eid - b->eid;
 	}
 }
 
@@ -613,6 +613,7 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 	e->top = top;
 	e->bot = bot;
 	e->xtid = e->idx = 0;
+	e->eid = ++G->edgeid;
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated edge %x, top node=%x(t=%.6f, type=%d), bot node=%x(t=%.6f, type=%d)\n", e, e->top, e->top->t, e->top->type, e->bot, e->bot->t, e->bot->type);
@@ -2466,6 +2467,7 @@ void clear_genealogy(struct genealogy *G)
 		G->root = G->localMRCA = NULL;
 	}
 	G->total = 0;
+	G->edgeid = 0;
 	list_init(&G->n_list);
 
 	if(G->ev_dxvr){

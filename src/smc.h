@@ -91,6 +91,7 @@ struct edge {
 	struct node *top;
 	struct node *bot;
 	int itop;
+	int eid;
 	int xtid;	// Index of edge in binary indexed tree
 	int idx;	// Index of the edge in eptr array of population
 };
@@ -212,6 +213,7 @@ struct genealogy {
 	struct population *pops;
 	struct list *evlist;	// List of events
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
+	int edgeid;
 
 	int nedges;		// Number of edges in local tree
 //	struct list e_list;	// List of edges in the local tree
