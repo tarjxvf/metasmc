@@ -263,7 +263,7 @@ void tsindex_dump(struct tsindex *tr)
 }
 
 /***** LIBAVL allocator of population-wise edge index. *****/
-int rbindex_compar(struct edge *a, struct edge *b)
+int eindex_compar(struct edge *a, struct edge *b)
 {
 	double diff, diff2;
 
@@ -299,18 +299,22 @@ struct libavl_allocator rbindex_allocator = {rbindex_alloc, rbindex_free};
 
 static inline void **rbindex_insert(struct rbindex *eidx, void *obj)
 {
-	void *next;
+/*	if(rbindex_isseq(eidx)){
 
-	next = rb_isam_find(eidx->tree, obj);
-	if(next){
-		list_insbefore(GET_LIST(next), obj);
-		eidx->ls.n++;
+	}else{*/
+		void *next;
 
-	}else{
-		list_append(&eidx->ls, obj);
-	}
+		next = rb_isam_find(eidx->tree, obj);
+		if(next){
+			list_insbefore(GET_LIST(next), obj);
+			eidx->ls.n++;
 
-	return rb_probe(eidx->tree, obj);
+		}else{
+			list_append(&eidx->ls, obj);
+		}
+
+		return rb_probe(eidx->tree, obj);
+//	}
 }
 
 static inline void rbindex_delete(struct rbindex *eidx, void *obj)
@@ -325,7 +329,7 @@ static inline void *rbindex_find(rb_traverser *it, struct rbindex *eidx, void *k
 	void *obj;
 
 	obj = rb_isam_find(eidx->tree, key);
-	*it = GET_LIST(obj);
+	eidx->cur_s = *it = GET_LIST(obj);
 	return obj;
 }
 
@@ -338,41 +342,186 @@ static inline void *rbindex_next(rb_traverser *it)
 void rbindex_destroy(struct rbindex *eidx)
 {
 	rb_destroy(eidx->tree, NULL);
-	free(eidx->objs);
 	free(eidx);
 }
 
-struct rbindex *rbindex_create(rb_comparison_func *compare, void *param, struct libavl_allocator *allocator)
+static inline int find_root(int n, int h)
+{
+	int half, quad, r;
+
+	half = 1 << (h - 1);
+	quad = half >> 1;
+	r = n - half + 1;
+	if(r < quad)
+		return quad - 1 + r;
+	else
+		return half - 1;
+}
+
+// Calculate indices of complete binary tree from an ordered array
+void complete_binary_tree(int nnodes, int *tree)
+{
+	int i, h, n, half, quad;
+	int *beg, *end, *heights;
+
+	beg = malloc(sizeof(int) * nnodes);
+	end = malloc(sizeof(int) * nnodes);
+	heights = malloc(sizeof(int) * nnodes);
+
+	h = 0;
+	while((1 << h) <= nnodes) h++;
+
+	n = 1;
+	tree[0] = find_root(nnodes, h);
+	beg[0] = 0;
+	end[0] = nnodes;
+	heights[0] = h;
+	i = 0;
+	while(n < nnodes){
+		int j, left, right, r;
+
+		h = heights[i];
+		half = 1 << (h - 1);
+		quad = half >> 1;
+		r = end[i] - beg[i] - half + 1;
+
+		j = tree[i];
+		// Calculate index of left child.
+		if(n < nnodes){
+			heights[n] = h - 1;
+			left = beg[i] + find_root(j - beg[i], heights[n]);
+			tree[n] = left;
+			beg[n] = beg[i];
+			end[n] = j;
+			n++;
+		}
+		// Calculate index of left child.
+		if(n < nnodes){
+			if(r < quad)
+				heights[n] = h - 2;
+			else
+				heights[n] = h - 1;
+			right = j + 1 + find_root(end[i] - j - 1, heights[n]);
+			tree[n] = right;
+			beg[n] = j + 1;
+			end[n] = end[i];
+			n++;
+		}
+		i++;
+	}
+
+	free(heights);
+	free(end);
+	free(beg);
+}
+
+// Rebuild tree index from sorted list
+void rbindex_rebuild_tree(struct rbindex *eidx)
+{
+	int i, nnodes, h, half, *tree;
+	struct rb_node **nodes;
+	struct list_head *l;
+	void **objs;
+
+	nnodes = eidx->ls.n;
+	rb_destroy(eidx->tree, NULL);
+	objs = malloc(sizeof(void *) * nnodes);
+	l = eidx->ls.front;
+	for(i = 0; i < nnodes; i++){
+		objs[i] = GET_OBJ(l);
+		l = l->next;
+	}
+
+	// Build complete binary tree
+	tree = malloc(sizeof(int) * nnodes);
+	complete_binary_tree(nnodes, tree);
+	h = 0;
+	while(1 << h <= nnodes) h++;
+	half = 1 << (h - 1);
+
+	nodes = malloc(sizeof(struct rb_node *) * nnodes);
+	for(i = nnodes - 1; i >= 0; i--){
+		nodes[i] = malloc(sizeof(struct rb_node));
+		nodes[i]->rb_data = objs[tree[i]];
+
+		// Color nodes
+		if(i < half - 1)
+			nodes[i]->rb_color = RB_BLACK;
+		else
+			nodes[i]->rb_color = RB_RED;
+
+		// Link nodes
+		if(i * 2 + 1 >= nnodes)
+			nodes[i]->rb_link[0] = NULL;
+		else
+			nodes[i]->rb_link[0] = nodes[i * 2 + 1];
+		if(i * 2 + 2 >= nnodes)
+			nodes[i]->rb_link[1] = NULL;
+		else
+			nodes[i]->rb_link[1] = nodes[i * 2 + 2];
+	}
+
+	eidx->tree = rb_create(eidx->compar, NULL, &rbindex_allocator);
+	eidx->tree->rb_root = nodes[0];
+	nodes[0]->rb_color = RB_BLACK;
+
+	free(nodes);
+	free(objs);
+	free(tree);
+}
+
+struct rbindex *rbindex_create(rb_comparison_func *compar, void *param, struct libavl_allocator *allocator)
 {
 	struct rbindex *eidx;
 
 	eidx = malloc(sizeof(struct rbindex));
 	eidx->flags = 0;
-	eidx->tree = rb_create(compare, param, allocator);
+	eidx->compar = compar;
+	eidx->tree = rb_create(compar, param, allocator);
 	list_init(&eidx->ls);
-
-	eidx->maxobj = 10000;
-	eidx->nobj = 0;
-	eidx->objs = malloc(sizeof(void *) * eidx->maxobj);
-	memset(eidx->objs, 0, sizeof(void *) * eidx->maxobj);
 
 	return eidx;
 }
 
-/* Set up batch mode. */
-void rbindex_batch(struct rbindex *eidx, int maxobj)
+/* Turn on sequential mode. */
+void rbindex_seq_on(struct rbindex *eidx, int maxobj)
 {
-	rbindex_setflag(eidx, RBINDEX_BATCH);
+	rbindex_setflag(eidx, RBINDEX_SEQUENTIAL);
 }
 
-/* Add object when batch mode is on. Incoming objects are assumed to be in order. */
-static inline void rbindex_batch_add(struct rbindex *eidx, void *obj)
+/* Turn off sequential mode. */
+void rbindex_seq_off(struct rbindex *eidx, int maxobj)
 {
+	rbindex_clearflag(eidx, RBINDEX_SEQUENTIAL);
+	rbindex_rebuild_tree(eidx);
 }
 
-void rbindex_batch_build(struct rbindex *eidx)
+static inline void eindex_insert(struct rbindex *eidx, struct edge *e)
 {
-	rbindex_clearflag(eidx, RBINDEX_BATCH);
+	struct list_head *l;
+	double t;
+
+/*	if(rbindex_isseq(eidx)){
+		t = e->top->t;
+		* Move cursor *
+		l = eidx->cur_s;
+		while(l){
+			struct edge *e2;
+			e2 = GET_OBJ(l);
+			if(e2->top->t >= t)
+				break;
+			else
+				l = l->next;
+		}
+		eidx->cur_s = l;
+	}*/
+
+	rbindex_insert(eidx, (void *)e);
+}
+
+static inline struct rbindex *eindex_create(rb_comparison_func *compar, void *param, struct libavl_allocator *allocator)
+{
+	return rbindex_create(compar, param, allocator);
 }
 
 void free_node(struct genealogy *G, struct node *nd)
@@ -732,7 +881,7 @@ void insert_migr_node(struct genealogy *G, struct edge *e, struct migr_node *nd)
 	nd->in = e;
 	nd->out = e2;
 	add_edge(G, pop, e2);
-	rbindex_insert(G->pops[e2->bot->pop].eidx, e2);
+//	eindex_insert(G->pops[e2->bot->pop].eidx, e2);
 }
 
 /* Erase dangling lineage until a coalescent node is reached. */
@@ -824,7 +973,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	}
 
 	remove_edge(G, pop, e);
-	rbindex_insert(G->pops[eabove->bot->pop].eidx, eabove);
+	eindex_insert(G->pops[eabove->bot->pop].eidx, eabove);
 #ifdef DEBUG
 	fprintf(stderr, "%s finisned\n", __func__);
 #endif
@@ -908,7 +1057,7 @@ struct event *__absorption(struct genealogy *G, struct edge *e, struct edge *f, 
 //	nabs++;
 	fprintf(stderr, "Entering function %s: e=%x, f=%x, pop=%d, t=%.6f\n", __func__, e, f, pop, t);
 #endif
-	rbindex_delete(G->pops[e->bot->pop].eidx, e);
+//	rbindex_delete(G->pops[e->bot->pop].eidx, e);
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
 
 	if(t > G->localMRCA->t){
@@ -960,9 +1109,9 @@ struct event *__absorption(struct genealogy *G, struct edge *e, struct edge *f, 
 	nd->ev = ev;
 
 	add_edge(G, pop, f);
-	rbindex_insert(G->pops[e->bot->pop].eidx, e);
-	rbindex_insert(G->pops[f->bot->pop].eidx, f);
-	rbindex_insert(G->pops[nd->out[0]->bot->pop].eidx, nd->out[0]);
+//	eindex_insert(G->pops[e->bot->pop].eidx, e);
+//	eindex_insert(G->pops[f->bot->pop].eidx, f);
+//	eindex_insert(G->pops[nd->out[0]->bot->pop].eidx, nd->out[0]);
 
 //	G->localMRCA = (struct node *)nd;
 
@@ -977,6 +1126,7 @@ struct event *__absorption(struct genealogy *G, struct edge *e, struct edge *f, 
 struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 {
 	struct edge *e, *e_new;
+	struct coal_node *nd;
 	struct event *ev;
 	double tmrca_old;
 
@@ -990,9 +1140,18 @@ struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 	}else{*/
 		e = choose_tedge(G, &G->pops[pop], t);
 //	}
+
+//	cur_s = list_prev(e);
+	rbindex_delete(G->pops[e->bot->pop].eidx, e);
+
 	ev = __absorption(G, e, f, pop, t);
 	e_new = AS_COAL_NODE(e->bot)->out[0];	// Get the new edge allocated by insert_coal_node (Old lineage below coalescent node).
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node
+
+	nd = (struct coal_node *)e->bot;
+	eindex_insert(G->pops[e->bot->pop].eidx, e);
+	eindex_insert(G->pops[f->bot->pop].eidx, f);
+	eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
 
 /*	if(t > tmrca_old){
 		free_node(G, e->top);
@@ -1014,7 +1173,7 @@ struct event *coalescent( struct genealogy *G, struct edge_set *F, int pop, doub
 	struct edge *e1, *e2, *e_new;
 	struct coal_node *nd;
 	struct list_head *l;
-	int c1, c2;
+	int c1, c2, i;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
@@ -1041,7 +1200,7 @@ struct event *coalescent( struct genealogy *G, struct edge_set *F, int pop, doub
 
 	e_new = nd->out[0];
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node.
-	rbindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
+	eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
 
 	/* Set up another branch below the coalescent node */
 	nd->out[1] = e2;
@@ -1049,7 +1208,11 @@ struct event *coalescent( struct genealogy *G, struct edge_set *F, int pop, doub
 	e2->top = (struct node *)nd;
 
 	add_edge(G, pop, e2);
-	rbindex_insert(G->pops[e2->bot->pop].eidx, e2);
+	eindex_insert(G->pops[e2->bot->pop].eidx, e2);
+
+	// Move cursor of sequential mode.
+//	for(i = 0; i < G->cfg->npop_all; i++)
+//		eindex_s_move(G->pops[i].eidx, t);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev->pop = pop;
@@ -1071,6 +1234,7 @@ struct migr_node *do_migrate(struct genealogy *G, struct edge *e, int dpop, int 
 	struct migr_event *ev;
 	struct migr_node *nd;
 	struct list_head *l;
+	struct edge *e2;
 	double u;
 
 #ifdef DEBUG
@@ -1084,6 +1248,8 @@ struct migr_node *do_migrate(struct genealogy *G, struct edge *e, int dpop, int 
 
 	// The edge above nd must be floating
 	insert_migr_node(G, e, nd);
+	e2 = nd->out;
+	eindex_insert(G->pops[e2->bot->pop].eidx, e2);
 
 /*	ev = (struct migr_event *)alloc_event(G->cfg, EVENT_MIGR, t);
 	ev->dpop = dpop;
@@ -1604,7 +1770,7 @@ double recombination(struct genealogy *G)
 	nf->out = ef;
 	nxover->in_new = ef;
 	tsindex_update(G->tr_xover, e, -(e_below_xover->top->t - e_below_xover->bot->t));
-	rbindex_insert(G->pops[e->bot->pop].eidx, e);
+	eindex_insert(G->pops[e->bot->pop].eidx, e);
 
 	/* Iterate until floating lineage is absorbed. */
 	coalesced = 0;
@@ -1652,12 +1818,20 @@ double recombination(struct genealogy *G)
 					e2 = choose_tedge(G, &G->pops[pop], t);
 //				}
 
+
 #ifdef DEBUG
 				fprintf(stderr, "%d: Absorb floating lineage %x to %x, e=%x\n", __LINE__, ef, e2, e);
 #endif
 
 				rbindex_delete(G->pops[nxover->pop].eidx, nxover->in);
+
+				rbindex_delete(G->pops[e2->bot->pop].eidx, e2);
+
 				evnew = __absorption(G, e2, ef, pop, t);
+
+				eindex_insert(G->pops[pop].eidx, e2);
+				eindex_insert(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[1]);
+				eindex_insert(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[0]);
 
 				list_insbefore(evl, evnew);
 				rbindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
@@ -1675,7 +1849,7 @@ double recombination(struct genealogy *G)
 //					// e_old->top is the new coalescent node which has to be removed. In this case, e2 must be in local genealogy, so tsindex must be updated
 					remove_coal_node(G, AS_COAL_NODE(e_old->top), e_old->itop, 1);
 					remove_edge(G, pop, e_old);
-					rbindex_insert(G->pops[pop].eidx, e);
+					eindex_insert(G->pops[pop].eidx, e);
 
 				}else{
 					struct edge *e_new;	// The new edge allocated by insert_coal_node
@@ -1694,7 +1868,7 @@ double recombination(struct genealogy *G)
 					tsindex_update(G->tr_xover, e_new, e_below->top->t - e_below->bot->t);
 					e_new->bot = e_below->bot;
 					e_new->bot->in = e_new;
-					rbindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
+					eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
 //					remove_edge(G, e_below->bot->pop, e_below);
 					free_edge(G, e_below);
 					free_node(G, (struct node *)nxover);
@@ -1863,7 +2037,7 @@ double recombination(struct genealogy *G)
 //					remove_edge(G, e_below->bot->pop, e_below);
 					free_edge(G, e_below);
 					free_node(G, (struct node *)nxover);
-					rbindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
+					eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
 				}
 
 				for(i = 0; i < cfg->npop_all; i++)
@@ -2318,7 +2492,7 @@ void clear_genealogy(struct genealogy *G)
 		G->pops[pop].nedges = 0;
 		G->pops[pop].nsam = G->pops[pop].n = 0;
 		rbindex_destroy(G->pops[pop].eidx);
-		G->pops[pop].eidx = rbindex_create(rbindex_compar, NULL, &rbindex_allocator);
+		G->pops[pop].eidx = eindex_create(eindex_compar, NULL, &rbindex_allocator);
 	}
 }
 
@@ -2351,7 +2525,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		list_init(&G->pops[pop].idx_queue);
 		G->pops[pop].eptrs = NULL;
 		G->pops[pop].maxedges = G->pops[pop].nedges = 0;
-		G->pops[pop].eidx = rbindex_create(rbindex_compar, NULL, &rbindex_allocator);
+		G->pops[pop].eidx = eindex_create(eindex_compar, NULL, &rbindex_allocator);
 	}
 	list_init(&G->n_list);
 //	list_init(&G->e_list);

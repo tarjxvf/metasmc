@@ -165,19 +165,16 @@ void tsindex_update(struct tsindex *tr, struct edge *e, double diff);
 void tsindex_clear(struct tsindex *tr, struct edge *e);
 void tsindex_free(struct tsindex *tr);
 
-#define RBINDEX_BATCH	0x1	/* If this flag is set, the index is in batch mode. The red-black tree will not be built until rbindex_build is called. */
+#define RBINDEX_SEQUENTIAL	0x1	/* Set this flag to turn on sequential mode. When the index is in sequential mode, the tree index is not updated during insertion and deletion. The tree index need to be rebuilt whenever sequential mode is turned off. */
 //typedef struct rb_traverser rb_traverser;
 typedef struct list_head * rb_traverser;
 
 struct rbindex {
 	int flags;
+	rb_comparison_func *compar;
 	struct rb_table *tree;
 	struct list ls;
-
-	/* For batch mode. */
-	int maxobj;
-	int nobj;
-	void **objs;
+	struct list_head *cur_s;	// Cursor for sequential mode. New objects are inserted before cursor.
 };
 
 static inline void rbindex_setflag(struct rbindex *eidx, int flag)
@@ -190,9 +187,23 @@ static inline void rbindex_clearflag(struct rbindex *eidx, int flag)
 	eidx->flags &= ~flag;
 }
 
-static inline int rbindex_isbatch(struct rbindex *eidx)
+static inline int rbindex_isseq(struct rbindex *eidx)
 {
-	return eidx->flags & RBINDEX_BATCH;
+	return eidx->flags & RBINDEX_SEQUENTIAL;
+}
+
+static inline void *rbindex_s_next(struct rbindex *eidx)
+{
+	struct list_head *next;
+	void *obj;
+	if(eidx->cur_s)
+		next = eidx->cur_s->next;
+	return next?GET_OBJ(next):NULL;
+}
+
+static inline void rbindex_s_insert(struct rbindex *eidx, void *obj)
+{
+	list_insbefore(eidx->cur_s, obj);
 }
 
 struct genealogy {
