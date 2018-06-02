@@ -172,7 +172,7 @@ static __inline__ void __list_remove(struct list *ls, struct list_head *l)
 	else	// If the removed item is the last one
 		ls->rear = l->prev;
 	ls->n--;
-	l->prev = l->next = NULL;
+//	l->prev = l->next = NULL;
 }
 
 static inline struct list_head *__list_prev(struct list_head *l)

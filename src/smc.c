@@ -1106,15 +1106,15 @@ rb_traverser choose_tedge(struct genealogy *G, struct population *pop, double t)
 	/* Calculate red-black index threshold. */
 
 	nthres = 0;	// Disable red-black index
-	nthres = n;	// Disable naive sampling
-//	avg1 = (double)pop->nedges / n;
-//	avg2 = (double)(2 * n - 3) / 2;
+//	nthres = n;	// Disable naive sampling
+	avg1 = (double)pop->nedges / n;
+	avg2 = (double)(2 * n - 3) / 2;
 #ifdef DEBUG
 	fprintf(stderr, "%s: %d: pop->n=%d, nthres=%d, t=%.6f\n", __func__, __LINE__, n, nthres, t);
 	dump_edges(G);
 #endif
-	if(n > nthres){
-//	if(avg1 < avg2){
+//	if(n > nthres){
+	if(avg1 < avg2){
 		int u;
 
 		do{
