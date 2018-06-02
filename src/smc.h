@@ -3,7 +3,8 @@
 
 #include "global.h"
 #include "mutation.h"
-#include "rb.h"
+#include "rbindex.h"
+#include "tsindex.h"
 
 #define NODE_COAL	0
 #define NODE_MIGR	1
@@ -87,6 +88,11 @@ struct dummy_node {
 #define AS_FLOAT_NODE(n)	((struct dummy_node *)(n))
 #define AS_DUMMY_NODE(n)	((struct dummy_node *)(n))
 
+void free_node(struct genealogy *G, struct node *nd);
+struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
+void free_edge(struct genealogy *G, struct edge *e);
+struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot);
+
 struct edge {
 	struct node *top;
 	struct node *bot;
@@ -124,90 +130,6 @@ struct population {
 //	struct rb_table *etree;
 	struct rbindex *eidx;
 };
-
-/* Tree size index. */
-#define TSINDEX_REBUILD	0x1	// If this flag is set, the index is waiting for batch rebuild and any operations will not update binary index tree
-#define TSINDEX_DIRTY	0x2	// This flag indicates that binary index tree is inconsistent to object list. The inconsistency must be fixed by tsindex_rebuild. Search operation is disabled if this flag is set.
-struct tsindex {
-	int flags;
-	struct bit *index;
-	int nedges;	// Equals to the number of occupied nodes in binary indexed tree
-	int maxnodes;	// Equals to n in binary indexed tree
-	int maxedges;
-	struct edge **edges;
-	struct list free_list;
-};
-
-static inline void tsindex_setflag(struct tsindex *tr, int flag)
-{
-	tr->flags |= flag;
-}
-
-static inline void tsindex_clearflag(struct tsindex *tr, int flag)
-{
-	tr->flags &= ~flag;
-}
-
-static inline int tsindex_dirty(struct tsindex *tr)
-{
-	return tr->flags & TSINDEX_DIRTY;
-}
-
-static inline int tsindex_isrebuild(struct tsindex *tr)
-{
-	return tr->flags & TSINDEX_REBUILD;
-}
-
-void tsindex_rebuild(struct tsindex *tr);
-struct tsindex *tsindex_alloc(int nedges);
-void tsindex_reset(struct tsindex *tr);
-void tsindex_add(struct tsindex *tr, struct edge *e);
-void tsindex_update(struct tsindex *tr, struct edge *e, double diff);
-void tsindex_clear(struct tsindex *tr, struct edge *e);
-void tsindex_free(struct tsindex *tr);
-
-#define RBINDEX_SEQUENTIAL	0x1	/* Set this flag to turn on sequential mode. When the index is in sequential mode, the tree index is not updated during insertion and deletion. The tree index need to be rebuilt whenever sequential mode is turned off. */
-//typedef struct rb_traverser rb_traverser;
-typedef struct list_head * rb_traverser;
-
-struct rbindex {
-	int flags;
-	rb_comparison_func *compar;
-	struct rb_table *tree;
-	struct list_head *lsentinel;
-	struct list_head *rsentinel;
-	struct list ls;
-	struct list_head *cur_s;	// Cursor for sequential mode. New objects are inserted before cursor.
-};
-
-static inline void rbindex_setflag(struct rbindex *eidx, int flag)
-{
-	eidx->flags |= flag;
-}
-
-static inline void rbindex_clearflag(struct rbindex *eidx, int flag)
-{
-	eidx->flags &= ~flag;
-}
-
-static inline int rbindex_isseq(struct rbindex *eidx)
-{
-	return eidx->flags & RBINDEX_SEQUENTIAL;
-}
-
-static inline void *rbindex_s_next(struct rbindex *eidx)
-{
-	struct list_head *next;
-	void *obj;
-	if(eidx->cur_s)
-		next = eidx->cur_s->next;
-	return next?GET_OBJ(next):NULL;
-}
-
-static inline void rbindex_s_insert(struct rbindex *eidx, void *obj)
-{
-	list_insbefore(eidx->cur_s, obj);
-}
 
 struct genealogy {
 	int nsam;
