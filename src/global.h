@@ -112,6 +112,9 @@ struct list_head {
 	struct list_head **prev;
 };
 
+#define GET_LIST(obj)	((struct list_head *)((char *)(obj) - sizeof(struct list_head)))
+#define GET_OBJ(l)	((char *)(l) + sizeof(struct list_head))
+
 struct list {
 	struct list_head *front;
 	struct list_head **rear;
@@ -169,15 +172,23 @@ static __inline__ void __list_remove(struct list *ls, struct list_head *l)
 	else	// If the removed item is the last one
 		ls->rear = l->prev;
 	ls->n--;
+	l->prev = l->next = NULL;
+}
+
+static inline struct list_head *__list_prev(struct list_head *l)
+{
+	return (struct list_head *)l->prev;
+}
+
+static inline void *list_prev(void *obj)
+{
+	return GET_OBJ(__list_prev(GET_LIST(obj)));
 }
 
 /*void list_insbefore(struct list_head *ref, struct list_head *item);
 void list_remove(struct list_head *item);
 void list_add(struct list_head **head, struct list_head *item);
 void list_append(struct list_head **head, struct list_head *item);*/
-
-#define GET_LIST(obj)	((struct list_head *)((char *)(obj) - sizeof(struct list_head)))
-#define GET_OBJ(l)	((char *)(l) + sizeof(struct list_head))
 
 /* Single-end read. */
 struct read{

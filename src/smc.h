@@ -174,6 +174,8 @@ struct rbindex {
 	int flags;
 	rb_comparison_func *compar;
 	struct rb_table *tree;
+	struct list_head *lsentinel;
+	struct list_head *rsentinel;
 	struct list ls;
 	struct list_head *cur_s;	// Cursor for sequential mode. New objects are inserted before cursor.
 };
