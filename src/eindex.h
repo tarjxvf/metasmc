@@ -28,9 +28,14 @@ void eindex_s_seek_ttop(struct rbindex *eidx, double ttop);
 void eindex_s_seek_t(struct rbindex *eidx, double ttop, double tbot);
 void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid);
 
-static inline void eindex_s_reset(struct rbindex *eidx)
+static inline void eindex_s_rewind(struct rbindex *eidx)
 {
 	eidx->cur_s = eidx->ls.front->next;
+}
+
+static inline int eindex_s_final(struct rbindex *eidx)
+{
+	eidx->cur_s = eidx->rsentinel;
 }
 
 static inline void eindex_seq_on(struct rbindex *eidx)
