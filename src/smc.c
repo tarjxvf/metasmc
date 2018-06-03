@@ -702,8 +702,6 @@ struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 		enext = eindex_next(&cur);
 //	}
 
-	eindex_s_set(G->pops[e->bot->pop].eidx, e);
-	
 	// Remove e from the index
 	eindex_s_delete(G->pops[e->bot->pop].eidx, e);
 
