@@ -740,6 +740,10 @@ struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 		eindex_s_seek(eidx, e->top->t, e->bot->t, e->eid);
 		eindex_s_insert(eidx, e);
 	}
+	if(e_new->bot->t < f->bot->t)
+		eindex_s_set(G->pops[f->bot->pop].eidx, f);
+	else
+		eindex_s_set(G->pops[e_new->bot->pop].eidx, e_new);
 
 /*	if(t > tmrca_old){
 		free_node(G, e->top);
@@ -1777,8 +1781,8 @@ double merge_floating(struct genealogy *G, struct edge_set *F)
 
 				t += minu;
 				evnew = absorption(G, e, upop, t);
-				eindex_s_set(G->pops[upop].eidx, e);
-				eindex_s_seek_ttop(G->pops[upop].eidx, t);
+//				eindex_s_set(G->pops[upop].eidx, e);
+//				eindex_s_seek_ttop(G->pops[upop].eidx, t);
 				sumnF--;
 
 			}else if(minv < minu && minv < minz){	// Coalescent
@@ -1823,8 +1827,8 @@ finish_selection:
 //				fprintf(stdout, "nmigr=%d, dpop=%d, c=%d, ev->dpop=%d, ev->spop=%d\n", nmigr, dpop, c, ev->dpop, ev->spop);
 
 				sublike = log(G->pops[zpop].mrate[zpop]) - totalprob * minz;
-				eindex_s_set(G->pops[zpop].eidx, nd->out);
-				eindex_s_seek_ttop(G->pops[zpop].eidx, t);
+//				eindex_s_set(G->pops[zpop].eidx, nd->out);
+//				eindex_s_seek_ttop(G->pops[zpop].eidx, t);
 			}
 
 			like += sublike;
