@@ -455,6 +455,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	fprintf(stderr, "eabove=%x, ebelow=%x, ein=%x\n", ntop->in, ntop->out[1 - etmp->itop], etmp);
 #endif
 	eabove = ntop->in;
+//	eindex_s_set(G->pops[etmp->bot->pop].eidx, eabove);
 	eindex_delete(G->pops[eabove->bot->pop].eidx, eabove);
 	ebelow = ntop->out[1 - etmp->itop];
 	eindex_delete(G->pops[ebelow->bot->pop].eidx, ebelow);
@@ -522,6 +523,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	}
 
 	remove_edge(G, pop, e);
+//	eindex_s_seek(G->pops[eabove->bot->pop].eidx, eabove->top->t, eabove->bot->t, eabove->eid);
 	eindex_insert(G->pops[eabove->bot->pop].eidx, eabove);
 #ifdef DEBUG
 	fprintf(stderr, "%s finisned\n", __func__);

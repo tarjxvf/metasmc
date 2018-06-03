@@ -105,6 +105,27 @@ static inline void *rbindex_find(rb_traverser *it, struct rbindex *eidx, void *k
 	return obj;
 }
 
+static inline void rbindex_s_delete(struct rbindex *eidx, void *obj)
+{
+	if(GET_LIST(obj) == eidx->cur_s)
+		rbindex_next(&eidx->cur_s);
+	list_remove(&eidx->ls, obj);
+}
+
+static inline void rbindex_rb_delete(struct rbindex *eidx, void *obj)
+{
+	if(rb_delete(eidx->tree, obj))
+		list_remove(&eidx->ls, obj);
+}
+
+static inline void rbindex_delete(struct rbindex *eidx, void *obj)
+{
+	if(rbindex_isseq(eidx))
+		rbindex_s_delete(eidx, obj);
+	else
+		rbindex_rb_delete(eidx, obj);
+}
+
 void **rbindex_rb_insert(struct rbindex *eidx, void *obj);
 void rbindex_delete(struct rbindex *eidx, void *obj);
 void rbindex_destroy(struct rbindex *eidx);

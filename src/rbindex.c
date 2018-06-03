@@ -32,19 +32,6 @@ void **rbindex_rb_insert(struct rbindex *eidx, void *obj)
 	return rb_probe(eidx->tree, obj);
 }
 
-void rbindex_delete(struct rbindex *eidx, void *obj)
-{
-	if(rbindex_isseq(eidx)){
-		if(GET_LIST(obj) == eidx->cur_s)
-			rbindex_next(&eidx->cur_s);
-		list_remove(&eidx->ls, obj);
-
-	}else{
-		if(rb_delete(eidx->tree, obj))
-			list_remove(&eidx->ls, obj);
-	}
-}
-
 static inline int find_root(int n, int h)
 {
 	int half, quad, r;
