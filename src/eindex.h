@@ -48,12 +48,36 @@ static inline struct edge *eindex_find(rb_traverser *it, struct rbindex *eidx, s
 	return rbindex_find(it, eidx, key);
 }
 
+static inline void eindex_s_delete(struct rbindex *eidx, struct edge *e)
+{
+	rbindex_s_delete(eidx, (void *)e);
+}
+
+static inline void eindex_rb_delete(struct rbindex *eidx, struct edge *e)
+{
+	rbindex_rb_delete(eidx, (void *)e);
+}
+
 static inline void eindex_delete(struct rbindex *eidx, struct edge *e)
 {
 	rbindex_delete(eidx, (void *)e);
 }
 
-void eindex_insert(struct rbindex *eidx, struct edge *e);
+static inline void eindex_rb_insert(struct rbindex *eidx, struct edge *e)
+{
+	rbindex_rb_insert(eidx, (void *)e);
+}
+
+void eindex_s_insert(struct rbindex *eidx, struct edge *e);
+
+static inline void eindex_insert(struct rbindex *eidx, struct edge *e)
+{
+	if(rbindex_isseq(eidx))
+		eindex_s_insert(eidx, e);
+	else
+		eindex_rb_insert(eidx, e);
+}
+
 void eindex_destroy(struct genealogy *G, struct rbindex *eidx);
 struct rbindex *eindex_create(struct genealogy *G, int pop);
 

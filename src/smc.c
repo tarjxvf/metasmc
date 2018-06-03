@@ -455,7 +455,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	fprintf(stderr, "eabove=%x, ebelow=%x, ein=%x\n", ntop->in, ntop->out[1 - etmp->itop], etmp);
 #endif
 	eabove = ntop->in;
-//	eindex_s_set(G->pops[etmp->bot->pop].eidx, eabove);
+	eindex_s_set(G->pops[etmp->bot->pop].eidx, eabove);
 	eindex_delete(G->pops[eabove->bot->pop].eidx, eabove);
 	ebelow = ntop->out[1 - etmp->itop];
 	eindex_delete(G->pops[ebelow->bot->pop].eidx, ebelow);
@@ -523,7 +523,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	}
 
 	remove_edge(G, pop, e);
-//	eindex_s_seek(G->pops[eabove->bot->pop].eidx, eabove->top->t, eabove->bot->t, eabove->eid);
+	eindex_s_seek(G->pops[eabove->bot->pop].eidx, eabove->top->t, eabove->bot->t, eabove->eid);
 	eindex_insert(G->pops[eabove->bot->pop].eidx, eabove);
 #ifdef DEBUG
 	fprintf(stderr, "%s finisned\n", __func__);
@@ -1324,7 +1324,7 @@ double recombination(struct genealogy *G)
 	fprintf(stderr, "Next event: evl=%x, ev=%x, type=%d, t=%6f\n", evl, ev, ev->type, ev->t);
 #endif
 
-	eindex_delete(G->pops[e->bot->pop].eidx, e);
+	eindex_rb_delete(G->pops[e->bot->pop].eidx, e);
 
 	/* Generate recombination node */
 	nxover = (struct xover_node *)alloc_node(G, NODE_XOVER, pop, t);
@@ -1342,7 +1342,7 @@ double recombination(struct genealogy *G)
 	nf->out = ef;
 	nxover->in_new = ef;
 	tsindex_update(G->tr_xover, e, -(e_below_xover->top->t - e_below_xover->bot->t));
-	eindex_insert(G->pops[e->bot->pop].eidx, e);
+	eindex_rb_insert(G->pops[e->bot->pop].eidx, e);
 
 	/* Iterate until floating lineage is absorbed. */
 	coalesced = 0;
@@ -1397,25 +1397,25 @@ double recombination(struct genealogy *G)
 				fprintf(stderr, "%d: Absorb floating lineage %x to %x, e=%x\n", __LINE__, ef, e2, e);
 #endif
 
-				eindex_delete(G->pops[nxover->pop].eidx, nxover->in);
+				eindex_rb_delete(G->pops[nxover->pop].eidx, nxover->in);
 
-				eindex_delete(G->pops[e2->bot->pop].eidx, e2);
+				eindex_rb_delete(G->pops[e2->bot->pop].eidx, e2);
 
 				evnew = __absorption(G, e2, ef, pop, t);
 
-				eindex_insert(G->pops[pop].eidx, e2);
-				eindex_insert(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[1]);
-				eindex_insert(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[0]);
+				eindex_rb_insert(G->pops[pop].eidx, e2);
+				eindex_rb_insert(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[1]);
+				eindex_rb_insert(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[0]);
 
 				list_insbefore(evl, evnew);
-				eindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
+				eindex_rb_delete(G->pops[nxover->pop].eidx, nxover->in_new);
 
 				if(e2 == e){	// Floating lineage is absorbed to the same lineage (loop in ARG)
 					struct edge *e_old;
 
-					eindex_delete(G->pops[pop].eidx, e);
-					eindex_delete(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[0]);
-					eindex_delete(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[1]);
+					eindex_rb_delete(G->pops[pop].eidx, e);
+					eindex_rb_delete(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[0]);
+					eindex_rb_delete(G->pops[pop].eidx, AS_COAL_NODE(e2->bot)->out[1]);
 
 					nxover->in = AS_COAL_NODE(e2->bot)->out[0];
 					e_old = nxover->in;
@@ -1423,7 +1423,7 @@ double recombination(struct genealogy *G)
 //					// e_old->top is the new coalescent node which has to be removed. In this case, e2 must be in local genealogy, so tsindex must be updated
 					remove_coal_node(G, AS_COAL_NODE(e_old->top), e_old->itop, 1);
 					remove_edge(G, pop, e_old);
-					eindex_insert(G->pops[pop].eidx, e);
+					eindex_rb_insert(G->pops[pop].eidx, e);
 
 				}else{
 					struct edge *e_new;	// The new edge allocated by insert_coal_node
@@ -1437,12 +1437,12 @@ double recombination(struct genealogy *G)
 					struct edge *e_new, *e_below;
 
 					e_new = nxover->in_new;
-					eindex_delete(G->pops[e_new->bot->pop].eidx, e_new);
+					eindex_rb_delete(G->pops[e_new->bot->pop].eidx, e_new);
 					e_below = nxover->out;
 					tsindex_update(G->tr_xover, e_new, e_below->top->t - e_below->bot->t);
 					e_new->bot = e_below->bot;
 					e_new->bot->in = e_new;
-					eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
+					eindex_rb_insert(G->pops[e_new->bot->pop].eidx, e_new);
 //					remove_edge(G, e_below->bot->pop, e_below);
 					free_edge(G, e_below);
 					free_node(G, (struct node *)nxover);
@@ -1517,8 +1517,8 @@ double recombination(struct genealogy *G)
 
 				troot_old = G->root->t;
 
-				eindex_delete(G->pops[nxover->pop].eidx, nxover->in);
-				eindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
+				eindex_rb_delete(G->pops[nxover->pop].eidx, nxover->in);
+				eindex_rb_delete(G->pops[nxover->pop].eidx, nxover->in_new);
 
 #ifdef DEBUG
 				if(ev->type == EVENT_DUMY){
@@ -1538,7 +1538,7 @@ double recombination(struct genealogy *G)
 					edum = ndum->in;
 					ndum = edum->top;
 				}
-				eindex_delete(G->pops[edum->bot->pop].eidx, edum);
+				eindex_rb_delete(G->pops[edum->bot->pop].eidx, edum);
 
 				// Remove remaining edges in dummy edge list
 				if(ev->type == EVENT_DXVR){
@@ -1549,7 +1549,7 @@ double recombination(struct genealogy *G)
 					/* Remove dangling edges above dummy recombination event from red-black tree. */
 					erm = ndum->in;
 					while(erm){
-						eindex_delete(G->pops[erm->bot->pop].eidx, erm);
+						eindex_rb_delete(G->pops[erm->bot->pop].eidx, erm);
 						erm = erm->top->in;
 					}
 
@@ -1601,8 +1601,8 @@ double recombination(struct genealogy *G)
 				{
 					struct edge *e_new, *e_below;
 
-					eindex_delete(G->pops[nxover->pop].eidx, nxover->in);
-					eindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
+					eindex_rb_delete(G->pops[nxover->pop].eidx, nxover->in);
+					eindex_rb_delete(G->pops[nxover->pop].eidx, nxover->in_new);
 					erase_dangling2(G, nxover->in);
 
 					e_new = nxover->in_new;
@@ -1613,7 +1613,7 @@ double recombination(struct genealogy *G)
 //					remove_edge(G, e_below->bot->pop, e_below);
 					free_edge(G, e_below);
 					free_node(G, (struct node *)nxover);
-					eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
+					eindex_rb_insert(G->pops[e_new->bot->pop].eidx, e_new);
 				}
 
 				for(i = 0; i < cfg->npop_all; i++)

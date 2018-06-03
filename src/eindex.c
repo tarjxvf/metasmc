@@ -103,25 +103,20 @@ void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid)
 	}
 }
 
-void eindex_insert(struct rbindex *eidx, struct edge *e)
+void eindex_s_insert(struct rbindex *eidx, struct edge *e)
 {
-	if(rbindex_isseq(eidx)){
-		rb_traverser cur;
-		struct edge *efwd;
+	rb_traverser cur;
+	struct edge *efwd;
 
-		eindex_s_seek_ttop(eidx, e->top->t);
+	eindex_s_seek_ttop(eidx, e->top->t);
 
-		cur = eidx->cur_s;
-		efwd = eindex_cur(cur);
-		while(efwd->top->t == e->top->t && efwd->bot->t < e->bot->t) efwd = eindex_next(&cur);
-		while(efwd->top->t == e->top->t && efwd->bot->t == e->bot->t && efwd->eid < e->eid) efwd = eindex_next(&cur);
+	cur = eidx->cur_s;
+	efwd = eindex_cur(cur);
+	while(efwd->top->t == e->top->t && efwd->bot->t < e->bot->t) efwd = eindex_next(&cur);
+	while(efwd->top->t == e->top->t && efwd->bot->t == e->bot->t && efwd->eid < e->eid) efwd = eindex_next(&cur);
 
-		eidx->cur_s = cur;
-		rbindex_s_insert(eidx, (void *)e);
-
-	}else{
-		rbindex_rb_insert(eidx, (void *)e);
-	}
+	eidx->cur_s = cur;
+	rbindex_s_insert(eidx, (void *)e);
 }
 
 struct rbindex *eindex_create(struct genealogy *G, int pop)
