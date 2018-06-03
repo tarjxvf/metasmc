@@ -24,8 +24,9 @@ static inline void eindex_s_set(struct rbindex *eidx, struct edge *e)
 {
 	rbindex_s_set(eidx, e);
 }
-
-void eindex_s_seek(struct rbindex *eidx, double t);
+void eindex_s_seek_ttop(struct rbindex *eidx, double ttop);
+void eindex_s_seek_t(struct rbindex *eidx, double ttop, double tbot);
+void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid);
 
 static inline void eindex_s_reset(struct rbindex *eidx)
 {

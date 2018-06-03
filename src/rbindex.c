@@ -16,26 +16,20 @@ void rbindex_free(struct libavl_allocator *allocator, void *block)
 
 struct libavl_allocator rbindex_allocator = {rbindex_alloc, rbindex_free};
 
-void **rbindex_insert(struct rbindex *eidx, void *obj)
+void **rbindex_rb_insert(struct rbindex *eidx, void *obj)
 {
-	if(rbindex_isseq(eidx)){
-		list_insbefore(eidx->cur_s, obj);
+	void *next;
+
+	next = rb_isam_find(eidx->tree, obj);
+	if(next){
+		list_insbefore(GET_LIST(next), obj);
 		eidx->ls.n++;
 
 	}else{
-		void *next;
-
-		next = rb_isam_find(eidx->tree, obj);
-		if(next){
-			list_insbefore(GET_LIST(next), obj);
-			eidx->ls.n++;
-
-		}else{
-			list_append(&eidx->ls, obj);
-		}
-
-		return rb_probe(eidx->tree, obj);
+		list_append(&eidx->ls, obj);
 	}
+
+	return rb_probe(eidx->tree, obj);
 }
 
 void rbindex_delete(struct rbindex *eidx, void *obj)

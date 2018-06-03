@@ -36,9 +36,11 @@ static inline int rbindex_isseq(struct rbindex *eidx)
 	return eidx->flags & RBINDEX_SEQUENTIAL;
 }
 
-static inline void rbindex_s_insert(struct rbindex *eidx, void *obj)
+static inline void **rbindex_s_insert(struct rbindex *eidx, void *obj)
 {
 	list_insbefore(eidx->cur_s, obj);
+	eidx->ls.n++;
+	return (void **)GET_LIST(obj);
 }
 
 extern struct libavl_allocator rbindex_allocator;
@@ -103,7 +105,7 @@ static inline void *rbindex_find(rb_traverser *it, struct rbindex *eidx, void *k
 	return obj;
 }
 
-void **rbindex_insert(struct rbindex *eidx, void *obj);
+void **rbindex_rb_insert(struct rbindex *eidx, void *obj);
 void rbindex_delete(struct rbindex *eidx, void *obj);
 void rbindex_destroy(struct rbindex *eidx);
 struct rbindex *rbindex_create(rb_comparison_func *compar, void *param, struct libavl_allocator *allocator);

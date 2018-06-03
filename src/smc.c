@@ -717,7 +717,7 @@ struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 //	eindex_insert(G->pops[e->bot->pop].eidx, e);
 
 	/* Reinsert e into the edge list. */
-//	eindex_s_seek(G->pops[e->bot->pop].eidx, t);
+//	eindex_s_seek_ttop(G->pops[e->bot->pop].eidx, t);
 	eindex_insert(G->pops[e->bot->pop].eidx, e);
 
 /*	if(t > tmrca_old){
@@ -1742,7 +1742,7 @@ double merge_floating(struct genealogy *G, struct edge_set *F)
 				t += minu;
 				evnew = absorption(G, e, upop, t);
 				eindex_s_set(G->pops[upop].eidx, e);
-				eindex_s_seek(G->pops[upop].eidx, t);
+				eindex_s_seek_ttop(G->pops[upop].eidx, t);
 				sumnF--;
 
 			}else if(minv < minu && minv < minz){	// Coalescent
@@ -1752,7 +1752,7 @@ double merge_floating(struct genealogy *G, struct edge_set *F)
 				nd = coalescent(G, F, vpop, t);
 				evnew = (struct event *)nd->ev;
 				eindex_s_set(G->pops[vpop].eidx, nd->out[0]);
-				eindex_s_seek(G->pops[vpop].eidx, t);
+				eindex_s_seek_ttop(G->pops[vpop].eidx, t);
 				sumnF--;
 
 			}else{	// Migration
@@ -1788,7 +1788,7 @@ finish_selection:
 
 				sublike = log(G->pops[zpop].mrate[zpop]) - totalprob * minz;
 				eindex_s_set(G->pops[zpop].eidx, nd->out);
-				eindex_s_seek(G->pops[zpop].eidx, t);
+				eindex_s_seek_ttop(G->pops[zpop].eidx, t);
 			}
 
 			like += sublike;
@@ -1919,8 +1919,6 @@ finish_selection:
 				remove_event(G, ev);
 		}
 
-//		for(pop = 0; pop < cfg->npop_all; pop++)
-//			eindex_s_seek(G->pops[pop].eidx, t);
 	}
 
 	if(G->localMRCA == NULL){	// In this case, last event must be coalescent between two floating lineages
