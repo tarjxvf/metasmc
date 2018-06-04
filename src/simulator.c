@@ -682,6 +682,18 @@ int main(int argc, char *argv[])
 		init_mutation_model(&mmut[i]);
 	}
 
+	cfg->devents = realloc(cfg->devents, sizeof(struct event *) * cfg->ndevents);
+	l = cfg->evlist.front;
+	for(i = 0; i < cfg->ndevents; i++){
+//	while(l){
+		struct list_head *tmp;
+
+		cfg->devents[i] = (struct event *)GET_OBJ(l);
+		tmp = l->next;
+		__list_remove(&cfg->evlist, l);
+		l = tmp;
+	}
+
 	G = alloc_genealogy(cfg, prof);
 
 	/* Sort fragments according to start positions. */

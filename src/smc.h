@@ -135,7 +135,8 @@ struct genealogy {
 	int nsam;
 	struct config *cfg;
 	struct population *pops;
-	struct list *evlist;	// List of events
+//	struct list *evlist;	// List of events
+	struct rbindex *evidx;
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
 	int edgeid;
 
@@ -143,13 +144,13 @@ struct genealogy {
 //	struct list e_list;	// List of edges in the local tree
 	struct list n_list;	// List of sample nodes
 
-	struct list_head *evlcurr;
+//	struct list_head *evlcurr;
 	struct node *root;
 	double troot;		// height of existing tree
 	double t;
 	double total;		// Total length of the local tree
 
-	struct edge **pTreeEdgesToCoalesceArray;
+//	struct edge **pTreeEdgesToCoalesceArray;
 	struct node *localMRCA;
 
 	struct tsindex *tr_xover;

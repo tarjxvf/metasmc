@@ -8,6 +8,7 @@
 #include "global.h"
 #include "smc.h"
 #include "mutation.h"
+#include "evindex.h"
 
 void list_init(struct list *ls)
 {
@@ -142,6 +143,11 @@ int nucl_index(int ch)
 	}
 }
 
+void add_event(struct genealogy *G, struct event *ev)
+{
+	evindex_insert(G->evidx, ev);
+}
+
 void remove_event(struct genealogy *G, struct event *ev)
 {
 	struct list_head *l;
@@ -149,8 +155,9 @@ void remove_event(struct genealogy *G, struct event *ev)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
 #endif
+	evindex_delete(G->evidx, ev);
 	l = GET_LIST(ev);
-	list_remove(G->evlist, ev);
+//	list_remove(G->evlist, ev);
 //	if(ev->type <= EVENT_MIGR)
 //		free(l);
 
@@ -158,7 +165,7 @@ void remove_event(struct genealogy *G, struct event *ev)
 		free(l);
 }
 
-size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event)};
+size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct samp_event)};
 
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
 struct event *alloc_event(struct config *cfg, int type, double t)
@@ -209,6 +216,7 @@ void print_event(struct event *ev)
 /*	}else if(ev->type == EVENT_MMUT){
 		fprintf(stderr, ", pop=%d", ((struct mmut_event *)ev)->pop);
 		dump_mutation_model(((struct mmut_event *)ev)->mmut);*/
+	}else if(ev->type == EVENT_SAMP){
 	}
 
 	fprintf(stderr, "]");
@@ -572,7 +580,11 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 
 	/* Set up empty event list (contains only one dummy event) */
 	ev = alloc_event(cfg, EVENT_GSIZ, INFINITY);
+
 	list_init(&cfg->evlist);
+	cfg->ndevents = 0;
+	cfg->devents = malloc(sizeof(struct event *) * 10);
+
 	list_append(&cfg->evlist, ev);
 	((struct gsiz_event *)ev)->size = 1;
 
@@ -639,18 +651,24 @@ void destroy_config(struct config *cfg)
 {
 	struct list_head *l, *tmp;
 	struct event *ev;
+	int i;
 
 	// Release space of event list
-	l = cfg->evlist.front;
-	while(l){
+//	l = cfg->evlist.front;
+/*	while(l){
 		tmp = l;
 		ev = (struct event *)GET_OBJ(l);
 		l = l->next;
 //		if(ev->type == EVENT_MMUT)
 //			free(((struct mmut_event *)ev)->mmut);
 		free(tmp);
-	}
+	}*/
+	free(cfg->evlist.front);
 	list_init(&cfg->evlist);
+	for(i = 0; i < cfg->ndevents; i++){
+		l = GET_LIST(cfg->devents[i]);
+		free(l);
+	}
 
 /*	mem_cache_destroy(cfg->node_cache[NODE_COAL]);
 	mem_cache_destroy(cfg->node_cache[NODE_MIGR]);
@@ -665,6 +683,7 @@ void destroy_config(struct config *cfg)
 	if(cfg->frag_cache)
 		mem_cache_destroy(cfg->frag_cache);
 
+	free(cfg->devents);
 	free(cfg->mmut);
 	free(cfg->grate);
 	free(cfg->mmig[0]);
@@ -726,6 +745,7 @@ int add_event_ggro(struct config *cfg, double t, double alpha)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -743,6 +763,7 @@ int add_event_grow(struct config *cfg, double t, int pop, double alpha)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -758,6 +779,7 @@ int add_event_gmig(struct config *cfg, double t, double rmig)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -776,6 +798,7 @@ int add_event_rmig(struct config *cfg, double t, int popi, int popj, double rmig
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -791,6 +814,7 @@ int add_event_gsiz(struct config *cfg, double t, double size)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -807,6 +831,7 @@ int add_event_join(struct config *cfg, double t, int popi, int popj)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -831,6 +856,7 @@ int add_event_splt(struct config *cfg, double t, int pop, double prop)
 	cfg->size[cfg->npop_all - 1] = cfg->size[pop];
 	cfg->grate = realloc(cfg->grate, sizeof(double) * cfg->npop_all);
 	cfg->grate[cfg->npop_all - 1] = 0;
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -847,6 +873,22 @@ int add_event_size(struct config *cfg, double t, int pop, double size)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
+
+	return 0;
+}
+
+int add_event_samp(struct config *cfg, double t, int pop, double size)
+{
+	struct list_head *evl;
+	struct event *ev;
+
+	ev = alloc_event(cfg, EVENT_SAMP, t);
+
+	evl = cfg->evlist.front;
+	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
+	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }

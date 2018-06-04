@@ -16,6 +16,7 @@
 #define EVENT_SPLT	9	/* Population split */
 #define EVENT_DUMY	10	/* Old MRCA. */
 #define EVENT_DXVR	11	/* Recombination on dummy lineages. */
+#define EVENT_SAMP	12	/* Add new sample. */
 
 //#define EVENT_MMUT	10	/* Change of mutation model */
 
@@ -96,12 +97,19 @@ struct splt_event {
 	double prop;	// proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.
 };
 
+struct samp_event {
+	int type;
+	double t;
+};
+
 /*struct mmut_event {
 	int type;
 	double t;
 	int pop;
 	struct mutation *mmut;
 };*/
+
+void add_event(struct genealogy *G, struct event *ev);
 void remove_event(struct genealogy *, struct event *);
 //struct event *alloc_event(struct genealogy *, int, double);
 struct event *alloc_event(struct config *, int, double);
@@ -277,6 +285,8 @@ struct config {
 	struct mutation **mmut;
 
 	struct list evlist;
+	int ndevents;		// Number of demographic events
+	struct event **devents;	// Array of demographic events
 
 	/*** Caches of frequently-used objects (slab allocators) ***/
 	struct mem_cache *node_cache[5];
@@ -308,6 +318,7 @@ int add_event_join(struct config *cfg, double t, int popi, int popj);
 int add_event_splt(struct config *cfg, double t, int pop, double prop);
 int add_event_size(struct config *cfg, double t, int pop, double size);
 //int add_event_mmut(struct config *cfg, double t, int pop, double theta, int model, double *pars, double *pi);
+int add_event_samp(struct config *cfg, double t, int pop, double size);
 
 extern char nucl[];
 int nucl_index(int ch);
