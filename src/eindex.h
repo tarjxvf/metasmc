@@ -43,10 +43,7 @@ static inline void eindex_seq_on(struct rbindex *eidx)
 	rbindex_seq_on(eidx);
 }
 
-static inline void eindex_seq_off(struct rbindex *eidx)
-{
-	rbindex_seq_off(eidx);
-}
+void eindex_seq_off(struct rbindex *eidx);
 
 static inline struct edge *eindex_find(rb_traverser *it, struct rbindex *eidx, struct edge *key)
 {

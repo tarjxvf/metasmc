@@ -106,10 +106,10 @@ void complete_binary_tree(int nnodes, int *tree, int *map)
 }
 
 // Rebuild tree index from sorted list
-void rbindex_rebuild_tree_slow(struct rbindex *eidx)
+void rbindex_rebuild_tree_slow(struct rbindex *eidx, struct rb_node **nodes)
 {
 	int i, nnodes, h, half, *tree, *map;
-	struct rb_node **nodes;
+//	struct rb_node **nodes;
 	struct list_head *l;
 	void **objs;
 
@@ -130,7 +130,7 @@ void rbindex_rebuild_tree_slow(struct rbindex *eidx)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
-	nodes = malloc(sizeof(struct rb_node *) * nnodes);
+//	nodes = malloc(sizeof(struct rb_node *) * nnodes);
 	for(i = nnodes - 1; i >= 0; i--){
 		nodes[i] = malloc(sizeof(struct rb_node));
 		nodes[i]->rb_data = objs[tree[i]];
@@ -156,16 +156,16 @@ void rbindex_rebuild_tree_slow(struct rbindex *eidx)
 	eidx->tree->rb_root = nodes[0];
 	nodes[0]->rb_color = RB_BLACK;
 
-	free(nodes);
+//	free(nodes);
 	free(objs);
 	free(tree);
 }
 
 // Rebuild tree index from sorted list
-void rbindex_rebuild_tree(struct rbindex *eidx)
+void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 {
 	int i, j, nnodes, *tree, *map, half, h;
-	struct rb_node **nodes;
+//	struct rb_node **nodes;
 	struct list_head *l;
 
 	nnodes = eidx->ls.n;
@@ -179,7 +179,7 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 	half = 1 << (h - 1);
 
 	// Build complete binary tree
-	nodes = malloc(sizeof(struct rb_node *) * nnodes);
+//	nodes = malloc(sizeof(struct rb_node *) * nnodes);
 	l = eidx->ls.front;
 	for(i = 0; i < nnodes; i++){
 		j = map[i];
@@ -211,7 +211,7 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 	eidx->tree->rb_root = nodes[0];
 	nodes[0]->rb_color = RB_BLACK;
 
-	free(nodes);
+//	free(nodes);
 	free(tree);
 	free(map);
 }

@@ -19,7 +19,7 @@ struct rbindex {
 	struct list_head *cur_s;	// Cursor for sequential mode. New objects are inserted before cursor.
 };
 
-void rbindex_rebuild_tree(struct rbindex *eidx);
+void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes);
 
 static inline void rbindex_setflag(struct rbindex *eidx, int flag)
 {
@@ -89,11 +89,11 @@ static inline void rbindex_seq_on(struct rbindex *eidx)
 }
 
 /* Turn off sequential mode. */
-static inline void rbindex_seq_off(struct rbindex *eidx)
+/*static inline void rbindex_seq_off(struct rbindex *eidx)
 {
 	rbindex_clearflag(eidx, RBINDEX_SEQUENTIAL);
 	rbindex_rebuild_tree(eidx);
-}
+}*/
 
 /* Find the first object after the key. */
 static inline void *rbindex_find(rb_traverser *it, struct rbindex *eidx, void *key)

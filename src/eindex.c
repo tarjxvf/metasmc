@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <math.h>
 
 #include "eindex.h"
@@ -23,6 +24,18 @@ int eindex_compar(struct edge *a, struct edge *b)
 		else
 			return a->eid - b->eid;
 	}
+}
+
+void eindex_seq_off(struct rbindex *eidx)
+{
+	struct rb_node **nodes;
+	int nnodes;
+
+	nnodes = eidx->ls.n;
+	nodes = malloc(sizeof(struct rb_node *) * nnodes);
+	rbindex_clearflag(eidx, RBINDEX_SEQUENTIAL);
+	rbindex_rebuild_tree(eidx, nodes);
+	free(nodes);
 }
 
 void eindex_destroy(struct genealogy *G, struct rbindex *eidx)

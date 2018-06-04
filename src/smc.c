@@ -2508,6 +2508,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 		// Enter sequential mode.
 		for(i = 0; i < cfg->npop_all; i++)
 			eindex_seq_on(G->pops[i].eidx);
+//		evindex_seq_on(G->evidx);
 
 		sublike = merge_floating(G, F);
 
@@ -2520,6 +2521,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 		build_trunk_e(G, lb * reflen);
 
 		// Leave sequential mode and rebuild red-black tree index
+//		evindex_seq_off(G->evidx);
 		for(i = 0; i < cfg->npop_all; i++)
 			eindex_seq_off(G->pops[i].eidx);
 		tsindex_rebuild(G->tr_xover);
@@ -2747,7 +2749,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //	fprintf(stderr, "cnt_rec=%d\n", cnt_rec);
 
-	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
+//	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
 
 //	if(ub < reflen){
 //		return -Inf;
