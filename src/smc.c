@@ -678,6 +678,28 @@ struct event *__absorption(struct genealogy *G, struct edge *e, struct edge *f, 
 	return (struct event *)ev;
 }
 
+// Jump to time t
+void eindex_s_jump(struct population *ppop, double t)
+{
+	if(rbindex_isseq(ppop->eidx)){
+		// Calculate threshold of using red-black tree
+//		if(ppop->n > log2(ppop->eidx->ls.n)){
+/*		if(1){
+			rb_traverser cur;
+			struct node top, bot;
+			struct edge key, *e;
+
+			top.t = t;
+			bot.t = 0;
+			key.top = &top;
+			key.bot = &bot;
+			if(e = rb_isam_find(ppop->eidx->tree, &key))
+				eindex_s_set(ppop->eidx, e);
+		}*/
+		eindex_s_seek_ttop(ppop->eidx, t);
+	}
+}
+
 /* This must be called from merge_floating.
  * Note that eindex must be in sequential mode because this function is called only if there is a trunk genealogy, which occurs when adding new lineages. */
 struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
@@ -704,13 +726,16 @@ struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 
 	// Remove e from the index
 	eindex_s_delete(G->pops[e->bot->pop].eidx, e);
+//	eindex_rb_delete(G->pops[e->bot->pop].eidx, e);
 
 	ev = __absorption(G, e, f, pop, t);
 	e_new = AS_COAL_NODE(e->bot)->out[0];	// Get the new edge allocated by insert_coal_node (Old lineage below coalescent node).
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node
 
 	nd = (struct coal_node *)e->bot;
-	eindex_s_seek_ttop(G->pops[e->bot->pop].eidx, t);
+//	eindex_s_seek_ttop(G->pops[e->bot->pop].eidx, t);
+	eindex_s_jump(&G->pops[e->bot->pop], t);
+
 	/* Sort new edges. */
 	if(e_new->bot->t < f->bot->t){
 		eindex_s_insert(G->pops[e_new->bot->pop].eidx, e_new);
@@ -799,7 +824,9 @@ struct coal_node *coalescent( struct genealogy *G, struct edge_set *F, int pop, 
 
 	add_edge(G, pop, e2);
 
-	eindex_s_seek_ttop(G->pops[e_new->bot->pop].eidx, t);
+//	eindex_s_seek_ttop(G->pops[e_new->bot->pop].eidx, t);
+	eindex_s_jump(&G->pops[e_new->bot->pop], t);
+
 	/* Sort new edges. */
 	if(e_new->bot->t < e2->bot->t){
 		eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
@@ -853,7 +880,8 @@ struct migr_node *do_migrate(struct genealogy *G, struct edge *e, int dpop, int 
 	// The edge above nd must be floating
 	insert_migr_node(G, e, nd);
 	e2 = nd->out;
-//	eindex_s_seek_ttop(G->pops[e2->bot->pop].eidx, t);
+
+	eindex_s_jump(&G->pops[e->bot->pop], t);
 	eindex_s_seek(G->pops[e2->bot->pop].eidx, e2->top->t, e2->bot->t, e2->eid);
 	eindex_insert(G->pops[e2->bot->pop].eidx, e2);
 
@@ -1779,8 +1807,6 @@ double merge_floating(struct genealogy *G, struct edge_set *F)
 
 				t += minu;
 				evnew = absorption(G, e, upop, t);
-//				eindex_s_set(G->pops[upop].eidx, e);
-//				eindex_s_seek_ttop(G->pops[upop].eidx, t);
 				sumnF--;
 
 			}else if(minv < minu && minv < minz){	// Coalescent
@@ -1789,8 +1815,6 @@ double merge_floating(struct genealogy *G, struct edge_set *F)
 				sublike = log(2) - totalprob * minv;
 				nd = coalescent(G, F, vpop, t);
 				evnew = (struct event *)nd->ev;
-				eindex_s_set(G->pops[vpop].eidx, nd->out[0]);
-				eindex_s_seek_ttop(G->pops[vpop].eidx, t);
 				sumnF--;
 
 			}else{	// Migration
@@ -1825,8 +1849,6 @@ finish_selection:
 //				fprintf(stdout, "nmigr=%d, dpop=%d, c=%d, ev->dpop=%d, ev->spop=%d\n", nmigr, dpop, c, ev->dpop, ev->spop);
 
 				sublike = log(G->pops[zpop].mrate[zpop]) - totalprob * minz;
-//				eindex_s_set(G->pops[zpop].eidx, nd->out);
-//				eindex_s_seek_ttop(G->pops[zpop].eidx, t);
 			}
 
 			like += sublike;
