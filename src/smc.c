@@ -679,9 +679,9 @@ struct event *__absorption(struct genealogy *G, struct edge *e, struct edge *f, 
 }
 
 // Jump to time t
-void eindex_s_jump(struct population *ppop, double t)
+static inline void eindex_s_jump(struct population *ppop, double t)
 {
-	if(rbindex_isseq(ppop->eidx)){
+//	if(rbindex_isseq(ppop->eidx)){
 		// Calculate threshold of using red-black tree
 //		if(ppop->n > log2(ppop->eidx->ls.n)){
 /*		if(1){
@@ -697,7 +697,7 @@ void eindex_s_jump(struct population *ppop, double t)
 				eindex_s_set(ppop->eidx, e);
 		}*/
 		eindex_s_seek_ttop(ppop->eidx, t);
-	}
+//	}
 }
 
 /* This must be called from merge_floating.
