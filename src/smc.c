@@ -182,18 +182,15 @@ void remove_edge(struct genealogy *G, int pop, struct edge *e)
 void dump_events(struct genealogy *G)
 {
 	struct list_head *l;
+	struct event *ev;
 
-//	l = G->evlist->front;
-	evindex_s_rewind(G->evidx);
+	l = G->evidx->ls.front;
+	ev = (struct event *)GET_OBJ(l);
 	fprintf(stderr, "Event list: G->evlist");
-	while(!evindex_s_end(G->evidx)){
-		struct event *ev;
-//		ev = (struct event *)GET_OBJ(l);
-		ev = evindex_s_get(G->evidx);
+	while(l){
 		fprintf(stderr, "->");
 		print_event(ev);
-//		l = l->next;
-		evindex_s_forward(G->evidx);
+		ev = evindex_next(&l);
 	}
 	fprintf(stderr, "\n");
 }
@@ -2508,7 +2505,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 		// Enter sequential mode.
 		for(i = 0; i < cfg->npop_all; i++)
 			eindex_seq_on(G->pops[i].eidx);
-//		evindex_seq_on(G->evidx);
+		evindex_seq_on(G->evidx);
 
 		sublike = merge_floating(G, F);
 
@@ -2521,7 +2518,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 		build_trunk_e(G, lb * reflen);
 
 		// Leave sequential mode and rebuild red-black tree index
-//		evindex_seq_off(G->evidx);
+		evindex_seq_off(G->evidx);
 		for(i = 0; i < cfg->npop_all; i++)
 			eindex_seq_off(G->pops[i].eidx);
 		tsindex_rebuild(G->tr_xover);
@@ -2632,7 +2629,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 //							evl = G->evlist->front;
 //							while(((struct event *)GET_OBJ(evl))->t < ev_dxvr->t)
 //								evl = evl->next;
-							evindex_s_rewind(G->evidx);
+//							evindex_s_rewind(G->evidx);
 							evindex_s_seek(G->evidx, ev_dxvr->t);
 //							while((evindex_s_get(G->evidx))->t < ev_dxvr->t)
 //								evindex_s_forward(G->evidx);
@@ -2647,7 +2644,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 //						evl = G->evlist->front;
 //						while(((struct event *)GET_OBJ(evl))->t < G->ev_dxvr->t)
 //							evl = evl->next;
-						evindex_s_rewind(G->evidx);
+//						evindex_s_rewind(G->evidx);
 						evindex_s_seek(G->evidx, G->ev_dxvr->t);
 //						while((evindex_s_get(G->evidx))->t < G->ev_dxvr->t)
 //							evindex_s_forward(G->evidx);

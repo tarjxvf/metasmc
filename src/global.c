@@ -146,6 +146,8 @@ int nucl_index(int ch)
 void add_event(struct genealogy *G, struct event *ev)
 {
 	evindex_insert(G->evidx, ev);
+//	evindex_s_set(G->evidx, ev);
+//	evindex_s_forward(G->evidx);
 }
 
 void remove_event(struct genealogy *G, struct event *ev)

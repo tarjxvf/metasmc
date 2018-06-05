@@ -16,7 +16,7 @@ int evindex_compar(struct event *a, struct event *b)
 		return -1;
 
 	}else{
-		return 0;
+		return a->type - b->type;
 	}
 }
 
