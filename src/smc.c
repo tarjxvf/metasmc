@@ -184,7 +184,7 @@ void dump_events(struct genealogy *G)
 	struct list_head *l;
 	struct event *ev;
 
-	l = G->evidx->ls.front;
+	l = G->evidx->idx->ls.front;
 	ev = (struct event *)GET_OBJ(l);
 	fprintf(stderr, "Event list: G->evlist");
 	while(l){

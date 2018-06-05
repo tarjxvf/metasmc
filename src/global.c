@@ -189,17 +189,19 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 {
 	struct list_head *l;
 	struct event *ev;
+	int npop_all;
 
+	npop_all = cfg->npop + cfg->nsplt;
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = malloc(evsize[type] + sizeof(int) * 2 * cfg->npop_all);
+	l = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
 	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
 	ev->dn = (int *)((char *)l + evsize[type]);
-	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * cfg->npop_all);
-	memset(ev->dn, 0, sizeof(int) * 2 * cfg->npop_all);
+	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
+	memset(ev->dn, 0, sizeof(int) * 2 * npop_all);
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
@@ -864,21 +866,23 @@ int add_event_splt(struct config *cfg, double t, int pop, double prop)
 {
 	struct list_head *evl;
 	struct event *ev;
+	int npop_all;
 
+	npop_all = cfg->npop + cfg->nsplt;
 	ev = alloc_event(cfg, EVENT_SPLT, t);
 	((struct splt_event *)ev)->pop = pop;
 	((struct splt_event *)ev)->newpop = cfg->npop_all++;
-	cfg->nsplt++;
+///	cfg->nsplt++;
 	((struct splt_event *)ev)->prop = prop;
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
-	cfg->mmut = realloc(cfg->mmut, sizeof(struct mutation *) * cfg->npop_all);
+	cfg->mmut = realloc(cfg->mmut, sizeof(struct mutation *) * npop_all);
 	cfg->mmut[cfg->npop_all - 1] = NULL;
-	cfg->size = realloc(cfg->size, sizeof(double) * cfg->npop_all);
+	cfg->size = realloc(cfg->size, sizeof(double) * npop_all);
 	cfg->size[cfg->npop_all - 1] = cfg->size[pop];
-	cfg->grate = realloc(cfg->grate, sizeof(double) * cfg->npop_all);
+	cfg->grate = realloc(cfg->grate, sizeof(double) * npop_all);
 	cfg->grate[cfg->npop_all - 1] = 0;
 	cfg->ndevents++;
 

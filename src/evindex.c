@@ -20,65 +20,93 @@ int evindex_compar(struct event *a, struct event *b)
 	}
 }
 
-void evindex_seq_off(struct rbindex *evidx)
+void evindex_seq_off(struct evindex *evidx)
 {
 	struct rb_node **nodes;
-	int nnodes;
+	int nnodes, i, j;
 
-	nnodes = evidx->ls.n;
+	nnodes = evidx->idx->ls.n;
 	nodes = malloc(sizeof(struct rb_node *) * nnodes);
-	rbindex_clearflag(evidx, RBINDEX_SEQUENTIAL);
-	rbindex_rebuild_tree(evidx, nodes);
+	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
+	rbindex_rebuild_tree(evidx->idx, nodes);
+
+	for(i = nnodes - 1; i >= 0; i--){
+		struct event *ev, *left, *right;
+
+		ev = nodes[i]->rb_data;
+		for(j = 0; j < evidx->npop_all; j++)
+			ev->sumdn[j] = ev->dn[j];
+
+		// Link nodes
+		if(i * 2 + 1 < nnodes){
+			left = nodes[i * 2 + 1]->rb_data;
+			for(j = 0; j < evidx->npop_all; j++)
+				ev->sumdn[j] += left->sumdn[j];
+		}
+
+		if(i * 2 + 2 < nnodes){
+			right = nodes[i * 2 + 2]->rb_data;
+			for(j = 0; j < evidx->npop_all; j++)
+				ev->sumdn[j] += right->sumdn[j];
+		}
+	}
+
 	free(nodes);
 }
 
-void evindex_destroy(struct genealogy *G, struct rbindex *evidx)
+void evindex_destroy(struct genealogy *G, struct evindex *evidx)
 {
 	struct event *ev;
 
-	ev = (struct event *)GET_OBJ(evidx->lsentinel);
+	ev = (struct event *)GET_OBJ(evidx->idx->lsentinel);
 	free(GET_LIST(ev));
-	ev = (struct event *)GET_OBJ(evidx->rsentinel);
+	ev = (struct event *)GET_OBJ(evidx->idx->rsentinel);
 	free(GET_LIST(ev));
 
-	rbindex_destroy(evidx);
+	rbindex_destroy(evidx->idx);
+	free(evidx->dn);
+	free(evidx);
 }
 
 // Sequential seek for interval endpoint.
-void evindex_s_seek(struct rbindex *evidx, double t)
+void evindex_s_seek(struct evindex *evidx, double t)
 {
-	if(rbindex_isseq(evidx)){
+	if(rbindex_isseq(evidx->idx)){
 		rb_traverser lfwd, lbwd;
 		struct event *ebwd, *efwd;
 
-		lbwd = evidx->cur_s;
+		lbwd = evidx->idx->cur_s;
 		ebwd = evindex_cur(lbwd);
 		while(ebwd->t >= t) ebwd = evindex_prev(&lbwd);
 		lfwd = lbwd;
 		efwd = evindex_cur(lfwd);
 		while(efwd->t < t) efwd = evindex_next(&lfwd);
-		evidx->cur_s = lfwd;
+		evidx->idx->cur_s = lfwd;
 	}
 }
 
-struct rbindex *evindex_create(struct genealogy *G, struct config *cfg)
+struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
 {
-	struct rbindex *evidx;
+	struct evindex *evidx;
 	struct event *ev;
+	int npop;
 
-	evidx = rbindex_create(evindex_compar, NULL, &rbindex_allocator);
+	evidx = malloc(sizeof(struct evindex));
+	evidx->idx = rbindex_create(evindex_compar, NULL, &rbindex_allocator);
+	evidx->npop_all = npop = cfg->npop_all;
+	evidx->dn = malloc(sizeof(int) * npop);
 
 	// Set up sentinel
 	ev = alloc_event(G->cfg, EVENT_SAMP, 0);
-	evidx->lsentinel = GET_LIST(ev);
+	evidx->idx->lsentinel = GET_LIST(ev);
 
-	list_append(&evidx->ls, ev);
+	list_append(&evidx->idx->ls, ev);
 
 	ev = alloc_event(G->cfg, EVENT_GSIZ, INFINITY);
 	((struct gsiz_event *)ev)->size = 1;
-	evidx->rsentinel = GET_LIST(ev);
+	evidx->idx->rsentinel = GET_LIST(ev);
 
-	list_append(&evidx->ls, ev);
+	list_append(&evidx->idx->ls, ev);
 
 	return evidx;
 }

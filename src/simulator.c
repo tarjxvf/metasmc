@@ -219,6 +219,7 @@ int main(int argc, char *argv[])
 
 	// Third round: set up splitting events
 	i = 1;
+	nsplt = 0;
 	while(i < argc){
 		char *ptr, *optarg, *endptr;
 		double t;	// Event time
@@ -248,7 +249,39 @@ int main(int argc, char *argv[])
 								fprintf(stderr, "Invalid parameter for -es\n");
 								goto abnormal;
 							}
+							nsplt++;
 
+							break;
+					}
+
+					break;
+			}
+		}
+		i++;
+	}
+	cfg->nsplt = nsplt;
+
+	i = 1;
+	while(i < argc){
+		char *ptr, *optarg, *endptr;
+		double t;	// Event time
+		int j, k;
+
+		ptr = argv[i];
+		if(*ptr == '-'){
+			ptr++;
+
+			switch(*ptr){
+				case 'e':	/* User-specified demographic event. */
+					t = atof(argv[++i]);
+					ptr++;
+					switch(*ptr){
+						double prop;
+						int pop;
+
+						case 's':	/* Split a population. */
+							pop = strtol(argv[++i], &endptr, 10);
+							prop = strtod(argv[++i], &endptr);
 							add_event_splt(cfg, t, pop, prop);
 
 							break;
@@ -259,8 +292,6 @@ int main(int argc, char *argv[])
 		}
 		i++;
 	}
-
-	nsplt = cfg->nsplt;
 
 	mmut = malloc(sizeof(struct mutation) * cfg->npop_all);
 	memset(mmut, 0, sizeof(struct mutation) * cfg->npop_all);

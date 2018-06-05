@@ -136,7 +136,7 @@ struct genealogy {
 	struct config *cfg;
 	struct population *pops;
 //	struct list *evlist;	// List of events
-	struct rbindex *evidx;
+	struct evindex *evidx;
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
 	int edgeid;
 
