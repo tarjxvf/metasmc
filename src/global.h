@@ -27,17 +27,23 @@ struct mutation;
 struct event {
 	int type;
 	double t;
+	int *dn;	// Change of the number of lineages in affected populations
+	int *sumdn;	// Sum of dn values of the (red-black tree) nodes below this event
 };
 
 struct coal_event {
 	int type;	// type==EVENT_COAL
 	double t;
+	int *dn;	// dn[pop] == -1 and dn[i] == 0 for other i
+	int *sumdn;
 	int pop;
 };
 
 struct migr_event {
 	int type;	// type==EVENT_MIGR
 	double t;
+	int *dn;	// dn[dpop] == +1 and dn[spop] == -1
+	int *sumdn;
 	int spop;
 	int dpop;
 };
@@ -45,6 +51,8 @@ struct migr_event {
 struct grow_event {
 	int type;	// type==EVENT_GROW
 	double t;
+	int *dn;	// Must be zero
+	int *sumdn;
 	int pop;
 	double alpha;
 };
@@ -52,6 +60,8 @@ struct grow_event {
 struct size_event {
 	int type;	// type==EVENT_SIZE
 	double t;
+	int *dn;	// Must be zero
+	int *sumdn;
 	int pop;
 	double size;
 };
@@ -59,12 +69,16 @@ struct size_event {
 struct gmig_event {
 	int type;
 	double t;
+	int *dn;	// Must be zero
+	int *sumdn;
 	double rmig;
 };
 
 struct rmig_event {
 	int type;
 	double t;
+	int *dn;	// Must be zero
+	int *sumdn;
 	int popi;
 	int popj;
 	double rmig;
@@ -73,18 +87,24 @@ struct rmig_event {
 struct gsiz_event {
 	int type;
 	double t;
+	int *dn;	// Must be zero
+	int *sumdn;
 	double size;
 };
 
 struct ggro_event {
 	int type;
 	double t;
+	int *dn;	// Must be zero
+	int *sumdn;
 	double alpha;	// Growth rate of all subpopulations
 };
 
 struct join_event {
 	int type;
 	double t;
+	int *dn;	// Depends on the number of lineages in source population. dn[1] = -dn[0]
+	int *sumdn;
 	int popi;	// Subpopulation to be absorbed
 	int popj;
 };
@@ -92,6 +112,8 @@ struct join_event {
 struct splt_event {
 	int type;
 	double t;
+	int *dn;	// Depend on the number of migrated lineages. dn[1] = -dn[0]
+	int *sumdn;
 	int pop;	// Subpopulation to be splitted
 	int newpop;	// New subpopulation
 	double prop;	// proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.
@@ -100,6 +122,8 @@ struct splt_event {
 struct samp_event {
 	int type;
 	double t;
+	int *dn;	// Equals to the number of samples of each population added at time t
+	int *sumdn;
 };
 
 /*struct mmut_event {
@@ -113,7 +137,7 @@ void add_event(struct genealogy *G, struct event *ev);
 void remove_event(struct genealogy *, struct event *);
 //struct event *alloc_event(struct genealogy *, int, double);
 struct event *alloc_event(struct config *, int, double);
-void print_event(struct event *ev);
+void print_event(struct config *cfg, struct event *ev);
 
 struct list_head {
 	struct list_head *next;

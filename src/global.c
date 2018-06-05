@@ -152,19 +152,34 @@ void add_event(struct genealogy *G, struct event *ev)
 
 void remove_event(struct genealogy *G, struct event *ev)
 {
-	struct list_head *l;
-
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
 #endif
-	evindex_delete(G->evidx, ev);
-	l = GET_LIST(ev);
-//	list_remove(G->evlist, ev);
-//	if(ev->type <= EVENT_MIGR)
-//		free(l);
+	if(ev->type == EVENT_JOIN){
+		struct join_event *jev;
 
-//	else
+		jev = (struct join_event *)ev;
+		// Update tree values
+//		evindex_propgate();	// Propagate change information torward root
+		jev->dn[jev->popi]--;
+		jev->dn[jev->popj]++;
+
+	}else if(ev->type == EVENT_SPLT){
+		struct splt_event *sev;
+
+		sev = (struct splt_event *)ev;
+		// Update tree values
+//		evindex_propgate();
+		sev->dn[sev->pop]++;
+		sev->dn[sev->newpop]--;
+
+	}else{
+		struct list_head *l;
+
+		evindex_delete(G->evidx, ev);
+		l = GET_LIST(ev);
 		free(l);
+	}
 }
 
 size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct samp_event)};
@@ -178,10 +193,13 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = malloc(evsize[type]);
+	l = malloc(evsize[type] + sizeof(int) * 2 * cfg->npop_all);
 	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
+	ev->dn = (int *)((char *)l + evsize[type]);
+	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * cfg->npop_all);
+	memset(ev->dn, 0, sizeof(int) * 2 * cfg->npop_all);
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
@@ -189,12 +207,16 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	return ev;
 }
 
-void print_event(struct event *ev)
+void print_event(struct config *cfg, struct event *ev)
 {
 	struct list_head *l;
+	int i;
 
 	l = GET_LIST(ev);
-	fprintf(stderr, "(%x, %x)[type=%d, t=%.6f", l, ev, ev->type, ev->t);
+	fprintf(stderr, "(%x, %x)[type=%d, t=%.6f, dn=(", l, ev, ev->type, ev->t);
+	for(i = 0; i < cfg->npop_all; i++)
+		fprintf(stderr, "%d, ", ev->dn[i]);
+	fprintf(stderr, ")");
 	if(ev->type == EVENT_COAL){
 		fprintf(stderr, ", pop=%d", ((struct coal_event *)ev)->pop);
 	}else if(ev->type == EVENT_MIGR){
@@ -637,7 +659,7 @@ void dump_config(struct config *cfg)
 	fprintf(stderr, "\nPrint event list:\n");
 	l = cfg->evlist.front;
 	while(l){
-		print_event((struct event *)GET_OBJ(l));
+		print_event(cfg, (struct event *)GET_OBJ(l));
 		l = l->next;
 		fprintf(stderr, "\n");
 	}
