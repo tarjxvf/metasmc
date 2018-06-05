@@ -11,17 +11,17 @@ struct evindex {
 	int *dn;
 };
 
-static inline struct event *evindex_cur(rb_traverser it)
+static inline struct event *evindex_cur(seq_traverser it)
 {
 	return (struct event *)rbindex_cur(it);
 }
 
-static inline struct event *evindex_prev(rb_traverser *it)
+static inline struct event *evindex_prev(seq_traverser *it)
 {
 	return (struct event *)rbindex_prev(it);
 }
 
-static inline struct event *evindex_next(rb_traverser *it)
+static inline struct event *evindex_next(seq_traverser *it)
 {
 	return (struct event *)rbindex_next(it);
 }
@@ -66,7 +66,9 @@ static inline void evindex_seq_on(struct evindex *evidx)
 
 void evindex_seq_off(struct evindex *evidx);
 
-static inline struct event *evindex_find(rb_traverser *it, struct evindex *evidx, struct event *key)
+void evindex_propagate(struct rb_traverser *tr, int npop, int *dn);
+
+static inline struct event *evindex_find(seq_traverser *it, struct evindex *evidx, struct event *key)
 {
 	return rbindex_find(it, evidx->idx, key);
 }
@@ -81,10 +83,7 @@ static inline void evindex_rb_delete(struct evindex *evidx, struct event *e)
 	rbindex_rb_delete(evidx->idx, (void *)e);
 }
 
-static inline void evindex_delete(struct evindex *evidx, struct event *e)
-{
-	rbindex_delete(evidx->idx, (void *)e);
-}
+void evindex_delete(struct evindex *evidx, struct event *ev);
 
 static inline void evindex_rb_insert(struct evindex *evidx, struct event *e)
 {
@@ -96,13 +95,7 @@ static inline void evindex_s_insert(struct evindex *evidx, struct event *e)
 	rbindex_s_insert(evidx->idx, (void *)e);
 }
 
-static inline void evindex_insert(struct evindex *evidx, struct event *e)
-{
-	if(rbindex_isseq(evidx->idx))
-		evindex_s_insert(evidx, e);
-	else
-		evindex_rb_insert(evidx, e);
-}
+void evindex_insert(struct evindex *evidx, struct event *ev);
 
 void evindex_destroy(struct genealogy *G, struct evindex *evidx);
 struct evindex *evindex_create(struct genealogy *G, struct config *cfg);

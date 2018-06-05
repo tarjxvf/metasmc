@@ -5,17 +5,17 @@
 #include "smc.h"
 #include "global.h"
 
-static inline struct edge *eindex_cur(rb_traverser it)
+static inline struct edge *eindex_cur(seq_traverser it)
 {
 	return (struct edge *)rbindex_cur(it);
 }
 
-static inline struct edge *eindex_prev(rb_traverser *it)
+static inline struct edge *eindex_prev(seq_traverser *it)
 {
 	return (struct edge *)rbindex_prev(it);
 }
 
-static inline struct edge *eindex_next(rb_traverser *it)
+static inline struct edge *eindex_next(seq_traverser *it)
 {
 	return (struct edge *)rbindex_next(it);
 }
@@ -45,7 +45,7 @@ static inline void eindex_seq_on(struct rbindex *eidx)
 
 void eindex_seq_off(struct rbindex *eidx);
 
-static inline struct edge *eindex_find(rb_traverser *it, struct rbindex *eidx, struct edge *key)
+static inline struct edge *eindex_find(seq_traverser *it, struct rbindex *eidx, struct edge *key)
 {
 	return rbindex_find(it, eidx, key);
 }

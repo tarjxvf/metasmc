@@ -6,8 +6,8 @@
 
 #define RBINDEX_SEQUENTIAL	0x1	/* Set this flag to turn on sequential mode. When the index is in sequential mode, the tree index is not updated during insertion and deletion. The tree index need to be rebuilt whenever sequential mode is turned off. */
 
-//typedef struct rb_traverser rb_traverser;
-typedef struct list_head * rb_traverser;
+//typedef struct seq_traverser seq_traverser;
+typedef struct list_head * seq_traverser;
 
 struct rbindex {
 	int flags;
@@ -45,24 +45,24 @@ static inline void **rbindex_s_insert(struct rbindex *eidx, void *obj)
 
 extern struct libavl_allocator rbindex_allocator;
 
-static inline void *rbindex_prev(rb_traverser *it)
+static inline void *rbindex_prev(seq_traverser *it)
 {
 	*it = __list_prev(*it);
 	return GET_OBJ(*it);
 }
 
-static inline void *rbindex_cur(rb_traverser it)
+static inline void *rbindex_cur(seq_traverser it)
 {
 	return GET_OBJ(it);
 }
 
-static inline void *rbindex_next(rb_traverser *it)
+static inline void *rbindex_next(seq_traverser *it)
 {
 	*it = (*it)->next;
 	return GET_OBJ(*it);
 }
 
-static inline void rbindex_insbefore(rb_traverser it, void *obj)
+static inline void rbindex_insbefore(seq_traverser it, void *obj)
 {
 	list_insbefore(it, obj);
 }
@@ -73,7 +73,7 @@ static inline void rbindex_s_set(struct rbindex *eidx, void *obj)
 	eidx->cur_s = GET_LIST(obj);
 }
 
-static inline rb_traverser rbindex_s_get(void *obj)
+static inline seq_traverser rbindex_s_get(void *obj)
 {
 	return GET_LIST(obj);
 }
@@ -96,7 +96,7 @@ static inline void rbindex_seq_on(struct rbindex *eidx)
 }*/
 
 /* Find the first object after the key. */
-static inline void *rbindex_find(rb_traverser *it, struct rbindex *eidx, void *key)
+static inline void *rbindex_find(seq_traverser *it, struct rbindex *eidx, void *key)
 {
 	void *obj;
 

@@ -535,7 +535,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 
 /* MaCS-like procedure for choosing coalescing edge. */
 //struct edge *choose_tedge(struct genealogy *G, struct population *pop, double t)
-rb_traverser choose_tedge(struct genealogy *G, struct population *pop, double t)
+seq_traverser choose_tedge(struct genealogy *G, struct population *pop, double t)
 {
 	struct edge *e;
 	int nthres, n;
@@ -565,7 +565,7 @@ rb_traverser choose_tedge(struct genealogy *G, struct population *pop, double t)
 		}while(e == NULL || !(e->bot->t < t && e->top->t > t));
 
 	}else{	// Choose edge using red-black index
-		rb_traverser tr;
+		seq_traverser tr;
 		struct node top, bot;
 		struct edge key;
 		int u, c;
@@ -689,7 +689,7 @@ static inline void eindex_s_jump(struct population *ppop, double t)
 		// Calculate threshold of using red-black tree
 //		if(ppop->n > log2(ppop->eidx->ls.n)){
 /*		if(1){
-			rb_traverser cur;
+			seq_traverser cur;
 			struct node top, bot;
 			struct edge key, *e;
 
@@ -708,7 +708,7 @@ static inline void eindex_s_jump(struct population *ppop, double t)
  * Note that eindex must be in sequential mode because this function is called only if there is a trunk genealogy, which occurs when adding new lineages. */
 struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 {
-	rb_traverser cur;
+	seq_traverser cur;
 	struct edge *e, *e_new, *efwd, *enext;
 	struct coal_node *nd;
 	struct event *ev;
@@ -1433,7 +1433,7 @@ double recombination(struct genealogy *G)
 			struct event *evnew;
 
 			if(at < mg){		//Next event is absorption
-				rb_traverser cur;
+				seq_traverser cur;
 				struct edge *e2;	// e2: Edge where new absorption event occur, e_old: the old branch from xover node
 				struct migr_node *n;
 				double tmrca_old;

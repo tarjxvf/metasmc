@@ -146,36 +146,47 @@ int nucl_index(int ch)
 void add_event(struct genealogy *G, struct event *ev)
 {
 	evindex_insert(G->evidx, ev);
-//	evindex_s_set(G->evidx, ev);
-//	evindex_s_forward(G->evidx);
 }
 
 void remove_event(struct genealogy *G, struct event *ev)
 {
+	struct list_head *l;
+
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
 #endif
-	if(ev->type == EVENT_JOIN){
-		struct join_event *jev;
+	if(ev->type == EVENT_JOIN || ev->type == EVENT_SPLT){
+		struct rb_traverser tr;
 
-		jev = (struct join_event *)ev;
+//		rb_t_find(&tr, G->evidx->idx->tree, ev);
+
+		if(ev->type == EVENT_JOIN){
+			struct join_event *jev;
+
+			jev = (struct join_event *)ev;
+			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+			G->evidx->dn[jev->popi] = -1;
+			G->evidx->dn[jev->popj] = 1;
+
+			jev->dn[jev->popi]--;
+			jev->dn[jev->popj]++;
+
+		}else if(ev->type == EVENT_SPLT){
+			struct splt_event *sev;
+
+			sev = (struct splt_event *)ev;
+			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+			G->evidx->dn[sev->newpop] = -1;
+			G->evidx->dn[sev->pop] = 1;
+
+			sev->dn[sev->pop]++;
+			sev->dn[sev->newpop]--;
+		}
+
 		// Update tree values
-//		evindex_propgate();	// Propagate change information torward root
-		jev->dn[jev->popi]--;
-		jev->dn[jev->popj]++;
-
-	}else if(ev->type == EVENT_SPLT){
-		struct splt_event *sev;
-
-		sev = (struct splt_event *)ev;
-		// Update tree values
-//		evindex_propgate();
-		sev->dn[sev->pop]++;
-		sev->dn[sev->newpop]--;
+//		evindex_propgate(&tr, G->cfg->npop_all, G->evidx->dn);
 
 	}else{
-		struct list_head *l;
-
 		evindex_delete(G->evidx, ev);
 		l = GET_LIST(ev);
 		free(l);

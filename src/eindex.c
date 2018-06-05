@@ -59,7 +59,7 @@ void eindex_destroy(struct genealogy *G, struct rbindex *eidx)
 void eindex_s_seek_ttop(struct rbindex *eidx, double ttop)
 {
 	if(rbindex_isseq(eidx)){
-		rb_traverser lfwd, lbwd;
+		seq_traverser lfwd, lbwd;
 		struct edge *ebwd, *efwd;
 
 		lbwd = eidx->cur_s;
@@ -76,7 +76,7 @@ void eindex_s_seek_ttop(struct rbindex *eidx, double ttop)
 void eindex_s_seek_t(struct rbindex *eidx, double ttop, double tbot)
 {
 	if(rbindex_isseq(eidx)){
-		rb_traverser lfwd, lbwd;
+		seq_traverser lfwd, lbwd;
 		struct edge *ebwd, *efwd;
 
 		lbwd = eidx->cur_s;
@@ -97,7 +97,7 @@ void eindex_s_seek_t(struct rbindex *eidx, double ttop, double tbot)
 void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid)
 {
 	if(rbindex_isseq(eidx)){
-		rb_traverser lfwd, lbwd;
+		seq_traverser lfwd, lbwd;
 		struct edge *ebwd, *efwd;
 
 		lbwd = eidx->cur_s;
@@ -118,7 +118,7 @@ void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid)
 
 void eindex_s_insert(struct rbindex *eidx, struct edge *e)
 {
-//	rb_traverser cur;
+//	seq_traverser cur;
 //	struct edge *efwd;
 
 //	eindex_s_seek_ttop(eidx, e->top->t);

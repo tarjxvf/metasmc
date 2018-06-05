@@ -54,6 +54,50 @@ void evindex_seq_off(struct evindex *evidx)
 	free(nodes);
 }
 
+void evindex_propagate(struct rb_traverser *tr, int npop, int *dn)
+{
+	struct event *ev;
+	int i, j;
+
+	// Backtrack and update summary statistics
+	for(i = tr->rb_height - 1; i >= 0; i++){
+		ev = tr->rb_stack[i]->rb_data;
+		for(j = 0; j < npop; j++)
+			ev->sumdn[j] += dn[j];
+	}
+}
+
+void evindex_delete(struct evindex *evidx, struct event *ev)
+{
+	if(rbindex_isseq(evidx->idx)){
+		rbindex_s_delete(evidx->idx, (void *)ev);
+
+	}else{
+//		if(ev->type == EVENT_JOIN || ev->type == EVENT_SPLT){
+//		}else{
+			evindex_rb_delete(evidx, ev);
+//		}
+	}
+}
+
+void evindex_insert(struct evindex *evidx, struct event *ev)
+{
+	if(rbindex_isseq(evidx->idx)){
+		evindex_s_insert(evidx, ev);
+
+	}else{
+/*		rb_traverser tr;
+		struct event *ev;
+		int i, j;
+
+		rb_t_insert(&tr, evidx->idx, ev);
+		trav_refresh(&tr);
+		evindex_propgate(&tr, evidx->npop_all, ev->dn);*/
+
+		evindex_rb_insert(evidx, ev);
+	}
+}
+
 void evindex_destroy(struct genealogy *G, struct evindex *evidx)
 {
 	struct event *ev;
@@ -72,7 +116,7 @@ void evindex_destroy(struct genealogy *G, struct evindex *evidx)
 void evindex_s_seek(struct evindex *evidx, double t)
 {
 	if(rbindex_isseq(evidx->idx)){
-		rb_traverser lfwd, lbwd;
+		seq_traverser lfwd, lbwd;
 		struct event *ebwd, *efwd;
 
 		lbwd = evidx->idx->cur_s;
