@@ -956,9 +956,11 @@ void build_trunk_e(struct genealogy *G, int lb)
 {
 	struct config *cfg;
 	struct list_head *nl, *next;
+	struct event *ev0;
 	int pop;
 
 	cfg = G->cfg;
+	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, lb=%d\n", __func__, lb);
 #endif
@@ -980,6 +982,7 @@ void build_trunk_e(struct genealogy *G, int lb)
 #endif
 			G->nsam--;
 			G->pops[nd->pop].nsam--;
+			ev0->dn[nd->pop]--;
 			__list_remove(&G->n_list, nl);
 			e = nd->in;
 /*			if(nd == (struct sam_node *)G->localMRCA){	// If last region does not overlap with current region. Note that root is sample node only if there is only one genealogy in G
@@ -1244,12 +1247,14 @@ output:
 void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 {
 	struct list_head *rl, *l;
+	struct event *ev0;
 	int i;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 
+	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 	rl = R->front;
 	while(rl){
 		struct sam_node *n1;
@@ -1265,6 +1270,7 @@ void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 		n1->fg = r;
 
 		edge_set_add(&F[r->pop], e);
+		ev0->dn[r->pop]++;
 
 		rl = rl->next;
 	}
@@ -2128,6 +2134,7 @@ void clear_genealogy(struct genealogy *G)
 	struct config *cfg;
 	struct list_head *l;
 	struct list *eq;
+	struct event *ev0;
 	int pop, i;
 
 	cfg = G->cfg;
@@ -2139,6 +2146,8 @@ void clear_genealogy(struct genealogy *G)
 	}
 	G->total = 0;
 	G->edgeid = 0;
+	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
+	memset(ev0->dn, 0, sizeof(int) * cfg->npop_all);
 	list_init(&G->n_list);
 
 	if(G->ev_dxvr){
