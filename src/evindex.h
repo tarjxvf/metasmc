@@ -11,6 +11,30 @@ struct evindex {
 	int *dn;
 };
 
+static inline void dn_add(int npop, int *x, int *y)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] += y[j];
+}
+
+static inline void dn_sub(int npop, int *x, int *y)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] -= y[j];
+}
+
+static inline void dn_set(int npop, int *x, int *y)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] = y[j];
+}
+
+void
+print_event_tree (const struct evindex *evidx, const char *title);
+
 static inline struct event *evindex_cur(seq_traverser it)
 {
 	return (struct event *)rbindex_cur(it);
@@ -66,7 +90,8 @@ static inline void evindex_seq_on(struct evindex *evidx)
 
 void evindex_seq_off(struct evindex *evidx);
 
-void evindex_propagate(struct rb_traverser *tr, int npop, int *dn);
+void evindex_propagate_add(int height, struct rb_node **stack, int npop, int *dn);
+void evindex_propagate_sub(int height, struct rb_node **stack, int npop, int *dn);
 
 static inline struct event *evindex_find(seq_traverser *it, struct evindex *evidx, struct event *key)
 {
@@ -78,17 +103,19 @@ static inline void evindex_s_delete(struct evindex *evidx, struct event *e)
 	rbindex_s_delete(evidx->idx, (void *)e);
 }
 
-static inline void evindex_rb_delete(struct evindex *evidx, struct event *e)
-{
-	rbindex_rb_delete(evidx->idx, (void *)e);
-}
+void evindex_rb_delete(struct evindex *evidx, const void *item);
+//static inline void evindex_rb_delete(struct evindex *evidx, struct event *e)
+//{
+//	rbindex_rb_delete(evidx->idx, (void *)e);
+//}
 
 void evindex_delete(struct evindex *evidx, struct event *ev);
 
-static inline void evindex_rb_insert(struct evindex *evidx, struct event *e)
-{
-	rbindex_rb_insert(evidx->idx, (void *)e);
-}
+void evindex_rb_insert(struct evindex *evidx, struct event *ev);
+//static inline void evindex_rb_insert(struct evindex *evidx, struct event *e)
+//{
+//	rbindex_rb_insert(evidx->idx, (void *)e);
+//}
 
 static inline void evindex_s_insert(struct evindex *evidx, struct event *e)
 {

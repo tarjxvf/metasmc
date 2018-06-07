@@ -42,6 +42,15 @@ void list_insbefore(struct list_head *ref, void *item)
 	__list_insbefore(ref, l);
 }
 
+/* Insert an item before an item. */
+void list_insafter(struct list_head *ref, void *item)
+{
+	struct list_head *l;
+
+	l = GET_LIST(item);
+	__list_insafter(ref, l);
+}
+
 /* Append an item after a  list */
 void list_append(struct list *ls, void *item)
 {
@@ -145,7 +154,45 @@ int nucl_index(int ch)
 
 void add_event(struct genealogy *G, struct event *ev)
 {
-	evindex_insert(G->evidx, ev);
+	if(ev->type == EVENT_JOIN){
+		struct join_event *jev;
+		jev = (struct join_event *)ev;
+
+		if(!rbindex_isseq(G->evidx->idx)){
+			struct rb_traverser tr;
+
+			rb_t_find(&tr, G->evidx->idx->tree, ev);
+			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+			G->evidx->dn[jev->popi] = 1;
+			G->evidx->dn[jev->popj] = -1;
+
+			dn_add(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
+			evindex_propagate_add(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
+		}
+
+		jev->dn[jev->popi]++;
+		jev->dn[jev->popj]--;
+
+	}else if(ev->type == EVENT_SPLT){
+		struct splt_event *sev;
+		sev = (struct splt_event *)ev;
+		if(!rbindex_isseq(G->evidx->idx)){
+			struct rb_traverser tr;
+
+			rb_t_find(&tr, G->evidx->idx->tree, ev);
+			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+			G->evidx->dn[sev->newpop] = 1;
+			G->evidx->dn[sev->pop] = -1;
+
+			dn_add(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
+			evindex_propagate_add(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
+		}
+		sev->dn[sev->pop]--;
+		sev->dn[sev->newpop]++;
+
+	}else{
+		evindex_insert(G->evidx, ev);
+	}
 }
 
 void remove_event(struct genealogy *G, struct event *ev)
@@ -155,36 +202,44 @@ void remove_event(struct genealogy *G, struct event *ev)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
 #endif
-	if(ev->type == EVENT_JOIN || ev->type == EVENT_SPLT){
-		struct rb_traverser tr;
+	if(ev->type == EVENT_JOIN){
+		struct join_event *jev;
 
-//		rb_t_find(&tr, G->evidx->idx->tree, ev);
+		jev = (struct join_event *)ev;
+		if(!rbindex_isseq(G->evidx->idx)){
+			struct rb_traverser tr;
 
-		if(ev->type == EVENT_JOIN){
-			struct join_event *jev;
-
-			jev = (struct join_event *)ev;
+			rb_t_find(&tr, G->evidx->idx->tree, ev);
 			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
-			G->evidx->dn[jev->popi] = -1;
-			G->evidx->dn[jev->popj] = 1;
+			G->evidx->dn[jev->popi] = 1;
+			G->evidx->dn[jev->popj] = -1;
 
-			jev->dn[jev->popi]--;
-			jev->dn[jev->popj]++;
-
-		}else if(ev->type == EVENT_SPLT){
-			struct splt_event *sev;
-
-			sev = (struct splt_event *)ev;
-			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
-			G->evidx->dn[sev->newpop] = -1;
-			G->evidx->dn[sev->pop] = 1;
-
-			sev->dn[sev->pop]++;
-			sev->dn[sev->newpop]--;
+			// Update tree values
+			dn_sub(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
+			evindex_propagate_sub(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
 		}
 
-		// Update tree values
-//		evindex_propgate(&tr, G->cfg->npop_all, G->evidx->dn);
+		jev->dn[jev->popi]--;
+		jev->dn[jev->popj]++;
+
+	}else if(ev->type == EVENT_SPLT){
+		struct splt_event *sev;
+
+		sev = (struct splt_event *)ev;
+		if(!rbindex_isseq(G->evidx->idx)){
+			struct rb_traverser tr;
+			rb_t_find(&tr, G->evidx->idx->tree, ev);
+			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+			G->evidx->dn[sev->newpop] = 1;
+			G->evidx->dn[sev->pop] = -1;
+
+			// Update tree values
+			dn_sub(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
+			evindex_propagate_sub(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
+		}
+
+		sev->dn[sev->pop]++;
+		sev->dn[sev->newpop]--;
 
 	}else{
 		evindex_delete(G->evidx, ev);

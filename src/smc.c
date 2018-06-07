@@ -193,6 +193,8 @@ void dump_events(struct genealogy *G)
 		ev = evindex_next(&l);
 	}
 	fprintf(stderr, "\n");
+	print_event_tree(G->evidx, "");
+	fprintf(stderr, "\n");
 }
 
 static inline void edge_set_init(struct edge_set *set, int maxn)
@@ -1552,8 +1554,7 @@ double recombination(struct genealogy *G)
 
 //					G->evlist->n++;
 					pop = jev->popi;
-					jev->dn[jev->popi]++;
-					jev->dn[jev->popj]--;
+					add_event(G, ev);
 				}
 
 			}else if(ev->type == EVENT_SPLT){
@@ -1570,8 +1571,7 @@ double recombination(struct genealogy *G)
 						nd = (struct migr_node *)do_migrate(G, ef, sev->pop, sev->newpop, t);
 						nd->ev = (struct migr_event *)ev;
 						pop = sev->newpop;
-						sev->dn[sev->pop]--;
-						sev->dn[sev->newpop]++;
+						add_event(G, ev);
 					}
 				}
 
@@ -1882,8 +1882,8 @@ finish_selection:
 
 				/* Force all lineages in population j moving to population i */
 				jev = (struct join_event *)ev;
-				jev->dn[jev->popi] += F[jev->popj].n;
-				jev->dn[jev->popj] -= F[jev->popj].n;
+//				jev->dn[jev->popi] += F[jev->popj].n;
+//				jev->dn[jev->popj] -= F[jev->popj].n;
 				for(i = 0; i < F[jev->popj].n; i++){
 					struct migr_node *nd;
 					struct edge *e;
@@ -1892,6 +1892,7 @@ finish_selection:
 					nd = (struct migr_node *)do_migrate(G, e, jev->popj, jev->popi, t);
 					edge_set_add(&F[jev->popi], e);
 					nd->ev = (struct migr_event *)ev;
+					add_event(G, ev);
 				}
 				edge_set_clear(&F[jev->popj]);
 
@@ -1913,8 +1914,9 @@ finish_selection:
 						nd = (struct migr_node *)do_migrate(G, e, sev->pop, sev->newpop, t);
 						edge_set_add(&F[sev->newpop], e);
 						nd->ev = (struct migr_event *)ev;
-						sev->dn[sev->pop]--;
-						sev->dn[sev->newpop]++;
+//						sev->dn[sev->pop]--;
+//						sev->dn[sev->newpop]++;
+						add_event(G, ev);
 
 					}else{
 						i++;

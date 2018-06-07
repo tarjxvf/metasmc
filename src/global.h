@@ -158,6 +158,7 @@ void list_concat(struct list *dst, struct list *src);
 
 /* List operations using object pointer. */
 void list_insbefore(struct list_head *ref, void *item);
+void list_insafter(struct list_head *ref, void *item);
 void list_remove(struct list *ls, void *item);
 void list_add(struct list *ls, void *item);	// Add an item at list head
 void list_append(struct list *ls, void *item);	// Add an item at list end
@@ -183,6 +184,15 @@ static __inline__ void __list_insbefore(struct list_head *ref, struct list_head 
 	l->prev = ref->prev;
 	ref->prev = &l->next;
 	*l->prev = l;
+}
+
+/* Insert an item before an item. */
+static __inline__ void __list_insafter(struct list_head *ref, struct list_head *l)
+{
+	l->next = ref->next;
+	l->prev = &ref->next;
+	ref->next = l;
+	l->next->prev = &l->next;
 }
 
 /* Append an item after a  list */
