@@ -133,9 +133,6 @@ struct samp_event {
 	struct mutation *mmut;
 };*/
 
-void add_event(struct genealogy *G, struct event *ev);
-void remove_event(struct genealogy *, struct event *);
-//struct event *alloc_event(struct genealogy *, int, double);
 struct event *alloc_event(struct config *, int, double);
 void print_event(struct config *cfg, struct event *ev);
 

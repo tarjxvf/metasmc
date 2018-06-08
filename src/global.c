@@ -134,120 +134,6 @@ void list_print(struct list_head **head)
 	printf("\n");
 }*/
 
-char nucl[] = {'A', 'C', 'G', 'T'};
-
-int nucl_index(int ch)
-{
-	switch(ch){
-		case 'a':case 'A':
-			return 0;
-		case 'c':case 'C':
-			return 1;
-		case 'g':case 'G':
-			return 2;
-		case 't':case 'T':
-			return 3;
-		default:
-			return -1;
-	}
-}
-
-void add_event(struct genealogy *G, struct event *ev)
-{
-	if(ev->type == EVENT_JOIN){
-		struct join_event *jev;
-		jev = (struct join_event *)ev;
-
-		if(!rbindex_isseq(G->evidx->idx)){
-			struct rb_traverser tr;
-
-			rb_t_find(&tr, G->evidx->idx->tree, ev);
-			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
-			G->evidx->dn[jev->popi] = 1;
-			G->evidx->dn[jev->popj] = -1;
-
-			dn_add(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
-			evindex_propagate_add(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
-		}
-
-		jev->dn[jev->popi]++;
-		jev->dn[jev->popj]--;
-
-	}else if(ev->type == EVENT_SPLT){
-		struct splt_event *sev;
-		sev = (struct splt_event *)ev;
-		if(!rbindex_isseq(G->evidx->idx)){
-			struct rb_traverser tr;
-
-			rb_t_find(&tr, G->evidx->idx->tree, ev);
-			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
-			G->evidx->dn[sev->newpop] = 1;
-			G->evidx->dn[sev->pop] = -1;
-
-			dn_add(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
-			evindex_propagate_add(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
-		}
-		sev->dn[sev->pop]--;
-		sev->dn[sev->newpop]++;
-
-	}else{
-		evindex_insert(G->evidx, ev);
-	}
-}
-
-void remove_event(struct genealogy *G, struct event *ev)
-{
-	struct list_head *l;
-
-#ifdef DEBUG
-	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
-#endif
-	if(ev->type == EVENT_JOIN){
-		struct join_event *jev;
-
-		jev = (struct join_event *)ev;
-		if(!rbindex_isseq(G->evidx->idx)){
-			struct rb_traverser tr;
-
-			rb_t_find(&tr, G->evidx->idx->tree, ev);
-			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
-			G->evidx->dn[jev->popi] = 1;
-			G->evidx->dn[jev->popj] = -1;
-
-			// Update tree values
-			dn_sub(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
-			evindex_propagate_sub(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
-		}
-
-		jev->dn[jev->popi]--;
-		jev->dn[jev->popj]++;
-
-	}else if(ev->type == EVENT_SPLT){
-		struct splt_event *sev;
-
-		sev = (struct splt_event *)ev;
-		if(!rbindex_isseq(G->evidx->idx)){
-			struct rb_traverser tr;
-			rb_t_find(&tr, G->evidx->idx->tree, ev);
-			memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
-			G->evidx->dn[sev->newpop] = 1;
-			G->evidx->dn[sev->pop] = -1;
-
-			// Update tree values
-			dn_sub(G->cfg->npop_all, ev->sumdn, G->evidx->dn);
-			evindex_propagate_sub(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
-		}
-
-		sev->dn[sev->pop]++;
-		sev->dn[sev->newpop]--;
-
-	}else{
-		evindex_delete(G->evidx, ev);
-		l = GET_LIST(ev);
-		free(l);
-	}
-}
-
 size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct samp_event)};
 
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
@@ -312,6 +198,24 @@ void print_event(struct config *cfg, struct event *ev)
 	}
 
 	fprintf(stderr, "]");
+}
+
+char nucl[] = {'A', 'C', 'G', 'T'};
+
+int nucl_index(int ch)
+{
+	switch(ch){
+		case 'a':case 'A':
+			return 0;
+		case 'c':case 'C':
+			return 1;
+		case 'g':case 'G':
+			return 2;
+		case 't':case 'T':
+			return 3;
+		default:
+			return -1;
+	}
 }
 
 int fgcompar(const void *a, const void *b)

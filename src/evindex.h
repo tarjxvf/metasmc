@@ -2,9 +2,10 @@
 #define EVINDEX_H
 
 #include "rbindex.h"
-#include "smc.h"
+//#include "smc.h"
 #include "global.h"
 
+struct genealogy;
 struct evindex {
 	struct rbindex *idx;
 	int npop_all;

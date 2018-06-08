@@ -4,6 +4,7 @@
 #include <math.h>
 
 #include "evindex.h"
+#include "smc.h"
 
 void
 __print_event_tree(const struct evindex *evidx, struct rb_node *node, int level)
@@ -196,7 +197,8 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
       if (p == NULL)
         return;
     }
-  ev = item = p->rb_data;
+  item = p->rb_data;
+  ev = (struct event *)item;
   list_remove(&evidx->idx->ls, ev);
   evindex_propagate_sub(k - 1, pa + 1, evidx->npop_all, ev->dn);
 
