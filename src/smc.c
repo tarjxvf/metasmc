@@ -1431,6 +1431,87 @@ void remove_xover_node(struct genealogy *G, struct xover_node *nd)
 
 double merge_floating(struct genealogy *G, struct edge_set *F);
 
+void erase_dummy_path_rb(struct genealogy *G, struct edge *edum)
+{
+	struct node *nrm, *ndum;
+	struct edge *erm;
+	int poprm;
+
+	ndum = edum->top;
+	/* Remove dangling edges above dummy recombination event from red-black tree. */
+	erm = ndum->in;
+	while(erm){
+		eindex_rb_delete(G->pops[erm->bot->pop].eidx, erm);
+		erm = erm->top->in;
+	}
+
+	G->ev_dxvr = NULL;
+	erm = ndum->in;
+	poprm = ndum->pop;
+	while(erm){
+		nrm = erm->top;
+		__remove_edge(G, poprm, erm);
+		free_edge(G, erm);
+		poprm = nrm->pop;
+		remove_event_rb_josp(G, (struct event *)nrm->ev);
+		erm = nrm->in;
+		free_node(G, nrm);
+	}
+	nrm = ndum;
+	remove_event_rb_josp(G, ndum->ev);
+
+	edum->top = ndum = alloc_node(G, NODE_FLOAT, nrm->pop, INFINITY);
+	AS_DUMMY_NODE(ndum)->out = edum;
+	AS_DUMMY_NODE(ndum)->in = NULL;
+	free_node(G, nrm);
+	G->pops[edum->bot->pop].n = 0;
+}
+
+void erase_dummy_path_s(struct genealogy *G, struct edge *edum)
+{
+	struct node *nrm, *ndum;
+	struct edge *erm;
+	int poprm;
+
+	ndum = edum->top;
+	/* Remove dangling edges above dummy recombination event from red-black tree. */
+	erm = ndum->in;
+	while(erm){
+		eindex_s_delete(G->pops[erm->bot->pop].eidx, erm);
+		erm = erm->top->in;
+	}
+
+	G->ev_dxvr = NULL;
+	erm = ndum->in;
+	poprm = ndum->pop;
+	while(erm){
+		nrm = erm->top;
+		__remove_edge(G, poprm, erm);
+		free_edge(G, erm);
+		poprm = nrm->pop;
+		remove_event_s_josp(G, (struct event *)nrm->ev);
+		erm = nrm->in;
+		free_node(G, nrm);
+	}
+	nrm = ndum;
+	remove_event_s_josp(G, ndum->ev);
+
+	edum->top = ndum = alloc_node(G, NODE_FLOAT, nrm->pop, INFINITY);
+	AS_DUMMY_NODE(ndum)->out = edum;
+	AS_DUMMY_NODE(ndum)->in = NULL;
+	free_node(G, nrm);
+	G->pops[edum->bot->pop].n = 0;
+}
+
+/* Remove dangling edges above dummy recombination event. */
+void erase_dummy_path(struct genealogy *G, struct edge *edum)
+{
+	if(rbindex_isseq(G->evidx->idx))
+		erase_dummy_path_s(G, edum);
+	else
+		erase_dummy_path_rb(G, edum);
+}
+
 /* Generate recombination point and modify genealogy */
 double recombination(struct genealogy *G)
 {
@@ -1683,12 +1764,13 @@ double recombination(struct genealogy *G)
 
 				// Remove remaining edges in dummy edge list
 				if(ev->type == EVENT_DXVR){
-					struct edge *erm;
+/*					struct edge *erm;
 					struct node *nrm;
-					int poprm;
+					int poprm;*/
 
 					/* Remove dangling edges above dummy recombination event from red-black tree. */
-					erm = ndum->in;
+					erase_dummy_path_rb(G, edum);
+/*					erm = ndum->in;
 					while(erm){
 						eindex_rb_delete(G->pops[erm->bot->pop].eidx, erm);
 						erm = erm->top->in;
@@ -1702,29 +1784,17 @@ double recombination(struct genealogy *G)
 						__remove_edge(G, poprm, erm);
 						free_edge(G, erm);
 						poprm = nrm->pop;
-//						if(nrm->ev->type != EVENT_SPLT && nrm->ev->type != EVENT_JOIN){
-							remove_event_rb_josp(G, (struct event *)nrm->ev);
-
-//						}else{
-//							nrm->ev->dn[nrm->spop]--;
-//							nrm->ev->dn[nrm->dpop]++;
-//						}
+						remove_event_rb_josp(G, (struct event *)nrm->ev);
 						erm = nrm->in;
 						free_node(G, nrm);
 					}
 					nrm = ndum;
-//					if(nrm->ev->type != EVENT_SPLT && nrm->ev->type != EVENT_JOIN){
-						remove_event_rb_josp(G, ndum->ev);
-
-//					}else{
-//						nrm->ev->dn[nrm->spop]--;
-//						nrm->ev->dn[nrm->dpop]++;
-//					}
+					remove_event_rb_josp(G, ndum->ev);
 					edum->top = ndum = alloc_node(G, NODE_FLOAT, nrm->pop, INFINITY);
 					AS_DUMMY_NODE(ndum)->out = edum;
 					AS_DUMMY_NODE(ndum)->in = NULL;
 					free_node(G, nrm);
-					G->pops[edum->bot->pop].n = 0;
+					G->pops[edum->bot->pop].n = 0;*/
 
 				}else{
 					G->pops[G->root->pop].n = 0;
@@ -2025,12 +2095,13 @@ finish_selection:
 
 				// Remove remaining edges in dummy edge list
 				if(ev->type == EVENT_DXVR){
-					struct edge *erm;
-					struct node *nrm;
-					int poprm;
+//					struct edge *erm;
+//					struct node *nrm;
+//					int poprm;
 
 					/* Remove dangling edges above dummy recombination event from red-black tree. */
-					erm = ndum->in;
+					erase_dummy_path(G, edum);
+/*					erm = ndum->in;
 					while(erm){
 						eindex_delete(G->pops[erm->bot->pop].eidx, erm);
 						erm = erm->top->in;
@@ -2053,7 +2124,7 @@ finish_selection:
 					AS_DUMMY_NODE(ndum)->out = edum;
 					AS_DUMMY_NODE(ndum)->in = NULL;
 					free_node(G, nrm);
-					G->pops[edum->bot->pop].n = 0;
+					G->pops[edum->bot->pop].n = 0;*/
 
 				}else{
 					G->pops[G->root->pop].n = 0;

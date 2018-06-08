@@ -235,6 +235,12 @@ static inline void remove_event_rb(struct genealogy *G, struct event *ev)
 	free(GET_LIST(ev));
 }
 
+static inline void remove_event_s(struct genealogy *G, struct event *ev)
+{
+	evindex_s_delete(G->evidx, ev);
+	free(GET_LIST(ev));
+}
+
 static inline void remove_event(struct genealogy *G, struct event *ev)
 {
 	evindex_delete(G->evidx, ev);
@@ -251,23 +257,22 @@ static inline void remove_event_rb_josp(struct genealogy *G, struct event *ev)
 		remove_event_rb(G, ev);
 }
 
+static inline void remove_event_s_josp(struct genealogy *G, struct event *ev)
+{
+	if(ev->type == EVENT_JOIN)
+		remove_event_join_decrease(G, (struct join_event *)ev);
+	else if(ev->type == EVENT_SPLT)
+		remove_event_splt_decrease(G, (struct splt_event *)ev);
+	else
+		remove_event_s(G, ev);
+}
+
 static inline void remove_event_josp(struct genealogy *G, struct event *ev)
 {
-	if(ev->type == EVENT_JOIN){
-		if(!rbindex_isseq(G->evidx->idx))
-			remove_event_rb_join(G, (struct join_event *)ev);
-		else
-			remove_event_join_decrease(G, (struct join_event *)ev);
-
-	}else if(ev->type == EVENT_SPLT){
-		if(!rbindex_isseq(G->evidx->idx))
-			remove_event_rb_splt(G, (struct splt_event *)ev);
-		else
-			remove_event_splt_decrease(G, (struct splt_event *)ev);
-
-	}else{
-		remove_event(G, ev);
-	}
+	if(!rbindex_isseq(G->evidx->idx))
+		remove_event_rb_josp(G, ev);
+	else
+		remove_event_s_josp(G, ev);
 }
 
 //int simulate(struct reference *, struct genealogy *, int, struct frag *);
