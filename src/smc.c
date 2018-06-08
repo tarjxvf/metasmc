@@ -642,6 +642,7 @@ seq_traverser choose_tedge(struct genealogy *G, struct population *pop, double t
 		int u, c;
 
 		if(rbindex_isseq(pop->eidx)){
+			eindex_s_seek_ttop(pop->eidx, t);
 			tr = pop->eidx->cur_s;
 			e = (struct edge *)GET_OBJ(tr);
 
