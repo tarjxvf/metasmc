@@ -184,7 +184,7 @@ void insert_event_rb_join(struct genealogy *G, struct join_event *jev)
 	struct rb_traverser tr;
 
 	rb_t_find(&tr, G->evidx->idx->tree, (void *)jev);
-	memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+	dn_clear(G->cfg->npop_all, G->evidx->dn);
 	G->evidx->dn[jev->popi] = 1;
 	G->evidx->dn[jev->popj] = -1;
 
@@ -199,7 +199,7 @@ void insert_event_rb_splt(struct genealogy *G, struct splt_event *sev)
 	struct rb_traverser tr;
 
 	rb_t_find(&tr, G->evidx->idx->tree, (void *)sev);
-	memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+	dn_clear(G->cfg->npop_all, G->evidx->dn);
 	G->evidx->dn[sev->newpop] = 1;
 	G->evidx->dn[sev->pop] = -1;
 
@@ -218,7 +218,7 @@ void remove_event_rb_join(struct genealogy *G, struct join_event *jev)
 #endif
 
 	rb_t_find(&tr, G->evidx->idx->tree, (void *)jev);
-	memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+	dn_clear(G->cfg->npop_all, G->evidx->dn);
 	G->evidx->dn[jev->popi] = 1;
 	G->evidx->dn[jev->popj] = -1;
 
@@ -237,7 +237,7 @@ void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev)
 	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
 #endif
 	rb_t_find(&tr, G->evidx->idx->tree, (void *)sev);
-	memset(G->evidx->dn, 0, sizeof(int) * G->cfg->npop_all);
+	dn_clear(G->cfg->npop_all, G->evidx->dn);
 	G->evidx->dn[sev->newpop] = 1;
 	G->evidx->dn[sev->pop] = -1;
 
@@ -2290,6 +2290,7 @@ void clear_genealogy(struct genealogy *G)
 	G->edgeid = 0;
 	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 	memset(ev0->dn, 0, sizeof(int) * cfg->npop_all);
+	dn_clear(cfg->npop_all, ev0->dn);
 	list_init(&G->n_list);
 
 	if(G->ev_dxvr){

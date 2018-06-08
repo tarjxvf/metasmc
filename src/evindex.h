@@ -33,6 +33,13 @@ static inline void dn_set(int npop, int *x, int *y)
 		x[j] = y[j];
 }
 
+static inline void dn_clear(int npop, int *x)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] = 0;
+}
+
 void
 print_event_tree (const struct evindex *evidx, const char *title);
 

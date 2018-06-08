@@ -154,6 +154,7 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	ev->dn = (int *)((char *)l + evsize[type]);
 	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
 	memset(ev->dn, 0, sizeof(int) * 2 * npop_all);
+	dn_clear(npop_all, ev->dn);
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
