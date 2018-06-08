@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "evindex.h"
@@ -101,6 +102,44 @@ void evindex_seq_off(struct evindex *evidx)
 	}
 
 	free(nodes);
+}
+
+/* Calculate number of lineages at time t. */
+struct event *evindex_query(struct evindex *evidx, double t, int *n)
+{
+	struct event *ev, *evleft;
+	struct rb_node *p;
+	int npop, j, cmp;
+
+	npop = evidx->npop_all;
+	memset(n, 0, sizeof(int) * npop);
+	p = evidx->idx->tree->rb_root;
+	while(p){
+		ev = (struct event *)p->rb_data;
+		cmp = t >= ev->t;
+		if(cmp){
+			for(j = 0; j < npop; j++)
+				n[j] += ev->dn[j];
+
+			if(p->rb_link[0]){
+				evleft = (struct event *)p->rb_link[0]->rb_data;
+				for(j = 0; j < npop; j++)
+					n[j] += evleft->sumdn[j];
+			}
+			p = p->rb_link[1];
+
+		}else{
+			p = p->rb_link[0];
+		}
+	}
+
+	if(cmp){
+		seq_traverser l;
+		l = GET_LIST(ev);
+		return evindex_next(&l);
+	}else{
+		return ev;
+	}
 }
 
 void evindex_propagate_add(int height, struct rb_node **stack, int npop, int *dn)

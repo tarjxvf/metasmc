@@ -1218,7 +1218,7 @@ struct event *rnd_select_point(struct genealogy *G, struct edge **eo, int *popo,
 output:
 	*eo = e;
 	*popo = e->bot->pop;
-	*to = tsplt = e->bot->t + g - running;
+	*to = tsplt = t = e->bot->t + g - running;
 //if(G->cfg->debug)
 //fprintf(stderr,"recombination time=%.10f, g=%.10f, select=(%.10f, %.10f)\n", tsplt, g, e->bot->t, e->top->t);
 
@@ -1228,18 +1228,18 @@ output:
 #ifdef DEBUG
 	fprintf(stderr, "g=%.6f\n", g);
 #endif
-	/* Compute real time point. */
-	t = 0;
-//	evl = G->evlist->front;
-//	ev = (struct event *)GET_OBJ(evl);
-	ev = evindex_s_get(G->evidx);
-	while(ev->t <= tsplt){
-		t = ev->t;
-		do_event(G, ev);
-//		evl = evl->next;
-//		ev = (struct event *)GET_OBJ(evl);
-		ev = evindex_s_forward(G->evidx);
+	for(i = 0; i < G->cfg->ndevents; i++){
+		ev = G->cfg->devents[i];
+		if(ev->t > t)
+			break;
+		else
+			do_event(G, ev);
 	}
+
+	ev = evindex_query(G->evidx, t, G->evidx->dn);
+	evindex_s_set(G->evidx, ev);
+	for(i = 0; i < G->evidx->npop_all; i++)
+		G->pops[i].n = G->evidx->dn[i];
 
 	return ev;
 }

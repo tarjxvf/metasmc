@@ -90,6 +90,7 @@ static inline void evindex_seq_on(struct evindex *evidx)
 
 void evindex_seq_off(struct evindex *evidx);
 
+struct event *evindex_query(struct evindex *evidx, double t, int *n);
 void evindex_propagate_add(int height, struct rb_node **stack, int npop, int *dn);
 void evindex_propagate_sub(int height, struct rb_node **stack, int npop, int *dn);
 
