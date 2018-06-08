@@ -843,6 +843,7 @@ struct event *absorption(struct genealogy *G, struct edge *f, int pop, double t)
 		eindex_s_set(G->pops[f->bot->pop].eidx, f);
 	else
 		eindex_s_set(G->pops[e_new->bot->pop].eidx, e_new);
+	eindex_next(&G->pops[f->bot->pop].eidx->cur_s);
 
 /*	if(t > tmrca_old){
 		free_node(G, e->top);
