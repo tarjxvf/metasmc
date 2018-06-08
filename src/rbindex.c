@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include "rbindex.h"
 
@@ -16,7 +17,7 @@ void rbindex_free(struct libavl_allocator *allocator, void *block)
 
 struct libavl_allocator rbindex_allocator = {rbindex_alloc, rbindex_free};
 
-void **rbindex_rb_insert(struct rbindex *eidx, void *obj)
+/*void **rbindex_rb_insert(struct rbindex *eidx, void *obj)
 {
 	void *next;
 
@@ -30,6 +31,125 @@ void **rbindex_rb_insert(struct rbindex *eidx, void *obj)
 	}
 
 	return rb_probe(eidx->tree, obj);
+}*/
+
+void rbindex_rb_insert (struct rbindex *idx, void *item)
+{
+  struct rb_node *pa[RB_MAX_HEIGHT]; /* Nodes on stack. */
+  unsigned char da[RB_MAX_HEIGHT];   /* Directions moved from stack nodes. */
+  struct rb_table *tree;
+  int k;                             /* Stack height. */
+
+  struct rb_node *p; /* Traverses tree looking for insertion point. */
+  struct rb_node *n; /* Newly inserted node. */
+
+  tree = idx->tree;
+  assert (tree != NULL && item != NULL);
+
+  pa[0] = (struct rb_node *) &tree->rb_root;
+  da[0] = 0;
+  k = 1;
+  for (p = tree->rb_root; p != NULL; p = p->rb_link[da[k - 1]])
+    {
+      int cmp = tree->rb_compare (item, p->rb_data, tree->rb_param);
+      if (cmp == 0)
+        return;
+
+      pa[k] = p;
+      da[k++] = cmp > 0;
+    }
+
+  n = pa[k - 1]->rb_link[da[k - 1]] =
+    tree->rb_alloc->libavl_malloc (tree->rb_alloc, sizeof *n);
+  if (n == NULL)
+    return;
+
+  n->rb_data = item;
+  n->rb_link[0] = n->rb_link[1] = NULL;
+  n->rb_color = RB_RED;
+  tree->rb_count++;
+  tree->rb_generation++;
+
+  /* Determine next element. */
+  if(da[k - 1] == 0){
+	  list_insbefore(GET_LIST(pa[k - 1]->rb_data), item);
+  }else{
+	  list_insafter(GET_LIST(pa[k - 1]->rb_data), item);
+  }
+  idx->ls.n++;
+
+  while (k >= 3 && pa[k - 1]->rb_color == RB_RED)
+    {
+      if (da[k - 2] == 0)
+        {
+          struct rb_node *y = pa[k - 2]->rb_link[1];
+          if (y != NULL && y->rb_color == RB_RED)
+            {
+              pa[k - 1]->rb_color = y->rb_color = RB_BLACK;
+              pa[k - 2]->rb_color = RB_RED;
+              k -= 2;
+            }
+          else
+            {
+              struct rb_node *x;
+
+              if (da[k - 1] == 0)
+                y = pa[k - 1];
+              else
+                {
+                  x = pa[k - 1];
+                  y = x->rb_link[1];
+                  x->rb_link[1] = y->rb_link[0];
+                  y->rb_link[0] = x;
+                  pa[k - 2]->rb_link[0] = y;
+                }
+
+              x = pa[k - 2];
+              x->rb_color = RB_RED;
+              y->rb_color = RB_BLACK;
+
+              x->rb_link[0] = y->rb_link[1];
+              y->rb_link[1] = x;
+              pa[k - 3]->rb_link[da[k - 3]] = y;
+              break;
+            }
+        }
+      else
+        {
+          struct rb_node *y = pa[k - 2]->rb_link[0];
+          if (y != NULL && y->rb_color == RB_RED)
+            {
+              pa[k - 1]->rb_color = y->rb_color = RB_BLACK;
+              pa[k - 2]->rb_color = RB_RED;
+              k -= 2;
+            }
+          else
+            {
+              struct rb_node *x;
+
+              if (da[k - 1] == 1)
+                y = pa[k - 1];
+              else
+                {
+                  x = pa[k - 1];
+                  y = x->rb_link[0];
+                  x->rb_link[0] = y->rb_link[1];
+                  y->rb_link[1] = x;
+                  pa[k - 2]->rb_link[1] = y;
+                }
+
+              x = pa[k - 2];
+              x->rb_color = RB_RED;
+              y->rb_color = RB_BLACK;
+
+              x->rb_link[1] = y->rb_link[0];
+              y->rb_link[0] = x;
+              pa[k - 3]->rb_link[da[k - 3]] = y;
+              break;
+            }
+        }
+    }
+  tree->rb_root->rb_color = RB_BLACK;
 }
 
 static inline int find_root(int n, int h)

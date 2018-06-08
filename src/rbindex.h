@@ -126,7 +126,8 @@ static inline void rbindex_delete(struct rbindex *eidx, void *obj)
 		rbindex_rb_delete(eidx, obj);
 }
 
-void **rbindex_rb_insert(struct rbindex *eidx, void *obj);
+void rbindex_rb_insert (struct rbindex *idx, void *item);
+//void **rbindex_rb_insert(struct rbindex *eidx, void *obj);
 void rbindex_delete(struct rbindex *eidx, void *obj);
 void rbindex_destroy(struct rbindex *eidx);
 struct rbindex *rbindex_create(rb_comparison_func *compar, void *param, struct libavl_allocator *allocator);
