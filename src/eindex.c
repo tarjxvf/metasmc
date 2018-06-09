@@ -32,10 +32,17 @@ void eindex_seq_off(struct rbindex *eidx)
 	int nnodes;
 
 	nnodes = eidx->ls.n;
-	nodes = malloc(sizeof(struct rb_node *) * nnodes);
+	nodes = eidx->nc.nodes;
 	rbindex_clearflag(eidx, RBINDEX_SEQUENTIAL);
 	rbindex_rebuild_tree(eidx, nodes);
-	free(nodes);
+}
+
+void eindex_reset(struct genealogy *G, struct rbindex *eidx)
+{
+	list_init(&eidx->ls);
+	list_append(&eidx->ls, GET_OBJ(eidx->lsentinel));
+	list_append(&eidx->ls, GET_OBJ(eidx->rsentinel));
+	rbindex_rb_clear(eidx);
 }
 
 void eindex_destroy(struct genealogy *G, struct rbindex *eidx)
@@ -138,7 +145,8 @@ struct rbindex *eindex_create(struct genealogy *G, int pop)
 	struct node *top, *bot;
 	struct edge *e;
 
-	eidx = rbindex_create(eindex_compar, NULL, &rbindex_allocator);
+	eidx = rbindex_create(eindex_compar, G->cfg->maxfrag * 2);
+//	eidx = rbindex_create(eindex_compar, 1000);
 
 	// Set up sentinel
 	top = alloc_node(G, NODE_DUMMY, pop, 0);

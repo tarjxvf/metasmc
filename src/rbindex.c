@@ -5,17 +5,89 @@
 
 #include "rbindex.h"
 
-void *rbindex_alloc(struct libavl_allocator *allocator, size_t size)
+/*void *rbindex_alloc(struct libavl_allocator *allocator, size_t size)
 {
+	struct rbindex_cache *nc;
+
 	return malloc(size);
 }
 
 void rbindex_free(struct libavl_allocator *allocator, void *block)
 {
 	free(block);
+}*/
+
+void rbindex_cache_extend(struct rbindex_cache *nc, int new_size)
+{
+	int *pid, i;
+	char *nd;
+
+	nc->nodes = realloc(nc->nodes, sizeof(struct rb_node *) * new_size);
+	for(i = nc->cache_size; i < new_size; i++){
+		nc->nodes[i] = nd = malloc(sizeof(struct rb_node) + sizeof(int));
+		pid = (int *)(nd + sizeof(struct rb_node));
+		*pid = i;
+
+	}
+	nc->cache_size = new_size;
 }
 
-struct libavl_allocator rbindex_allocator = {rbindex_alloc, rbindex_free};
+void *rbindex_alloc(struct libavl_allocator *allocator, size_t size)
+{
+	struct rbindex_cache *nc;
+	struct list *queue;
+	int id;
+
+	nc = allocator->allocator_data;
+	queue = &nc->free_list;
+
+	if(queue->front == NULL){
+		/* Allocate a new node in binary indexed tree. */
+		if(nc->maxnodes >= nc->cache_size){
+			rbindex_cache_extend(nc, nc->cache_size + 1000);
+		}
+		id = nc->maxnodes++;
+
+	}else{
+		struct list_head *l;
+		int *ptr;
+
+		/* Get a existing empty node in binary indexed tree. */
+		l = queue->front;
+		ptr = (int *)GET_OBJ(l);
+		id = *ptr;
+		__list_remove(queue, l);
+		free(l);
+	}
+
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: id=%d, nodes[id]=%x\n", __func__, __LINE__, id, nc->nodes[id]);
+#endif
+
+	return nc->nodes[id];
+}
+
+void rbindex_free(struct libavl_allocator *allocator, struct rb_node *nd)
+{
+	struct rbindex_cache *nc;
+	struct list_head *l;
+	int id, *pidx;
+
+	nc = allocator->allocator_data;
+	id = *(int *)((char *)nd + sizeof(struct rb_node));
+
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: id=%d, nd=%x\n", __func__, __LINE__, id, nd);
+#endif
+
+	/* Add freed id to the queue. */
+	l = malloc(sizeof(struct list_head) + sizeof(int));
+	pidx = (int *)GET_OBJ(l);
+	*pidx = id;
+	__list_append(&nc->free_list, l);
+}
+
+//struct libavl_allocator rbindex_allocator = {NULL, rbindex_alloc, rbindex_free};
 
 /*void **rbindex_rb_insert(struct rbindex *eidx, void *obj)
 {
@@ -152,6 +224,30 @@ void rbindex_rb_insert (struct rbindex *idx, void *item)
   tree->rb_root->rb_color = RB_BLACK;
 }
 
+void rbindex_rb_clear(struct rbindex *eidx)
+{
+	struct rbindex_cache *nc;
+	struct list_head *l;
+	struct list *queue;
+
+	nc = &eidx->nc;
+
+	/* Clear free list. */
+	queue = &nc->free_list;
+	l = queue->front;
+	while(l){
+		struct list_head *tmp;
+
+		tmp = l->next;
+		__list_remove(queue, l);
+		free(l);
+		l = tmp;
+	}
+
+	eidx->tree->rb_count = 0;
+	eidx->tree->rb_generation = 0;
+}
+
 static inline int find_root(int n, int h)
 {
 	int half, quad, r;
@@ -234,7 +330,13 @@ void rbindex_rebuild_tree_slow(struct rbindex *eidx, struct rb_node **nodes)
 	void **objs;
 
 	nnodes = eidx->ls.n;
-	rb_destroy(eidx->tree, NULL);
+	rbindex_rb_clear(eidx);
+	if(nnodes >= eidx->nc.cache_size)
+		rbindex_cache_extend(&eidx->nc, nnodes);
+	nodes = eidx->nc.nodes;
+
+//	rb_destroy(eidx->tree, NULL);
+
 	objs = malloc(sizeof(void *) * nnodes);
 	l = eidx->ls.front;
 	for(i = 0; i < nnodes; i++){
@@ -252,7 +354,6 @@ void rbindex_rebuild_tree_slow(struct rbindex *eidx, struct rb_node **nodes)
 
 //	nodes = malloc(sizeof(struct rb_node *) * nnodes);
 	for(i = nnodes - 1; i >= 0; i--){
-		nodes[i] = malloc(sizeof(struct rb_node));
 		nodes[i]->rb_data = objs[tree[i]];
 
 		// Color nodes
@@ -272,9 +373,11 @@ void rbindex_rebuild_tree_slow(struct rbindex *eidx, struct rb_node **nodes)
 			nodes[i]->rb_link[1] = nodes[i * 2 + 2];
 	}
 
-	eidx->tree = rb_create(eidx->compar, NULL, &rbindex_allocator);
+//	eidx->tree = rb_create(eidx->compar, NULL);
 	eidx->tree->rb_root = nodes[0];
 	nodes[0]->rb_color = RB_BLACK;
+	eidx->tree->rb_count = nnodes;
+	eidx->nc.maxnodes = nnodes;
 
 //	free(nodes);
 	free(objs);
@@ -289,7 +392,11 @@ void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 	struct list_head *l;
 
 	nnodes = eidx->ls.n;
-	rb_destroy(eidx->tree, NULL);
+//	rb_destroy(eidx->tree, NULL);
+	rbindex_rb_clear(eidx);
+	if(nnodes >= eidx->nc.cache_size)
+		rbindex_cache_extend(&eidx->nc, nnodes);
+	nodes = eidx->nc.nodes;
 
 	tree = malloc(sizeof(int) * nnodes);
 	map = malloc(sizeof(int) * nnodes);
@@ -303,7 +410,6 @@ void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 	l = eidx->ls.front;
 	for(i = 0; i < nnodes; i++){
 		j = map[i];
-		nodes[j] =  malloc(sizeof(struct rb_node));
 		nodes[j]->rb_data = GET_OBJ(l);
 		l = l->next;
 	}
@@ -327,32 +433,62 @@ void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 			nodes[i]->rb_link[1] = nodes[i * 2 + 2];
 	}
 
-	eidx->tree = rb_create(eidx->compar, NULL, &rbindex_allocator);
-	eidx->tree->rb_root = nodes[0];
-	nodes[0]->rb_color = RB_BLACK;
+//	eidx->tree = rb_create(eidx->compar, NUL);
 
-//	free(nodes);
+	eidx->tree->rb_root = nodes[0];
+	eidx->tree->rb_count = nnodes;
+	nodes[0]->rb_color = RB_BLACK;
+	eidx->nc.maxnodes = nnodes;
+
 	free(tree);
 	free(map);
 }
 
 void rbindex_destroy(struct rbindex *eidx)
 {
-	rb_destroy(eidx->tree, NULL);
+	struct rbindex_cache *nc;
+	int i;
+
+	nc = &eidx->nc;
+	rbindex_rb_clear(eidx);
+	for(i = 0; i < nc->cache_size; i++)
+		free(nc->nodes[i]);
+	free(nc->nodes);
+//	rb_destroy(eidx->tree, NULL);
+	free(eidx->tree);
 	free(eidx);
 }
 
-struct rbindex *rbindex_create(rb_comparison_func *compar, void *param, struct libavl_allocator *allocator)
+struct rbindex *rbindex_create(rb_comparison_func *compar, int cache_size)
 {
 	struct rbindex *eidx;
+	int i, *pid;
+	char *nd;
 
 	eidx = malloc(sizeof(struct rbindex));
+
+	eidx->nc.cache_size = cache_size;
+	eidx->nc.maxnodes = 0;
+	eidx->nc.nnodes = 0;
+	eidx->nc.nodes = malloc(sizeof(struct rb_node *) * cache_size);
+	memset(eidx->nc.nodes, 0, sizeof(struct rb_node *) * cache_size);
+	for(i = 0; i < cache_size; i++){
+		eidx->nc.nodes[i] = nd = malloc(sizeof(struct rb_node) + sizeof(int));
+		pid = (int *)(nd + sizeof(struct rb_node));
+		*pid = i;
+	}
+
+	list_init(&eidx->nc.free_list);
+	eidx->allocator.allocator_data = &eidx->nc;
+	eidx->allocator.libavl_malloc = rbindex_alloc;
+	eidx->allocator.libavl_free = rbindex_free;
+
 	eidx->flags = 0;
 	eidx->compar = compar;
-	eidx->tree = rb_create(compar, param, allocator);
 	list_init(&eidx->ls);
+
+	eidx->tree = rb_create(compar, NULL, &eidx->allocator);
 
 	return eidx;
 }
-
 

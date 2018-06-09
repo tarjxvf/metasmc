@@ -9,6 +9,14 @@
 //typedef struct seq_traverser seq_traverser;
 typedef struct list_head * seq_traverser;
 
+struct rbindex_cache {
+	int nnodes;
+	int cache_size;
+	int maxnodes;	// The index of rightmost nodes
+	struct rb_node **nodes;
+	struct list free_list;	// List of free index before maxnodes
+};
+
 struct rbindex {
 	int flags;
 	rb_comparison_func *compar;
@@ -17,6 +25,9 @@ struct rbindex {
 	struct list_head *rsentinel;
 	struct list ls;
 	struct list_head *cur_s;	// Cursor for sequential mode. New objects are inserted before cursor.
+
+	struct rbindex_cache nc;
+	struct libavl_allocator allocator;
 };
 
 void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes);
@@ -129,7 +140,8 @@ static inline void rbindex_delete(struct rbindex *eidx, void *obj)
 void rbindex_rb_insert (struct rbindex *idx, void *item);
 //void **rbindex_rb_insert(struct rbindex *eidx, void *obj);
 void rbindex_delete(struct rbindex *eidx, void *obj);
+void rbindex_rb_clear(struct rbindex *eidx);
 void rbindex_destroy(struct rbindex *eidx);
-struct rbindex *rbindex_create(rb_comparison_func *compar, void *param, struct libavl_allocator *allocator);
+struct rbindex *rbindex_create(rb_comparison_func *compar, int cache_size);
 
 #endif

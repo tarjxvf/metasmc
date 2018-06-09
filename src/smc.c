@@ -214,7 +214,7 @@ void remove_event_rb_join(struct genealogy *G, struct join_event *jev)
 	struct rb_traverser tr;
 
 #ifdef DEBUG
-	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
+	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, jev, jev->type, jev->t);
 #endif
 
 	rb_t_find(&tr, G->evidx->idx->tree, (void *)jev);
@@ -234,7 +234,7 @@ void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev)
 	struct rb_traverser tr;
 
 #ifdef DEBUG
-	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
+	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, sev, sev->type, sev->t);
 #endif
 	rb_t_find(&tr, G->evidx->idx->tree, (void *)sev);
 	dn_clear(G->cfg->npop_all, G->evidx->dn);
@@ -2316,9 +2316,12 @@ void clear_genealogy(struct genealogy *G)
 		memset(G->pops[pop].eptrs, 0, sizeof(struct edge *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
 		G->pops[pop].nsam = G->pops[pop].n = 0;
-		eindex_destroy(G, G->pops[pop].eidx);
-		G->pops[pop].eidx = eindex_create(G, pop);
+//		eindex_destroy(G, G->pops[pop].eidx);
+		eindex_reset(G, G->pops[pop].eidx);
+//		G->pops[pop].eidx = eindex_create(G, pop);
 	}
+
+	evindex_reset(G, G->evidx);
 }
 
 struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)

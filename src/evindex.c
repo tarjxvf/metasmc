@@ -80,9 +80,9 @@ void evindex_seq_off(struct evindex *evidx)
 	int nnodes, i, j;
 
 	nnodes = evidx->idx->ls.n;
-	nodes = malloc(sizeof(struct rb_node *) * nnodes);
 	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
 	rbindex_rebuild_tree(evidx->idx, nodes);
+	nodes = evidx->idx->nc.nodes;
 
 	for(i = nnodes - 1; i >= 0; i--){
 		struct event *ev, *left, *right;
@@ -101,8 +101,6 @@ void evindex_seq_off(struct evindex *evidx)
 			dn_add(evidx->npop_all, ev->sumdn, right->sumdn);
 		}
 	}
-
-	free(nodes);
 }
 
 /* Calculate number of lineages at time t. */
@@ -656,6 +654,14 @@ void evindex_insert(struct evindex *evidx, struct event *ev)
 	}
 }
 
+void evindex_reset(struct genealogy *G, struct evindex *evidx)
+{
+	list_init(&evidx->idx->ls);
+	list_append(&evidx->idx->ls, GET_OBJ(evidx->idx->lsentinel));
+	list_append(&evidx->idx->ls, GET_OBJ(evidx->idx->rsentinel));
+	rbindex_rb_clear(evidx->idx);
+}
+
 void evindex_destroy(struct genealogy *G, struct evindex *evidx)
 {
 	struct event *ev;
@@ -694,7 +700,7 @@ struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
 	int npop;
 
 	evidx = malloc(sizeof(struct evindex));
-	evidx->idx = rbindex_create(evindex_compar, NULL, &rbindex_allocator);
+	evidx->idx = rbindex_create(evindex_compar, cfg->maxfrag * 2);
 	evidx->npop_all = npop = cfg->npop_all;
 	evidx->dn = malloc(sizeof(int) * npop);
 

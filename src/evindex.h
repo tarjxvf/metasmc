@@ -133,6 +133,7 @@ static inline void evindex_s_insert(struct evindex *evidx, struct event *e)
 
 void evindex_insert(struct evindex *evidx, struct event *ev);
 
+void evindex_reset(struct genealogy *G, struct evindex *evidx);
 void evindex_destroy(struct genealogy *G, struct evindex *evidx);
 struct evindex *evindex_create(struct genealogy *G, struct config *cfg);
 

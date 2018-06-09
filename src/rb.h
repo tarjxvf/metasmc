@@ -36,6 +36,7 @@ typedef void *rb_copy_func (void *rb_item, void *rb_param);
 /* Memory allocator. */
 struct libavl_allocator
   {
+    void *allocator_data;
     void *(*libavl_malloc) (struct libavl_allocator *, size_t libavl_size);
     void (*libavl_free) (struct libavl_allocator *, void *libavl_block);
   };

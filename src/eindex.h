@@ -80,6 +80,7 @@ static inline void eindex_insert(struct rbindex *eidx, struct edge *e)
 		eindex_rb_insert(eidx, e);
 }
 
+void eindex_reset(struct genealogy *G, struct rbindex *eidx);
 void eindex_destroy(struct genealogy *G, struct rbindex *eidx);
 struct rbindex *eindex_create(struct genealogy *G, int pop);
 
