@@ -7,7 +7,7 @@ include_HEADERS=util.h global.h mutation.h smc.h slab.h bit.h rb.h rbindex.h tsi
 
 libsmc_la_SOURCES=smc.c util.c mutation.c global.c rand.c slab.c bit.c tsindex.c rb.c rbindex.c eindex.c evindex.c mt19937-64/mt19937-64.c
 libsmc_la_LDFLAGS= -shared -fPIC $(LAPACK_LIBS) -lrt -lm -lgfortran -llapack -llapacke
-libsmc_la_CFLAGS=$(LAPACK_CFLAGS)
+libsmc_la_CFLAGS=$(LAPACK_CFLAGS) -fopenmp
 
 sampler_SOURCES=sampler.c
 sampler_LDADD=libsmc.la

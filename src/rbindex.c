@@ -2,8 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <omp.h>
 
 #include "rbindex.h"
+
+#define NUM_THREADS 4
 
 /*void *rbindex_alloc(struct libavl_allocator *allocator, size_t size)
 {
@@ -248,7 +251,7 @@ void rbindex_rb_clear(struct rbindex *eidx)
 	eidx->tree->rb_generation = 0;
 }
 
-static inline int find_root(int n, int h)
+/*static inline int find_root(int n, int h)
 {
 	int half, quad, r;
 
@@ -259,10 +262,10 @@ static inline int find_root(int n, int h)
 		return quad - 1 + r;
 	else
 		return half - 1;
-}
+}*/
 
 // Calculate indices of complete binary tree from an ordered array
-void complete_binary_tree(int nnodes, int *tree, int *map)
+/*void complete_binary_tree(int nnodes, int *tree, int *map)
 {
 	int i, h, n, half, quad;
 	int *beg, *end, *heights;
@@ -319,12 +322,153 @@ void complete_binary_tree(int nnodes, int *tree, int *map)
 	free(heights);
 	free(end);
 	free(beg);
+}*/
+
+static inline int find_root(int n, int h)
+{
+	int half, quad, r;
+
+	half = 1 << (h - 1);
+	quad = half >> 1;
+	r = n - half + 1;
+	if(r < quad)
+		return quad - 1 + r;
+	else
+		return half - 1;
+}
+
+struct cbt_info {
+	int beg;
+	int end;
+	int root;
+	int h;
+};
+
+static inline void cbt_set(struct cbt_info *t, int root, int beg, int end, int h)
+{
+	t->root = root;
+	t->beg = beg;
+	t->end = end;
+	t->h = h;
+}
+
+#define QUEUE_PUSH(i) queue[(*k)++] = i
+#define QUEUE_POP() queue[(*j)++]
+
+void __cbt_addchild(struct cbt_info *tree, int n, int *queue, int *j, int *k)
+{
+	int root, beg, end, r, h, half, quad, i, left, right;
+
+	i = QUEUE_POP();
+	beg = tree[i].beg;
+	end = tree[i].end;
+	root = tree[i].root;
+	h = tree[i].h;
+
+	half = 1 << (h - 1);
+	quad = half >> 1;
+	r = end - beg - half + 1;
+
+	root = tree[i].root;
+	// Calculate index of left child.
+	if(*k < n){
+		left = i * 2 + 1;
+		cbt_set(&tree[left], beg + find_root(root - beg, h - 1), beg, root, h - 1);
+		QUEUE_PUSH(left);
+	}
+
+	// Calculate index of left child.
+	if(*k < n){
+		right = left + 1;
+		if(r < quad)
+			cbt_set(&tree[right], root + 1 + find_root(end - root - 1, h - 2), root + 1, end, h - 2);
+		else
+			cbt_set(&tree[right], root + 1 + find_root(end - root - 1, h - 1), root + 1, end, h - 1);
+		QUEUE_PUSH(right);
+	}
+}
+
+void __complete_binary_tree(struct cbt_info *tree, int start)
+{
+	int *queue, j, k, n;
+
+	n = tree[start].end - tree[start].beg;
+	queue = malloc(sizeof(int) * n);
+	queue[0] = start;
+	j = 0;
+	k = 1;
+	do{
+		__cbt_addchild(tree, n, queue, &j, &k);
+	}while(k < n);
+	free(queue);
+}
+
+// Calculate indices of complete binary tree from an ordered array
+void complete_binary_tree_parallel(int nnodes, int *map)
+{
+	struct cbt_info *tree;
+	int i, j, k, h0, *queue;
+
+	tree = malloc(sizeof(struct cbt_info) * nnodes);
+	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
+	queue = malloc(sizeof(int) * nnodes);
+
+	h0 = 0;
+	while((1 << h0) <= nnodes) h0++;
+
+	cbt_set(&tree[0], find_root(nnodes, h0), 0, nnodes, h0);
+	queue[0] = 0;
+	i = 0;
+	k = 1;
+	do{
+		__cbt_addchild(tree, nnodes, queue, &i, &k);
+	}while(k < nnodes && k < 7);
+
+#pragma omp parallel for num_threads(NUM_THREADS)
+	for(j = 3; j < 7; j++){
+		__complete_binary_tree(tree, j);
+	}
+
+#pragma omp parallel for num_threads(NUM_THREADS)
+	for(i = 0; i < nnodes; i++)
+		map[i] = tree[i].root;
+
+	free(tree);
+	free(queue);
+}
+
+// Calculate indices of complete binary tree from an ordered array
+void complete_binary_tree(int nnodes, int *map)
+{
+	struct cbt_info *tree;
+	int i, j, k, h0, *queue;
+
+	tree = malloc(sizeof(struct cbt_info) * nnodes);
+	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
+	queue = malloc(sizeof(int) * nnodes);
+
+	h0 = 0;
+	while((1 << h0) <= nnodes) h0++;
+
+	cbt_set(&tree[0], find_root(nnodes, h0), 0, nnodes, h0);
+	queue[0] = 0;
+	i = 0;
+	k = 1;
+	do{
+		__cbt_addchild(tree, nnodes, queue, &i, &k);
+	}while(k < nnodes);
+
+	for(i = 0; i < nnodes; i++)
+		map[i] = tree[i].root;
+
+	free(tree);
+	free(queue);
 }
 
 // Rebuild tree index from sorted list
-void rbindex_rebuild_tree_slow(struct rbindex *eidx, struct rb_node **nodes)
+void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 {
-	int i, nnodes, h, half, *tree, *map;
+	int i, nnodes, h, half, *tree;
 //	struct rb_node **nodes;
 	struct list_head *l;
 	void **objs;
@@ -335,8 +479,6 @@ void rbindex_rebuild_tree_slow(struct rbindex *eidx, struct rb_node **nodes)
 		rbindex_cache_extend(&eidx->nc, nnodes);
 	nodes = eidx->nc.nodes;
 
-//	rb_destroy(eidx->tree, NULL);
-
 	objs = malloc(sizeof(void *) * nnodes);
 	l = eidx->ls.front;
 	for(i = 0; i < nnodes; i++){
@@ -346,46 +488,43 @@ void rbindex_rebuild_tree_slow(struct rbindex *eidx, struct rb_node **nodes)
 
 	// Build complete binary tree
 	tree = malloc(sizeof(int) * nnodes);
-	map = malloc(sizeof(int) * nnodes);
-	complete_binary_tree(nnodes, tree, map);
+	complete_binary_tree(nnodes, tree);
 	h = 0;
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
-//	nodes = malloc(sizeof(struct rb_node *) * nnodes);
-	for(i = nnodes - 1; i >= 0; i--){
+#pragma omp parallel for num_threads(NUM_THREADS)
+	for(i = half - 1; i < nnodes; i++){
+		nodes[i]->rb_color = RB_RED;
 		nodes[i]->rb_data = objs[tree[i]];
-
-		// Color nodes
-		if(i < half - 1)
-			nodes[i]->rb_color = RB_BLACK;
-		else
-			nodes[i]->rb_color = RB_RED;
-
-		// Link nodes
-		if(i * 2 + 1 >= nnodes)
-			nodes[i]->rb_link[0] = NULL;
-		else
-			nodes[i]->rb_link[0] = nodes[i * 2 + 1];
-		if(i * 2 + 2 >= nnodes)
-			nodes[i]->rb_link[1] = NULL;
-		else
-			nodes[i]->rb_link[1] = nodes[i * 2 + 2];
+		nodes[i]->rb_link[0] = nodes[i]->rb_link[1] = NULL;
 	}
 
-//	eidx->tree = rb_create(eidx->compar, NULL);
+#pragma omp parallel for num_threads(NUM_THREADS)
+	for(i = 0; i < half - 1; i++){
+		int left, right;
+
+		nodes[i]->rb_color = RB_BLACK;
+		nodes[i]->rb_data = objs[tree[i]];
+
+		// Link nodes
+		left = i * 2 + 1;
+		right = left + 1;
+		nodes[i]->rb_link[0] = (left < nnodes)?nodes[left]:NULL;
+		nodes[i]->rb_link[1] = (right < nnodes)?nodes[right]:NULL;
+	}
+
+//	eidx->tree = rb_create(eidx->compar, NULL, );
 	eidx->tree->rb_root = nodes[0];
 	nodes[0]->rb_color = RB_BLACK;
-	eidx->tree->rb_count = nnodes;
 	eidx->nc.maxnodes = nnodes;
 
-//	free(nodes);
 	free(objs);
 	free(tree);
 }
 
 // Rebuild tree index from sorted list
-void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
+/*void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 {
 	int i, j, nnodes, *tree, *map, half, h;
 //	struct rb_node **nodes;
@@ -442,7 +581,7 @@ void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 
 	free(tree);
 	free(map);
-}
+}*/
 
 void rbindex_destroy(struct rbindex *eidx)
 {
