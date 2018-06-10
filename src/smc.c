@@ -30,10 +30,12 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-		free(l);
+		cache_free(G->cfg->node_cache[nd->type], l);
+//		free(l);
 
 	}else{
-		free(nd);
+		cache_free(G->cfg->node_cache[nd->type], nd);
+//		free(nd);
 	}
 #ifdef DEBUG
 	fprintf(stderr, "Freed node %x\n\n", nd);
@@ -50,8 +52,11 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	ptr = malloc(nodesize[type]);
-	memset(ptr, 0, nodesize[type]);
+	ptr = cache_alloc(G->cfg->node_cache[type]);
+	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
+
+//	ptr = malloc(nodesize[type]);
+//	memset(ptr, 0, nodesize[type]);
 
 	if(type == NODE_SAM){
 		struct list_head *l;
@@ -82,8 +87,9 @@ void free_edge(struct genealogy *G, struct edge *e)
 	fprintf(stderr, "Entering function %s, e=%x\n", __func__, e);
 #endif
 	l = GET_LIST(e);
-	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
-	free(l);
+//	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
+	cache_free(G->cfg->edge_cache, l);
+//	free(l);
 #ifdef DEBUG
 	fprintf(stderr, "Freed edge %x (%x)\n", e, l);
 #endif
@@ -100,7 +106,8 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
+	l = cache_alloc(G->cfg->edge_cache);
+//	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
 	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
@@ -2256,17 +2263,31 @@ void clear_genealogy(struct genealogy *G)
 
 struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 {
-	int pop, npop, nsplt, i;
+	int pop, npop, nsplt, i, npop_all;
 	struct genealogy *G;
 	struct list_head *l;
 
 	npop = cfg->npop;
 	nsplt = cfg->nsplt;
+	npop_all = npop + nsplt;
 
 	G = malloc(sizeof(struct genealogy));
 	memset(G, 0, sizeof(struct genealogy));
 
 	G->cfg = cfg;
+	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
+	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];
+
+	cfg->edge_cache = cache_create(sizeof(struct list_head) + sizeof(struct edge), cfg->maxfrag * 4);
+	cfg->frag_cache = cache_create(sizeof(struct list_head) + sizeof(struct frag *), cfg->maxfrag);
+
+	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
+	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
+
 	G->pops = malloc(sizeof(struct population) * (npop + nsplt));
 	memset(G->pops, 0, sizeof(struct population) * (npop + nsplt));
 	for(pop = 0; pop < npop + nsplt; pop++){
@@ -2349,6 +2370,17 @@ void destroy_genealogy(struct genealogy *G)
 	free(G->pops);
 
 	evindex_destroy(G, G->evidx);
+
+	cache_destroy(G->cfg->node_cache[NODE_COAL]);
+	cache_destroy(G->cfg->node_cache[NODE_MIGR]);
+	cache_destroy(G->cfg->node_cache[NODE_XOVER]);
+	cache_destroy(G->cfg->node_cache[NODE_SAM]);
+
+	cache_destroy(cfg->edge_cache);
+	cache_destroy(cfg->frag_cache);
+
+	cache_destroy(G->cfg->event_cache[EVENT_COAL]);
+	cache_destroy(G->cfg->event_cache[EVENT_MIGR]);
 
 	free(G);
 #ifdef DEBUG
@@ -2538,8 +2570,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //		for(i = 0; i < MAXFRAG && f < nfrag && fgset[f].start < ub; i++, f++){
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
-//			l = mem_cache_alloc(cfg->frag_cache);
-			l = malloc(sizeof(struct list_head) + sizeof(struct frag *));
+			l = cache_alloc(cfg->frag_cache);
+//			l = malloc(sizeof(struct list_head) + sizeof(struct frag *));
 
 			*((struct frag **)GET_OBJ(l)) = fg = &fgset[f];
 			list_append(&R, GET_OBJ(l));
@@ -2812,8 +2844,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 				__list_remove(&Rold, fgl);
 //				G->nsam--;
-				free(fgl);
-//				mem_cache_free(cfg->frag_cache, (char *)fgl);
+//				free(fgl);
+				cache_free(cfg->frag_cache, (void *)fgl);
 			}
 			fgl = tmp;
 		}
@@ -2851,8 +2883,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fg->rd[j].seq = NULL;
 		}
 		__list_remove(&Rold, fgl);
-		free(fgl);
-//		mem_cache_free(cfg->frag_cache, (char *)fgl);
+//		free(fgl);
+		cache_free(cfg->frag_cache, (void *)fgl);
 
 		fgl = tmp;
 	}

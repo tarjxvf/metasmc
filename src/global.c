@@ -23,7 +23,11 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
+	if(type == EVENT_COAL || type == EVENT_MIGR)
+		l = cache_alloc(cfg->event_cache[type]);
+	else
+		l = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
+
 	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
@@ -36,6 +40,14 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
 #endif
 	return ev;
+}
+
+void free_event(struct config *cfg, struct event *ev)
+{
+	if(ev->type == EVENT_COAL || ev->type == EVENT_MIGR)
+		cache_free(cfg->event_cache[ev->type], GET_LIST(ev));
+	else
+		free(GET_LIST(ev));
 }
 
 void print_event(struct config *cfg, struct event *ev)
@@ -439,17 +451,28 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	}
 
 	/* Initialize object caches. */
-/*	cfg->node_cache[NODE_COAL] = mem_cache_create(sizeof(struct coal_node), NULL, NULL);
-	cfg->node_cache[NODE_MIGR] = mem_cache_create(sizeof(struct migr_node), NULL, NULL);
-	cfg->node_cache[NODE_XOVER] = mem_cache_create(sizeof(struct xover_node), NULL, NULL);
-	cfg->node_cache[NODE_SAM] = mem_cache_create(sizeof(struct list_head) + sizeof(struct sam_node), NULL, NULL);
-	cfg->node_cache[NODE_FLOAT] = mem_cache_create(sizeof(struct dummy_node), NULL, NULL);
+/*	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node), maxfrag * 4);
+	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), maxfrag * 4);
+	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), maxfrag * 4);
+	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), maxfrag * 4);
+	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
+	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];*/
 
-	cfg->event_cache[EVENT_COAL] = mem_cache_create(sizeof(struct list_head) + sizeof(struct coal_event), NULL, NULL);
-	cfg->event_cache[EVENT_MIGR] = mem_cache_create(sizeof(struct list_head) + sizeof(struct migr_event), NULL, NULL);
+//	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
+//	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
+/*	cfg->event_cache[EVENT_JOIN] = cfg->event_cache[NODE_MIGR];
+	cfg->event_cache[EVENT_GROW] = cache_create(sizeof(struct list_head) + sizeof(struct grow_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_SIZE] = cfg->event_cache[EVENT_GROW];
+	cfg->event_cache[EVENT_RMIG] = cache_create(sizeof(struct list_head) + sizeof(struct rmig_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_GMIG] = cache_create(sizeof(struct list_head) + sizeof(struct gmig_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_GSIZ] = cfg->event_cache[EVENT_GGRO] = cfg->event_cache[EVENT_GMIG];
+	cfg->event_cache[EVENT_SPLT] = cache_create(sizeof(struct list_head) + sizeof(struct splt_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_DUMY] = cache_create(sizeof(struct list_head) + sizeof(struct dumy_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_DXVR] = cache_create(sizeof(struct list_head) + sizeof(struct dxvr_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_SAMP] = cache_create(sizeof(struct list_head) + sizeof(struct samp_event) + sizeof(int) * 2 * npop_all, 10);*/
 
-	cfg->edge_cache = mem_cache_create(sizeof(struct list_head) + sizeof(struct edge), NULL, NULL);*/
-//	cfg->frag_cache = mem_cache_create(sizeof(struct list_head) + sizeof(struct frag *), NULL, NULL);
+//	cfg->edge_cache = cache_create(sizeof(struct list_head) + sizeof(struct edge), maxfrag * 4);
+//	cfg->frag_cache = cache_create(sizeof(struct list_head) + sizeof(struct frag *), maxfrag);
 
 	/* Set up empty event list (contains only one dummy event) */
 	ev = alloc_event(cfg, EVENT_GSIZ, INFINITY);
@@ -543,18 +566,23 @@ void destroy_config(struct config *cfg)
 		free(l);
 	}
 
-/*	mem_cache_destroy(cfg->node_cache[NODE_COAL]);
-	mem_cache_destroy(cfg->node_cache[NODE_MIGR]);
-	mem_cache_destroy(cfg->node_cache[NODE_XOVER]);
-	mem_cache_destroy(cfg->node_cache[NODE_SAM]);
-	mem_cache_destroy(cfg->node_cache[NODE_FLOAT]);
+/*	cache_destroy(cfg->node_cache[NODE_COAL]);
+	cache_destroy(cfg->node_cache[NODE_MIGR]);
+	cache_destroy(cfg->node_cache[NODE_XOVER]);
+	cache_destroy(cfg->node_cache[NODE_SAM]);
 
-	mem_cache_destroy(cfg->event_cache[EVENT_COAL]);
-	mem_cache_destroy(cfg->event_cache[EVENT_MIGR]);
+	cache_destroy(cfg->edge_cache);
+	cache_destroy(cfg->frag_cache);*/
 
-	mem_cache_destroy(cfg->edge_cache);*/
-//	if(cfg->frag_cache)
-//		mem_cache_destroy(cfg->frag_cache);
+//	cache_destroy(cfg->event_cache[EVENT_COAL]);
+//	cache_destroy(cfg->event_cache[EVENT_MIGR]);
+/*	cache_destroy(cfg->event_cache[EVENT_GROW]);
+	cache_destroy(cfg->event_cache[EVENT_RMIG]);
+	cache_destroy(cfg->event_cache[EVENT_GMIG]);
+	cache_destroy(cfg->event_cache[EVENT_SPLT]);
+	cache_destroy(cfg->event_cache[EVENT_DUMY]);
+	cache_destroy(cfg->event_cache[EVENT_DXVR]);
+	cache_destroy(cfg->event_cache[EVENT_SAMP]);*/
 
 	free(cfg->devents);
 	free(cfg->mmut);

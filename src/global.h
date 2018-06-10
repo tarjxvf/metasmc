@@ -135,6 +135,7 @@ struct samp_event {
 };*/
 
 struct event *alloc_event(struct config *, int, double);
+void free_event(struct config *cfg, struct event *ev);
 void print_event(struct config *cfg, struct event *ev);
 
 /* Single-end read. */
@@ -228,6 +229,10 @@ struct config {
 	struct event **devents;	// Array of demographic events
 
 	/*** Caches of frequently-used objects ***/
+	struct cache *node_cache[6];
+	struct cache *event_cache[13];
+	struct cache *edge_cache;
+	struct cache *frag_cache;
 
 	int maxfrag;
 int debug;

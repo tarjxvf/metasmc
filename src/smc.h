@@ -232,19 +232,22 @@ void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev);
 static inline void remove_event_rb(struct genealogy *G, struct event *ev)
 {
 	evindex_rb_delete(G->evidx, ev);
-	free(GET_LIST(ev));
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
 }
 
 static inline void remove_event_s(struct genealogy *G, struct event *ev)
 {
 	evindex_s_delete(G->evidx, ev);
-	free(GET_LIST(ev));
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
 }
 
 static inline void remove_event(struct genealogy *G, struct event *ev)
 {
 	evindex_delete(G->evidx, ev);
-	free(GET_LIST(ev));
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
 }
 
 static inline void remove_event_rb_josp(struct genealogy *G, struct event *ev)
