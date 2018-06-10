@@ -53,7 +53,7 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 	ptr = cache_alloc(G->cfg->node_cache[type]);
-	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
+//	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
 
 //	ptr = malloc(nodesize[type]);
 //	memset(ptr, 0, nodesize[type]);
@@ -71,6 +71,7 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 	nd->type = type;
 	nd->pop = pop;
 	nd->t = t;
+	nd->in = NULL;
 #ifdef DEBUG
 	fprintf(stderr, "Allocated node %x at time %.6f with type %d in subpopulation %d\n\n", nd, nd->t, nd->type, nd->pop);
 #endif
@@ -108,7 +109,7 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #endif
 	l = cache_alloc(G->cfg->edge_cache);
 //	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
-	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
+//	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
 	e->top = top;
