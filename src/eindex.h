@@ -70,7 +70,10 @@ static inline void eindex_rb_insert(struct rbindex *eidx, struct edge *e)
 	rbindex_rb_insert(eidx, (void *)e);
 }
 
-void eindex_s_insert(struct rbindex *eidx, struct edge *e);
+static inline void eindex_s_insert(struct rbindex *eidx, struct edge *e)
+{
+	rbindex_s_insert(eidx, (void *)e);
+}
 
 static inline void eindex_insert(struct rbindex *eidx, struct edge *e)
 {

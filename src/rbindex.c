@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <omp.h>
+//#include <omp.h>
 
 #include "rbindex.h"
 
@@ -251,79 +251,6 @@ void rbindex_rb_clear(struct rbindex *eidx)
 	eidx->tree->rb_generation = 0;
 }
 
-/*static inline int find_root(int n, int h)
-{
-	int half, quad, r;
-
-	half = 1 << (h - 1);
-	quad = half >> 1;
-	r = n - half + 1;
-	if(r < quad)
-		return quad - 1 + r;
-	else
-		return half - 1;
-}*/
-
-// Calculate indices of complete binary tree from an ordered array
-/*void complete_binary_tree(int nnodes, int *tree, int *map)
-{
-	int i, h, n, half, quad;
-	int *beg, *end, *heights;
-
-	beg = malloc(sizeof(int) * nnodes);
-	end = malloc(sizeof(int) * nnodes);
-	heights = malloc(sizeof(int) * nnodes);
-
-	h = 0;
-	while((1 << h) <= nnodes) h++;
-
-	n = 1;
-	tree[0] = find_root(nnodes, h);
-	map[tree[0]] = 0;
-	beg[0] = 0;
-	end[0] = nnodes;
-	heights[0] = h;
-	i = 0;
-	while(n < nnodes){
-		int j, left, right, r;
-
-		h = heights[i];
-		half = 1 << (h - 1);
-		quad = half >> 1;
-		r = end[i] - beg[i] - half + 1;
-
-		j = tree[i];
-		// Calculate index of left child.
-		if(n < nnodes){
-			heights[n] = h - 1;
-			left = beg[i] + find_root(j - beg[i], heights[n]);
-			tree[n] = left;
-			map[left] = n;
-			beg[n] = beg[i];
-			end[n] = j;
-			n++;
-		}
-		// Calculate index of left child.
-		if(n < nnodes){
-			if(r < quad)
-				heights[n] = h - 2;
-			else
-				heights[n] = h - 1;
-			right = j + 1 + find_root(end[i] - j - 1, heights[n]);
-			tree[n] = right;
-			map[right] = n;
-			beg[n] = j + 1;
-			end[n] = end[i];
-			n++;
-		}
-		i++;
-	}
-
-	free(heights);
-	free(end);
-	free(beg);
-}*/
-
 static inline int find_root(int n, int h)
 {
 	int half, quad, r;
@@ -424,12 +351,12 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 		__cbt_addchild(tree, nnodes, queue, &i, &k);
 	}while(k < nnodes && k < 7);
 
-#pragma omp parallel for num_threads(NUM_THREADS)
+//#pragma omp parallel for num_threads(NUM_THREADS)
 	for(j = 3; j < 7; j++){
 		__complete_binary_tree(tree, j);
 	}
 
-#pragma omp parallel for num_threads(NUM_THREADS)
+//#pragma omp parallel for num_threads(NUM_THREADS)
 	for(i = 0; i < nnodes; i++)
 		map[i] = tree[i].root;
 
@@ -493,14 +420,14 @@ void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
-#pragma omp parallel for num_threads(NUM_THREADS)
+//#pragma omp parallel for num_threads(NUM_THREADS)
 	for(i = half - 1; i < nnodes; i++){
 		nodes[i]->rb_color = RB_RED;
 		nodes[i]->rb_data = objs[tree[i]];
 		nodes[i]->rb_link[0] = nodes[i]->rb_link[1] = NULL;
 	}
 
-#pragma omp parallel for num_threads(NUM_THREADS)
+//#pragma omp parallel for num_threads(NUM_THREADS)
 	for(i = 0; i < half - 1; i++){
 		int left, right;
 
@@ -523,8 +450,81 @@ void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 	free(tree);
 }
 
+/*static inline int find_root(int n, int h)
+{
+	int half, quad, r;
+
+	half = 1 << (h - 1);
+	quad = half >> 1;
+	r = n - half + 1;
+	if(r < quad)
+		return quad - 1 + r;
+	else
+		return half - 1;
+}
+
+// Calculate indices of complete binary tree from an ordered array
+void complete_binary_tree(int nnodes, int *tree, int *map)
+{
+	int i, h, n, half, quad;
+	int *beg, *end, *heights;
+
+	beg = malloc(sizeof(int) * nnodes);
+	end = malloc(sizeof(int) * nnodes);
+	heights = malloc(sizeof(int) * nnodes);
+
+	h = 0;
+	while((1 << h) <= nnodes) h++;
+
+	n = 1;
+	tree[0] = find_root(nnodes, h);
+	map[tree[0]] = 0;
+	beg[0] = 0;
+	end[0] = nnodes;
+	heights[0] = h;
+	i = 0;
+	while(n < nnodes){
+		int j, left, right, r;
+
+		h = heights[i];
+		half = 1 << (h - 1);
+		quad = half >> 1;
+		r = end[i] - beg[i] - half + 1;
+
+		j = tree[i];
+		// Calculate index of left child.
+		if(n < nnodes){
+			heights[n] = h - 1;
+			left = beg[i] + find_root(j - beg[i], heights[n]);
+			tree[n] = left;
+			map[left] = n;
+			beg[n] = beg[i];
+			end[n] = j;
+			n++;
+		}
+		// Calculate index of left child.
+		if(n < nnodes){
+			if(r < quad)
+				heights[n] = h - 2;
+			else
+				heights[n] = h - 1;
+			right = j + 1 + find_root(end[i] - j - 1, heights[n]);
+			tree[n] = right;
+			map[right] = n;
+			beg[n] = j + 1;
+			end[n] = end[i];
+			n++;
+		}
+		i++;
+	}
+
+	free(heights);
+	free(end);
+	free(beg);
+}
+
 // Rebuild tree index from sorted list
-/*void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
+void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes)
 {
 	int i, j, nnodes, *tree, *map, half, h;
 //	struct rb_node **nodes;
