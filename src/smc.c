@@ -1517,6 +1517,14 @@ double recombination(struct genealogy *G)
 	struct edge *e_below_xover, *e4, *e5;	// For simulating behavior of macs
 	struct xover_node *nxover;
 
+	// Leave sequential mode and rebuild red-black tree index
+	if(rbindex_isseq(G->evidx->idx))
+		evindex_seq_off(G->evidx);
+
+//	for(i = 0; i < cfg->npop_all; i++)
+//		if(rbindex_isseq(G->pops[i].eidx))
+//			eindex_seq_off(G->pops[i].eidx);
+
 	cfg = G->cfg;
 	/* Choose recombination point at random. */
 	ev = rnd_select_point(G, &e, &pop, &t);
@@ -2670,11 +2678,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 			break;
 		build_trunk_e(G, lb * reflen);
 
-		// Leave sequential mode and rebuild red-black tree index
-		evindex_seq_off(G->evidx);
-//		for(i = 0; i < cfg->npop_all; i++)
-//			eindex_seq_off(G->pops[i].eidx);
-		tsindex_rebuild(G->tr_xover);
+		if(tsindex_isrebuild(G->tr_xover))
+			tsindex_rebuild(G->tr_xover);
 
 #ifdef DEBUG
 		fprintf(stderr, "%d: G->root=%x, G->root->t=%.6f, G->localMRCA=%x, G->localMRCA->t=%.6f\n", __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
