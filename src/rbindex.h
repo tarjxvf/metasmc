@@ -50,7 +50,7 @@ static inline int rbindex_isseq(struct rbindex *eidx)
 //static inline void **rbindex_s_insert(struct rbindex *eidx, void *obj)
 static inline void rbindex_s_insert(struct rbindex *eidx, void *obj)
 {
-	list_insbefore(eidx->cur_s, obj);
+	__list_insbefore(eidx->cur_s, GET_LIST(obj));
 	eidx->ls.n++;
 //	return (void **)GET_LIST(obj);
 }
@@ -74,9 +74,9 @@ static inline void *rbindex_next(seq_traverser *it)
 	return GET_OBJ(*it);
 }
 
-static inline void rbindex_insbefore(seq_traverser it, void *obj)
+static inline void rbindex_forward(struct rbindex *eidx)
 {
-	list_insbefore(it, obj);
+	eidx->cur_s = eidx->cur_s->next;
 }
 
 /* Set up cursor. */
@@ -121,7 +121,7 @@ static inline void rbindex_s_delete(struct rbindex *eidx, void *obj)
 {
 	if(GET_LIST(obj) == eidx->cur_s)
 		rbindex_next(&eidx->cur_s);
-	list_remove(&eidx->ls, obj);
+	__list_remove(&eidx->ls, GET_LIST(obj));
 }
 
 static inline void rbindex_rb_delete(struct rbindex *eidx, void *obj)

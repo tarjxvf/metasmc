@@ -150,15 +150,15 @@ struct list {
 	int n;
 };
 
-//void list_init(struct list *ls);
-//void list_concat(struct list *dst, struct list *src);
+void list_init(struct list *ls);
+void list_concat(struct list *dst, struct list *src);
 
 /* List operations using object pointer. */
-/*void list_insbefore(struct list_head *ref, void *item);
+void list_insbefore(struct list_head *ref, void *item);
 void list_insafter(struct list_head *ref, void *item);
 void list_remove(struct list *ls, void *item);
 void list_add(struct list *ls, void *item);	// Add an item at list head
-void list_append(struct list *ls, void *item);	// Add an item at list end*/
+void list_append(struct list *ls, void *item);	// Add an item at list end
 
 /* List operations using list_head pointer. */
 static __inline__ void __list_add(struct list *ls, struct list_head *l) 
@@ -217,69 +217,6 @@ static __inline__ void __list_remove(struct list *ls, struct list_head *l)
 static inline struct list_head *__list_prev(struct list_head *l)
 {
 	return (struct list_head *)l->prev;
-}
-
-static inline void *list_prev(void *obj)
-{
-	return GET_OBJ(__list_prev(GET_LIST(obj)));
-}
-
-static inline void list_init(struct list *ls)
-{
-	ls->front = NULL;
-	ls->rear = &ls->front;
-	ls->n = 0;
-}
-
-static inline void list_concat(struct list *dst, struct list *src)
-{
-	*dst->rear = src->front;
-	src->front->prev = dst->rear;
-	dst->rear = src->rear;
-}
-
-/* Add an item in the front of the list. */
-static inline void list_add(struct list *ls, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_add(ls, l);
-}
-
-/* Insert an item before an item. */
-static inline void list_insbefore(struct list_head *ref, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_insbefore(ref, l);
-}
-
-/* Insert an item before an item. */
-static inline void list_insafter(struct list_head *ref, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_insafter(ref, l);
-}
-
-/* Append an item after a  list */
-static inline void list_append(struct list *ls, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_append(ls, l);
-}
-
-/* Remove an item from the list. */
-static inline void list_remove(struct list *ls, void *item)
-{
-	struct list_head *l;
-	l = GET_LIST(item);
-	__list_remove(ls, l);
 }
 
 /* Single-end read. */

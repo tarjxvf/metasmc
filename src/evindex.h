@@ -63,9 +63,9 @@ static inline struct event *evindex_s_get(struct evindex *evidx)
 	return (struct event *)GET_OBJ(evidx->idx->cur_s);
 }
 
-static inline struct event *evindex_s_forward(struct evindex *evidx)
+static inline void evindex_s_forward(struct evindex *evidx)
 {
-	return (struct event *)evindex_next(&evidx->idx->cur_s);
+	rbindex_forward(evidx->idx);
 }
 
 static inline void evindex_s_set(struct evindex *evidx, struct event *e)
