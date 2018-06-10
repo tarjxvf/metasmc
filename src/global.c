@@ -10,135 +10,6 @@
 #include "mutation.h"
 #include "evindex.h"
 
-void *list_prev(void *obj)
-{
-	return GET_OBJ(__list_prev(GET_LIST(obj)));
-}
-
-void list_init(struct list *ls)
-{
-	ls->front = NULL;
-	ls->rear = &ls->front;
-	ls->n = 0;
-}
-
-void list_concat(struct list *dst, struct list *src)
-{
-	*dst->rear = src->front;
-	src->front->prev = dst->rear;
-	dst->rear = src->rear;
-}
-
-/* Add an item in the front of the list. */
-void list_add(struct list *ls, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_add(ls, l);
-}
-
-/* Insert an item before an item. */
-void list_insbefore(struct list_head *ref, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_insbefore(ref, l);
-}
-
-/* Insert an item before an item. */
-void list_insafter(struct list_head *ref, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_insafter(ref, l);
-}
-
-/* Append an item after a  list */
-void list_append(struct list *ls, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_append(ls, l);
-}
-
-/* Remove an item from the list. */
-void list_remove(struct list *ls, void *item)
-{
-	struct list_head *l;
-	l = GET_LIST(item);
-	__list_remove(ls, l);
-}
-
-void list_print(struct list_head **head)
-{
-	struct list_head **ptr;
-	ptr = head;
-
-	printf("head=%x", ptr);
-	while(*ptr){
-		printf("->[ptr=%x, *ptr=%x, prev=%x, next=%x, &next=%x]", ptr, *ptr, (*ptr)->prev, (*ptr)->next, &(*ptr)->next);
-		ptr = &(*ptr)->next;
-	}
-	printf("\n");
-}
-
-/* Add an item in the front of the list. *
-void list_add(struct list_head **head, struct list_head *item)
-{
-	if(*head)
-		(*head)->prev = &item->next;
-	item->next = *head;
-	*head = item;
-	item->prev = head;
-}
-
-/* Insert an item before an item. *
-void list_insbefore(struct list_head *ref, struct list_head *item)
-{
-	item->next = ref;
-	item->prev = ref->prev;
-	ref->prev = &item->next;
-	*item->prev = item;
-}
-
-/* Append an item after a  list *
-void list_append(struct list_head **head, struct list_head *item)
-{
-	struct list_head **ptr;
-
-	ptr = head;
-	while(*ptr)
-		ptr = &(*ptr)->next;
-	*ptr = item;
-//	item->next = NULL;
-	item->prev = ptr;
-}
-
-/* Remove an item from the list. *
-void list_remove(struct list_head *item)
-{
-	*item->prev = item->next;
-	if(item->next)
-		item->next->prev = item->prev;
-}
-
-void list_print(struct list_head **head)
-{
-	struct list_head **ptr;
-	ptr = head;
-
-	printf("head=%x", ptr);
-	while(*ptr){
-		printf("->[ptr=%x, *ptr=%x, prev=%x, next=%x, &next=%x]", ptr, *ptr, (*ptr)->prev, (*ptr)->next, &(*ptr)->next);
-		ptr = &(*ptr)->next;
-	}
-	printf("\n");
-}*/
-
 size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct samp_event)};
 
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
@@ -578,7 +449,7 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	cfg->event_cache[EVENT_MIGR] = mem_cache_create(sizeof(struct list_head) + sizeof(struct migr_event), NULL, NULL);
 
 	cfg->edge_cache = mem_cache_create(sizeof(struct list_head) + sizeof(struct edge), NULL, NULL);*/
-	cfg->frag_cache = mem_cache_create(sizeof(struct list_head) + sizeof(struct frag *), NULL, NULL);
+//	cfg->frag_cache = mem_cache_create(sizeof(struct list_head) + sizeof(struct frag *), NULL, NULL);
 
 	/* Set up empty event list (contains only one dummy event) */
 	ev = alloc_event(cfg, EVENT_GSIZ, INFINITY);
@@ -682,8 +553,8 @@ void destroy_config(struct config *cfg)
 	mem_cache_destroy(cfg->event_cache[EVENT_MIGR]);
 
 	mem_cache_destroy(cfg->edge_cache);*/
-	if(cfg->frag_cache)
-		mem_cache_destroy(cfg->frag_cache);
+//	if(cfg->frag_cache)
+//		mem_cache_destroy(cfg->frag_cache);
 
 	free(cfg->devents);
 	free(cfg->mmut);

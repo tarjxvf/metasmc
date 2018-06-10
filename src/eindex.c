@@ -34,7 +34,7 @@ void eindex_seq_off(struct rbindex *eidx)
 	nnodes = eidx->ls.n;
 	nodes = eidx->nc.nodes;
 	rbindex_clearflag(eidx, RBINDEX_SEQUENTIAL);
-	rbindex_rebuild_tree(eidx, nodes);*/
+	rbindex_rebuild_tree(eidx);*/
 }
 
 void eindex_reset(struct genealogy *G, struct rbindex *eidx)

@@ -9,7 +9,7 @@
 #include "global.h"
 #include "smc.h"
 #include "mutation.h"
-#include "slab.h"
+#include "cache.h"
 
 #define NEXT_NOBLANK(fp, ch)    while(isblank((ch) = fgetc(fp)))
 

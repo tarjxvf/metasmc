@@ -2538,7 +2538,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //		for(i = 0; i < MAXFRAG && f < nfrag && fgset[f].start < ub; i++, f++){
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
-			l = mem_cache_alloc(cfg->frag_cache);
+//			l = mem_cache_alloc(cfg->frag_cache);
+			l = malloc(sizeof(struct list_head) + sizeof(struct frag *));
+
 			*((struct frag **)GET_OBJ(l)) = fg = &fgset[f];
 			list_append(&R, GET_OBJ(l));
 //			list_add(&R, GET_OBJ(l));
@@ -2810,7 +2812,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 				__list_remove(&Rold, fgl);
 //				G->nsam--;
-				mem_cache_free(cfg->frag_cache, (char *)fgl);
+				free(fgl);
+//				mem_cache_free(cfg->frag_cache, (char *)fgl);
 			}
 			fgl = tmp;
 		}
@@ -2848,7 +2851,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fg->rd[j].seq = NULL;
 		}
 		__list_remove(&Rold, fgl);
-		mem_cache_free(cfg->frag_cache, (char *)fgl);
+		free(fgl);
+//		mem_cache_free(cfg->frag_cache, (char *)fgl);
 
 		fgl = tmp;
 	}
