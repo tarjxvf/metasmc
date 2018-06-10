@@ -118,7 +118,19 @@ void evindex_rb_delete(struct evindex *evidx, const void *item);
 //	rbindex_rb_delete(evidx->idx, (void *)e);
 //}
 
-void evindex_delete(struct evindex *evidx, struct event *ev);
+static inline void evindex_delete(struct evindex *evidx, struct event *ev)
+{
+	if(rbindex_isseq(evidx->idx)){
+		rbindex_s_delete(evidx->idx, (void *)ev);
+
+	}else{
+//		if(ev->type == EVENT_JOIN || ev->type == EVENT_SPLT){
+//		}else{
+			evindex_rb_delete(evidx, ev);
+//			list_remove(&eidx->idx->ls, ev);
+//		}
+	}
+}
 
 void evindex_rb_insert(struct evindex *evidx, struct event *ev);
 //static inline void evindex_rb_insert(struct evindex *evidx, struct event *e)
@@ -131,7 +143,15 @@ static inline void evindex_s_insert(struct evindex *evidx, struct event *e)
 	rbindex_s_insert(evidx->idx, (void *)e);
 }
 
-void evindex_insert(struct evindex *evidx, struct event *ev);
+static inline void evindex_insert(struct evindex *evidx, struct event *ev)
+{
+	if(rbindex_isseq(evidx->idx)){
+		evindex_s_insert(evidx, ev);
+
+	}else{
+		evindex_rb_insert(evidx, ev);
+	}
+}
 
 void evindex_reset(struct genealogy *G, struct evindex *evidx);
 void evindex_destroy(struct genealogy *G, struct evindex *evidx);

@@ -47,11 +47,12 @@ static inline int rbindex_isseq(struct rbindex *eidx)
 	return eidx->flags & RBINDEX_SEQUENTIAL;
 }
 
-static inline void **rbindex_s_insert(struct rbindex *eidx, void *obj)
+//static inline void **rbindex_s_insert(struct rbindex *eidx, void *obj)
+static inline void rbindex_s_insert(struct rbindex *eidx, void *obj)
 {
 	list_insbefore(eidx->cur_s, obj);
 	eidx->ls.n++;
-	return (void **)GET_LIST(obj);
+//	return (void **)GET_LIST(obj);
 }
 
 extern struct libavl_allocator rbindex_allocator;

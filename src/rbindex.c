@@ -90,24 +90,6 @@ void rbindex_free(struct libavl_allocator *allocator, struct rb_node *nd)
 	__list_append(&nc->free_list, l);
 }
 
-//struct libavl_allocator rbindex_allocator = {NULL, rbindex_alloc, rbindex_free};
-
-/*void **rbindex_rb_insert(struct rbindex *eidx, void *obj)
-{
-	void *next;
-
-	next = rb_isam_find(eidx->tree, obj);
-	if(next){
-		list_insbefore(GET_LIST(next), obj);
-		eidx->ls.n++;
-
-	}else{
-		list_append(&eidx->ls, obj);
-	}
-
-	return rb_probe(eidx->tree, obj);
-}*/
-
 void rbindex_rb_insert (struct rbindex *idx, void *item)
 {
   struct rb_node *pa[RB_MAX_HEIGHT]; /* Nodes on stack. */

@@ -452,20 +452,6 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
   tree->rb_generation++;
 }
 
-void evindex_delete(struct evindex *evidx, struct event *ev)
-{
-	if(rbindex_isseq(evidx->idx)){
-		rbindex_s_delete(evidx->idx, (void *)ev);
-
-	}else{
-//		if(ev->type == EVENT_JOIN || ev->type == EVENT_SPLT){
-//		}else{
-			evindex_rb_delete(evidx, ev);
-//			list_remove(&eidx->idx->ls, ev);
-//		}
-	}
-}
-
 /* Insert a new event and update node summary statistics.
  * This function is based on rb_probe of GNU libavl. */
 void evindex_rb_insert(struct evindex *evidx, struct event *ev)
@@ -634,24 +620,6 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
         }
     }
   tree->rb_root->rb_color = RB_BLACK;
-}
-
-void evindex_insert(struct evindex *evidx, struct event *ev)
-{
-	if(rbindex_isseq(evidx->idx)){
-		evindex_s_insert(evidx, ev);
-
-	}else{
-/*		rb_traverser tr;
-		struct event *ev;
-		int i, j;
-
-		rb_t_insert(&tr, evidx->idx, ev);
-		trav_refresh(&tr);
-		evindex_propgate(&tr, evidx->npop_all, ev->dn);*/
-
-		evindex_rb_insert(evidx, ev);
-	}
 }
 
 void evindex_reset(struct genealogy *G, struct evindex *evidx)
