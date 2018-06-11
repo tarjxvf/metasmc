@@ -141,11 +141,13 @@ void __add_edge(struct genealogy *G, int pop, struct edge *e)
 		ppop->eptrs[idx] = NULL;
 
 	}else{
+//		l = __list_pop(eid_queue);
 		l = eid_queue->front;
 		ptr = (int *)GET_OBJ(l);
 		idx = *ptr;
 		__list_remove(eid_queue, l);
-		free(l);
+//		free(l);
+		__list_append(&ppop->id_list, l);
 	}
 
 //	if(ppop->eptrs[idx])
@@ -172,7 +174,10 @@ void __remove_edge(struct genealogy *G, int pop, struct edge *e)
 	idx = e->idx;
 
 	/* Insert index of the edge into the queue. */
-	l = malloc(sizeof(struct list_head) + sizeof(int));
+	if(ppop->id_list.front == NULL)
+		l = malloc(sizeof(struct list_head) + sizeof(int));
+	else
+		l = __list_pop(&ppop->id_list);
 	pidx = l + sizeof(struct list_head);
 	*pidx = idx;
 	__list_append(&ppop->idx_queue, l);
@@ -2216,6 +2221,17 @@ void destroy_pop(struct genealogy *G, struct population *p)
 
 	free(p->mrate);
 	free(p->eptrs);
+
+	while(p->idx_queue.front){
+		l = __list_pop(&p->idx_queue);
+		free(l);
+	}
+
+	while(p->id_list.front){
+		l = __list_pop(&p->id_list);
+		free(l);
+	}
+
 	eindex_destroy(G, p->eidx);
 }
 
@@ -2277,15 +2293,15 @@ void clear_genealogy(struct genealogy *G)
 	for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
 		eq = &G->pops[pop].idx_queue;
 		while(eq->front){
-			l = eq->front;
-			__list_remove(eq, l);
-			free(l);
+			l = __list_pop(eq);
+			__list_append(&G->pops[pop].id_list, l);
+//			free(l);
 		}
-		list_init(&G->pops[pop].idx_queue);
-		for(i = 0; i < G->pops[pop].nedges; i++){
+//		list_init(&G->pops[pop].idx_queue);
+/*		for(i = 0; i < G->pops[pop].nedges; i++){
 			if(G->pops[pop].eptrs[i])
 				free_edge(G, G->pops[pop].eptrs[i]);
-		}
+		}*/
 		memset(G->pops[pop].eptrs, 0, sizeof(struct edge *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
 		G->pops[pop].nsam = G->pops[pop].n = 0;
@@ -2336,6 +2352,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		}
 		 
 		list_init(&G->pops[pop].idx_queue);
+		list_init(&G->pops[pop].id_list);
 		G->pops[pop].eptrs = NULL;
 		G->pops[pop].maxedges = G->pops[pop].nedges = 0;
 		G->pops[pop].eidx = eindex_create(G, pop);
