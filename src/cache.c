@@ -78,6 +78,7 @@ void cache_clear(struct cache *nc)
 		l = __list_pop(queue);
 		__list_append(&nc->id_list, l);
 	}
+	nc->maxnodes = 0;
 }
 
 struct cache *cache_create(size_t obj_size, int cache_size)

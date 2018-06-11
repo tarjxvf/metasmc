@@ -329,9 +329,9 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
-#pragma omp parallel sections
+//#pragma omp parallel sections
 	{
-#pragma omp section
+//#pragma omp section
 		{
 			int j;
 			for(j = half - 1; j < nnodes; j++){
@@ -341,7 +341,7 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 			}
 		}
 
-#pragma omp section
+//#pragma omp section
 		{
 			int j;
 			for(j = 0; j < half - 1; j++){
