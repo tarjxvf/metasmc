@@ -3,19 +3,12 @@
 
 #include "global.h"
 #include "rb.h"
+#include "cache.h"
 
 #define RBINDEX_SEQUENTIAL	0x1	/* Set this flag to turn on sequential mode. When the index is in sequential mode, the tree index is not updated during insertion and deletion. The tree index need to be rebuilt whenever sequential mode is turned off. */
 
 //typedef struct seq_traverser seq_traverser;
 typedef struct list_head * seq_traverser;
-
-struct rbindex_cache {
-	int nnodes;
-	int cache_size;
-	int maxnodes;	// The index of rightmost nodes
-	struct rb_node **nodes;
-	struct list free_list;	// List of free index before maxnodes
-};
 
 struct rbindex {
 	int flags;
@@ -26,11 +19,12 @@ struct rbindex {
 	struct list ls;
 	struct list_head *cur_s;	// Cursor for sequential mode. New objects are inserted before cursor.
 
-	struct rbindex_cache nc;
+	struct cache *nc;
+//	struct rbindex_cache nc;
 	struct libavl_allocator allocator;
 };
 
-void rbindex_rebuild_tree(struct rbindex *eidx, struct rb_node **nodes);
+void rbindex_rebuild_tree(struct rbindex *eidx);
 
 static inline void rbindex_setflag(struct rbindex *eidx, int flag)
 {

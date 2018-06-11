@@ -98,7 +98,7 @@ struct edge {
 	struct node *top;
 	struct node *bot;
 	int itop;
-	int eid;
+//	int eid;
 	int xtid;	// Index of edge in binary indexed tree
 	int idx;	// Index of the edge in eptr array of population
 };
@@ -126,6 +126,7 @@ struct population {
 	int maxedges;
 	struct edge **eptrs;		// Array of edge pointers
 	struct list idx_queue;	// Queue of index in eptrs
+	struct list id_list;
 
 	/***** Red-black tree index of edges. The tree is ordered by times of top nodes. *****/
 //	struct rb_table *etree;
@@ -232,19 +233,22 @@ void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev);
 static inline void remove_event_rb(struct genealogy *G, struct event *ev)
 {
 	evindex_rb_delete(G->evidx, ev);
-	free(GET_LIST(ev));
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
 }
 
 static inline void remove_event_s(struct genealogy *G, struct event *ev)
 {
 	evindex_s_delete(G->evidx, ev);
-	free(GET_LIST(ev));
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
 }
 
 static inline void remove_event(struct genealogy *G, struct event *ev)
 {
 	evindex_delete(G->evidx, ev);
-	free(GET_LIST(ev));
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
 }
 
 static inline void remove_event_rb_josp(struct genealogy *G, struct event *ev)

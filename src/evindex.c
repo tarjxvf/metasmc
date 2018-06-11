@@ -81,8 +81,8 @@ void evindex_seq_off(struct evindex *evidx)
 
 	nnodes = evidx->idx->ls.n;
 	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
-	rbindex_rebuild_tree(evidx->idx, nodes);
-	nodes = evidx->idx->nc.nodes;
+	rbindex_rebuild_tree(evidx->idx);
+	nodes = (struct rb_node **)evidx->idx->nc->objs;
 
 	for(i = nnodes - 1; i >= 0; i--){
 		struct event *ev, *left, *right;
