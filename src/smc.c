@@ -115,7 +115,7 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 	e->top = top;
 	e->bot = bot;
 	e->xtid = e->idx = 0;
-	e->eid = ++G->edgeid;
+//	e->eid = ++G->edgeid;
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated edge %x, top node=%x(t=%.6f, type=%d), bot node=%x(t=%.6f, type=%d)\n", e, e->top, e->top->t, e->top->type, e->bot, e->bot->t, e->bot->type);
@@ -333,7 +333,8 @@ print_tree_structure (struct rb_node *node, int level)
       return;
     }
 
-  fprintf (stderr, "%d(", ((struct edge *)node->rb_data)->eid);
+//  fprintf (stderr, "%d(", ((struct edge *)node->rb_data)->eid);
+  fprintf (stderr, "%(", ((struct edge *)node->rb_data));
 
   for (i = 0; i <= 1; i++)
     {
@@ -387,7 +388,8 @@ void dump_edges(struct genealogy *G)
 	n = G->localMRCA;
 	while(n && n->in){
 		e = n->in;
-		fprintf(stderr, "%x(%.6f, %.6f, %d), ", e, e->bot->t, e->top->t, e->eid);
+//		fprintf(stderr, "%x(%.6f, %.6f, %d), ", e, e->bot->t, e->top->t, e->eid);
+		fprintf(stderr, "%x(%.6f, %.6f), ", e, e->bot->t, e->top->t);
 		n = e->top;
 	}
 	fprintf(stderr, "\n\n");
@@ -399,7 +401,8 @@ void dump_edges(struct genealogy *G)
 		for(j = 0; j < G->pops[i].nedges; j++){
 			e = G->pops[i].eptrs[j];
 			if(e)
-				fprintf(stderr, "%x(top=%.10f, top=%.10f, eid=%d, xtid=%d),", e, e->bot->t, e->top->t, e->eid, e->xtid);
+//				fprintf(stderr, "%x(top=%.10f, top=%.10f, eid=%d, xtid=%d),", e, e->bot->t, e->top->t, e->eid, e->xtid);
+				fprintf(stderr, "%x(top=%.10f, top=%.10f, xtid=%d),", e, e->bot->t, e->top->t, e->xtid);
 
 			else
 				fprintf(stderr, "(NULL),");
@@ -2458,7 +2461,8 @@ void print_tree(FILE *out_fp, struct node *nd)
 {
 	if(nd->type == NODE_SAM){
 #ifdef DEBUG
-		fprintf(stderr, "sam_node=%x;edge=%d", nd, nd->in->eid);
+//		fprintf(stderr, "sam_node=%x;edge=%d", nd, nd->in->eid);
+		fprintf(stderr, "sam_node=%x;edge=%d", nd, nd->in);
 #else
 		fprintf(out_fp, "%d", AS_SAM_NODE(nd)->fg->id);
 //		fprintf(out_fp, "%d_%d", AS_SAM_NODE(nd)->fg->id, nd->in->id);
