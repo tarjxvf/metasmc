@@ -26,7 +26,7 @@ void list_add(struct list *ls, void *item);	// Add an item at list head
 void list_append(struct list *ls, void *item);	// Add an item at list end
 
 /* List operations using list_head pointer. */
-static __inline__ void __list_add(struct list *ls, struct list_head *l) 
+static inline void __list_add__(struct list *ls, struct list_head *l) 
 {
 	if(ls->front)
 		ls->front->prev = &l->next;
@@ -40,7 +40,7 @@ static __inline__ void __list_add(struct list *ls, struct list_head *l)
 }
 
 /* Insert an item before an item. */
-static __inline__ void __list_insbefore(struct list_head *ref, struct list_head *l)
+static inline void __list_insbefore__(struct list_head *ref, struct list_head *l)
 {
 	l->next = ref;
 	l->prev = ref->prev;
@@ -49,7 +49,7 @@ static __inline__ void __list_insbefore(struct list_head *ref, struct list_head 
 }
 
 /* Insert an item before an item. */
-static __inline__ void __list_insafter(struct list_head *ref, struct list_head *l)
+static inline void __list_insafter__(struct list_head *ref, struct list_head *l)
 {
 	l->next = ref->next;
 	l->prev = &ref->next;
@@ -58,7 +58,7 @@ static __inline__ void __list_insafter(struct list_head *ref, struct list_head *
 }
 
 /* Append an item after a  list */
-static __inline__ void __list_append(struct list *ls, struct list_head *l)
+static inline void __list_append__(struct list *ls, struct list_head *l)
 {
 	l->next = NULL;
 	*ls->rear = l;
@@ -68,7 +68,7 @@ static __inline__ void __list_append(struct list *ls, struct list_head *l)
 }
 
 /* Get and remove last element from NON-EMPTY list. Use with causion. */
-static inline struct list_head *__list_pop(struct list *ls)
+static inline struct list_head *__list_pop__(struct list *ls)
 {
 	struct list_head *l;
 	l = (struct list_head *)ls->rear;
@@ -78,7 +78,7 @@ static inline struct list_head *__list_pop(struct list *ls)
 }
 
 /* Remove an item from the list. */
-static __inline__ void __list_remove(struct list *ls, struct list_head *l)
+static inline void __list_remove__(struct list *ls, struct list_head *l)
 {
 	*l->prev = l->next;
 	if(l->next)
@@ -89,10 +89,18 @@ static __inline__ void __list_remove(struct list *ls, struct list_head *l)
 //	l->prev = l->next = NULL;
 }
 
-static inline struct list_head *__list_prev(struct list_head *l)
+static inline struct list_head *__list_prev__(struct list_head *l)
 {
 	return (struct list_head *)l->prev;
 }
+
+void __list_add(struct list *ls, struct list_head *l);
+void __list_insbefore(struct list_head *ref, struct list_head *l);
+void __list_insafter(struct list_head *ref, struct list_head *l);
+void __list_append(struct list *ls, struct list_head *l);
+struct list_head *__list_pop(struct list *ls);
+void __list_remove(struct list *ls, struct list_head *l);
+struct list_head *__list_prev(struct list_head *l);
 
 #endif
 
