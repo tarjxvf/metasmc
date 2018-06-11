@@ -42,7 +42,9 @@ rb_create (rb_comparison_func *compare, void *param,
   if (allocator == NULL)
     allocator = &rb_allocator_default;
 
-  tree = allocator->libavl_malloc (allocator, sizeof *tree);
+//  tree = allocator->libavl_malloc (allocator, sizeof *tree);
+  tree = malloc(sizeof(struct rb_table));
+
   if (tree == NULL)
     return NULL;
 
@@ -909,7 +911,8 @@ rb_destroy (struct rb_table *tree, rb_item_func *destroy)
         q->rb_link[1] = p;
       }
 
-  tree->rb_alloc->libavl_free (tree->rb_alloc, tree);
+//  tree->rb_alloc->libavl_free (tree->rb_alloc, tree);
+  free(tree);
 }
 
 /* Allocates |size| bytes of space using |malloc()|.
@@ -932,6 +935,7 @@ rb_free (struct libavl_allocator *allocator, void *block)
 /* Default memory allocator that uses |malloc()| and |free()|. */
 struct libavl_allocator rb_allocator_default =
   {
+NULL,
     rb_malloc,
     rb_free
   };

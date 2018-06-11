@@ -5,6 +5,7 @@
 #include "mutation.h"
 #include "rbindex.h"
 #include "tsindex.h"
+#include "evindex.h"
 
 #define NODE_COAL	0
 #define NODE_MIGR	1
@@ -97,7 +98,7 @@ struct edge {
 	struct node *top;
 	struct node *bot;
 	int itop;
-	int eid;
+//	int eid;
 	int xtid;	// Index of edge in binary indexed tree
 	int idx;	// Index of the edge in eptr array of population
 };
@@ -125,6 +126,7 @@ struct population {
 	int maxedges;
 	struct edge **eptrs;		// Array of edge pointers
 	struct list idx_queue;	// Queue of index in eptrs
+	struct list id_list;
 
 	/***** Red-black tree index of edges. The tree is ordered by times of top nodes. *****/
 //	struct rb_table *etree;
@@ -135,7 +137,8 @@ struct genealogy {
 	int nsam;
 	struct config *cfg;
 	struct population *pops;
-	struct list *evlist;	// List of events
+//	struct list *evlist;	// List of events
+	struct evindex *evidx;
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
 	int edgeid;
 
@@ -143,17 +146,138 @@ struct genealogy {
 //	struct list e_list;	// List of edges in the local tree
 	struct list n_list;	// List of sample nodes
 
-	struct list_head *evlcurr;
+//	struct list_head *evlcurr;
 	struct node *root;
 	double troot;		// height of existing tree
 	double t;
 	double total;		// Total length of the local tree
 
-	struct edge **pTreeEdgesToCoalesceArray;
+//	struct edge **pTreeEdgesToCoalesceArray;
 	struct node *localMRCA;
 
 	struct tsindex *tr_xover;
 };
+
+static inline void insert_event_join_increase(struct genealogy *G, struct join_event *jev)
+{
+	jev->dn[jev->popi]++;
+	jev->dn[jev->popj]--;
+}
+
+static inline void insert_event_splt_increase(struct genealogy *G, struct splt_event *sev)
+{
+	sev->dn[sev->pop]--;
+	sev->dn[sev->newpop]++;
+}
+
+void insert_event_rb_join(struct genealogy *G, struct join_event *jev);
+void insert_event_rb_splt(struct genealogy *G, struct splt_event *sev);
+
+static inline void insert_event_join(struct genealogy *G, struct event *ev)
+{
+	if(!rbindex_isseq(G->evidx->idx))
+		insert_event_rb_join(G, (struct join_event *)ev);
+	else
+		insert_event_join_increase(G, (struct join_event *)ev);
+}
+
+static inline void insert_event_splt(struct genealogy *G, struct event *ev)
+{
+	if(!rbindex_isseq(G->evidx->idx))
+		insert_event_rb_splt(G, (struct splt_event *)ev);
+	else
+		insert_event_splt_increase(G, (struct splt_event *)ev);
+}
+
+static inline void insert_event_rb(struct genealogy *G, struct event *ev)
+{
+//	if(ev->type == EVENT_JOIN){
+//		insert_event_rb_join(G, ev);
+
+//	}else if(ev->type == EVENT_SPLT){
+//		insert_event_rb_splt(G, ev);
+
+//	}else{
+		evindex_rb_insert(G->evidx, ev);
+//	}
+}
+
+static inline void insert_event(struct genealogy *G, struct event *ev)
+{
+//	if(ev->type == EVENT_JOIN){
+//		insert_event_join(G, ev);
+
+//	}else if(ev->type == EVENT_SPLT){
+//		insert_event_splt(G, ev);
+
+//	}else{
+		evindex_insert(G->evidx, ev);
+//	}
+}
+
+static inline void remove_event_join_decrease(struct genealogy *G, struct join_event *jev)
+{
+	jev->dn[jev->popi]--;
+	jev->dn[jev->popj]++;
+}
+
+static inline void remove_event_splt_decrease(struct genealogy *G, struct splt_event *sev)
+{
+	sev->dn[sev->pop]++;
+	sev->dn[sev->newpop]--;
+}
+
+void remove_event_rb_join(struct genealogy *G, struct join_event *jev);
+void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev);
+
+static inline void remove_event_rb(struct genealogy *G, struct event *ev)
+{
+	evindex_rb_delete(G->evidx, ev);
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
+}
+
+static inline void remove_event_s(struct genealogy *G, struct event *ev)
+{
+	evindex_s_delete(G->evidx, ev);
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
+}
+
+static inline void remove_event(struct genealogy *G, struct event *ev)
+{
+	evindex_delete(G->evidx, ev);
+	free_event(G->cfg, ev);
+//	free(GET_LIST(ev));
+}
+
+static inline void remove_event_rb_josp(struct genealogy *G, struct event *ev)
+{
+	if(ev->type == EVENT_JOIN)
+		remove_event_rb_join(G, (struct join_event *)ev);
+	else if(ev->type == EVENT_SPLT)
+		remove_event_rb_splt(G, (struct splt_event *)ev);
+	else
+		remove_event_rb(G, ev);
+}
+
+static inline void remove_event_s_josp(struct genealogy *G, struct event *ev)
+{
+	if(ev->type == EVENT_JOIN)
+		remove_event_join_decrease(G, (struct join_event *)ev);
+	else if(ev->type == EVENT_SPLT)
+		remove_event_splt_decrease(G, (struct splt_event *)ev);
+	else
+		remove_event_s(G, ev);
+}
+
+static inline void remove_event_josp(struct genealogy *G, struct event *ev)
+{
+	if(!rbindex_isseq(G->evidx->idx))
+		remove_event_rb_josp(G, ev);
+	else
+		remove_event_s_josp(G, ev);
+}
 
 //int simulate(struct reference *, struct genealogy *, int, struct frag *);
 int simulate(struct genealogy *G, struct profile *prof);
