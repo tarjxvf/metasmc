@@ -329,25 +329,34 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
-//#pragma omp parallel for num_threads(NUM_THREADS)
-	for(i = half - 1; i < nnodes; i++){
-		nodes[i]->rb_color = RB_RED;
-		nodes[i]->rb_data = objs[tree[i]];
-		nodes[i]->rb_link[0] = nodes[i]->rb_link[1] = NULL;
-	}
+#pragma omp parallel sections
+	{
+#pragma omp section
+		{
+			int j;
+			for(j = half - 1; j < nnodes; j++){
+				nodes[j]->rb_color = RB_RED;
+				nodes[j]->rb_data = objs[tree[j]];
+				nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
+			}
+		}
 
-//#pragma omp parallel for num_threads(NUM_THREADS)
-	for(i = 0; i < half - 1; i++){
-		int left, right;
+#pragma omp section
+		{
+			int j;
+			for(j = 0; j < half - 1; j++){
+				int left, right;
 
-		nodes[i]->rb_color = RB_BLACK;
-		nodes[i]->rb_data = objs[tree[i]];
+				nodes[j]->rb_color = RB_BLACK;
+				nodes[j]->rb_data = objs[tree[j]];
 
-		// Link nodes
-		left = i * 2 + 1;
-		right = left + 1;
-		nodes[i]->rb_link[0] = (left < nnodes)?nodes[left]:NULL;
-		nodes[i]->rb_link[1] = (right < nnodes)?nodes[right]:NULL;
+				// Link nodes
+				left = j * 2 + 1;
+				right = left + 1;
+				nodes[j]->rb_link[0] = (left < nnodes)?nodes[left]:NULL;
+				nodes[j]->rb_link[1] = (right < nnodes)?nodes[right]:NULL;
+			}
+		}
 	}
 
 //	eidx->tree = rb_create(eidx->compar, NULL, );
