@@ -141,12 +141,11 @@ void __add_edge(struct genealogy *G, int pop, struct edge *e)
 		ppop->eptrs[idx] = NULL;
 
 	}else{
-//		l = __list_pop(eid_queue);
-		l = eid_queue->front;
+		l = __list_pop(eid_queue);
+//		l = eid_queue->front;
 		ptr = (int *)GET_OBJ(l);
 		idx = *ptr;
-		__list_remove(eid_queue, l);
-//		free(l);
+//		__list_remove(eid_queue, l);
 		__list_append(&ppop->id_list, l);
 	}
 
