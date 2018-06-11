@@ -2224,27 +2224,52 @@ void clear_genealogy(struct genealogy *G)
 	struct config *cfg;
 	struct list_head *l;
 	struct list *eq;
-	struct event *ev0;
+	struct event *ev0, *ev;
 	int pop, i;
 
 	cfg = G->cfg;
 	if(G->root){
-//		free_node(G, G->root->in->top);
-//		free_edge(G, G->root->in);
-		destroy_tree(G, G->root);
+//		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
+	cache_clear(G->cfg->edge_cache);
+
+	cache_clear(G->cfg->node_cache[NODE_COAL]);
+	cache_clear(G->cfg->node_cache[NODE_MIGR]);
+	cache_clear(G->cfg->node_cache[NODE_XOVER]);
+	cache_clear(G->cfg->node_cache[NODE_SAM]);
+
+	cache_clear(G->cfg->event_cache[EVENT_COAL]);
+	cache_clear(G->cfg->event_cache[EVENT_MIGR]);
+
 	G->total = 0;
 	G->edgeid = 0;
-	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
-	memset(ev0->dn, 0, sizeof(int) * cfg->npop_all);
+
+	// Detach right sentinel from event index
+	l = __list_pop(&G->evidx->idx->ls);
+	ev0 = (struct event *)GET_OBJ(l);
 	dn_clear(cfg->npop_all, ev0->dn);
-	list_init(&G->n_list);
+
+	// Detach left sentinel from event index
+	l = G->evidx->idx->ls.front;
+	__list_remove(&G->evidx->idx->ls, l);
+	ev0 = (struct event *)GET_OBJ(l);
+	dn_clear(cfg->npop_all, ev0->dn);
 
 	if(G->ev_dxvr){
 		remove_event(G, G->ev_dxvr);
 		G->ev_dxvr = NULL;
 	}
+
+	// Clear event list
+	while(G->evidx->idx->ls.front){
+		l = __list_pop(&G->evidx->idx->ls);
+		ev = (struct event *)GET_OBJ(l);
+		if(ev->type == EVENT_DUMY && ev->type != EVENT_DXVR)
+			free(l);
+	}
+
+	list_init(&G->n_list);
 
 	tsindex_reset(G->tr_xover);
 //	list_init(&G->e_list);
@@ -2357,7 +2382,9 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 
 void destroy_genealogy(struct genealogy *G)
 {
+	struct list_head *l;
 	struct config *cfg;
+	struct event *ev;
 	int pop;
 
 	tsindex_free(G->tr_xover);
@@ -2377,6 +2404,20 @@ void destroy_genealogy(struct genealogy *G)
 	for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++)
 		destroy_pop(G, &G->pops[pop]);
 	free(G->pops);
+
+	// Detach right sentinel from event index
+	l = __list_pop(&G->evidx->idx->ls);
+
+	// Detach left sentinel from event index
+	l = G->evidx->idx->ls.front;
+	__list_remove(&G->evidx->idx->ls, l);
+
+	while(G->evidx->idx->ls.front){
+		l = __list_pop(&G->evidx->idx->ls);
+		ev = (struct event *)GET_OBJ(l);
+		if(ev->type == EVENT_DUMY && ev->type != EVENT_DXVR)
+			free(l);
+	}
 
 	evindex_destroy(G, G->evidx);
 
