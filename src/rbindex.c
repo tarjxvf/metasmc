@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-//#include <omp.h>
+#include <omp.h>
 
 #include "rbindex.h"
 
@@ -260,12 +260,12 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 		__cbt_addchild(tree, nnodes, queue, &i, &k);
 	}while(k < nnodes && k < 7);
 
-//#pragma omp parallel for num_threads(NUM_THREADS)
+#pragma omp parallel for schedule(static,2) num_threads(2)
 	for(j = 3; j < 7; j++){
 		__complete_binary_tree(tree, j);
 	}
 
-//#pragma omp parallel for num_threads(NUM_THREADS)
+#pragma omp parallel for schedule(static,2) num_threads(2)
 	for(i = 0; i < nnodes; i++)
 		map[i] = tree[i].root;
 
@@ -329,9 +329,9 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
-//#pragma omp parallel sections
+#pragma omp parallel sections
 	{
-//#pragma omp section
+#pragma omp section
 		{
 			int j;
 			for(j = half - 1; j < nnodes; j++){
@@ -341,7 +341,7 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 			}
 		}
 
-//#pragma omp section
+#pragma omp section
 		{
 			int j;
 			for(j = 0; j < half - 1; j++){
