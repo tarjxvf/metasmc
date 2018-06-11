@@ -6,7 +6,7 @@
 /***** LIBAVL allocator of population-wise edge index. *****/
 int eindex_compar(struct edge *a, struct edge *b)
 {
-/*	double diff, diff2;
+	double diff, diff2;
 
 	diff = a->top->t - b->top->t;
 	if(diff > 0){
@@ -23,32 +23,52 @@ int eindex_compar(struct edge *a, struct edge *b)
 			return 1;
 		else
 			return a->eid - b->eid;
-	}*/
+	}
 }
 
 void eindex_seq_off(struct rbindex *eidx)
 {
-/*	struct rb_node **nodes;
+	struct rb_node **nodes;
 	int nnodes;
 
 	nnodes = eidx->ls.n;
-	nodes = eidx->nc.nodes;
+	nodes = (struct rb_node **)eidx->nc->objs;
 	rbindex_clearflag(eidx, RBINDEX_SEQUENTIAL);
-	rbindex_rebuild_tree(eidx);*/
+	rbindex_rebuild_tree(eidx);
 }
 
-void eindex_reset(struct genealogy *G, struct rbindex *eidx)
+void eindex_init(struct genealogy *G, int pop, struct rbindex *eidx)
 {
-/*	list_init(&eidx->ls);
-	list_append(&eidx->ls, GET_OBJ(eidx->lsentinel));
-	list_append(&eidx->ls, GET_OBJ(eidx->rsentinel));
-	rbindex_rb_clear(eidx);*/
+	struct node *top, *bot;
+	struct edge *e;
+
+	list_init(&eidx->ls);
+
+	top = alloc_node(G, NODE_DUMMY, pop, 0);
+	bot = alloc_node(G, NODE_DUMMY, pop, 0);
+	e = alloc_edge(G, top, bot);
+	eidx->lsentinel = GET_LIST(e);
+
+	list_append(&eidx->ls, e);
+
+	top = alloc_node(G, NODE_DUMMY, pop, INFINITY);
+	bot = alloc_node(G, NODE_DUMMY, pop, INFINITY);
+	e = alloc_edge(G, top, bot);
+	eidx->rsentinel = GET_LIST(e);
+
+	list_append(&eidx->ls, e);
+}
+
+void eindex_reset(struct genealogy *G, int pop, struct rbindex *eidx)
+{
+	rbindex_rb_clear(eidx);
+	eindex_init(G, pop, eidx);
 }
 
 // Sequential seek for interval endpoint.
 void eindex_s_seek_ttop(struct rbindex *eidx, double ttop)
 {
-/*	if(rbindex_isseq(eidx)){
+	if(rbindex_isseq(eidx)){
 		seq_traverser lfwd, lbwd;
 		struct edge *ebwd, *efwd;
 
@@ -59,13 +79,13 @@ void eindex_s_seek_ttop(struct rbindex *eidx, double ttop)
 		efwd = eindex_cur(lfwd);
 		while(efwd->top->t < ttop) efwd = eindex_next(&lfwd);
 		eidx->cur_s = lfwd;
-	}*/
+	}
 }
 
 // Sequential seek for time interval
 void eindex_s_seek_t(struct rbindex *eidx, double ttop, double tbot)
 {
-/*	if(rbindex_isseq(eidx)){
+	if(rbindex_isseq(eidx)){
 		seq_traverser lfwd, lbwd;
 		struct edge *ebwd, *efwd;
 
@@ -80,13 +100,13 @@ void eindex_s_seek_t(struct rbindex *eidx, double ttop, double tbot)
 		while(efwd->top->t == ttop && ebwd->bot->t < tbot) efwd = eindex_next(&lfwd);
 
 		eidx->cur_s = lfwd;
-	}*/
+	}
 }
 
 // Sequential seek for full key
 void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid)
 {
-/*	if(rbindex_isseq(eidx)){
+	if(rbindex_isseq(eidx)){
 		seq_traverser lfwd, lbwd;
 		struct edge *ebwd, *efwd;
 
@@ -103,7 +123,7 @@ void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid)
 		while(efwd->top->t == ttop && efwd->bot->t == tbot && efwd->eid < eid) efwd = eindex_next(&lfwd);
 
 		eidx->cur_s = lfwd;
-	}*/
+	}
 }
 
 void eindex_destroy(struct genealogy *G, struct rbindex *eidx)
@@ -126,13 +146,12 @@ void eindex_destroy(struct genealogy *G, struct rbindex *eidx)
 struct rbindex *eindex_create(struct genealogy *G, int pop)
 {
 	struct rbindex *eidx;
-	struct node *top, *bot;
-	struct edge *e;
 
 	eidx = rbindex_create(eindex_compar, G->cfg->maxfrag * 2);
+	eindex_init(G, pop, eidx);
 
 	// Set up sentinel
-	top = alloc_node(G, NODE_DUMMY, pop, 0);
+/*	top = alloc_node(G, NODE_DUMMY, pop, 0);
 	bot = alloc_node(G, NODE_DUMMY, pop, 0);
 	e = alloc_edge(G, top, bot);
 	eidx->lsentinel = GET_LIST(e);
@@ -144,7 +163,7 @@ struct rbindex *eindex_create(struct genealogy *G, int pop)
 	e = alloc_edge(G, top, bot);
 	eidx->rsentinel = GET_LIST(e);
 
-	list_append(&eidx->ls, e);
+	list_append(&eidx->ls, e);*/
 
 	return eidx;
 }

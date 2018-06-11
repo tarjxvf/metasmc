@@ -5,6 +5,8 @@
 #include "list.h"
 #include "cache.h"
 
+#define NUM_THREADS 4
+
 #define EVENT_COAL	0	/* Coalescent */
 #define EVENT_MIGR	1	/* Migration */
 #define EVENT_GROW	2	/* Change growth rate of a subpopulation. */
