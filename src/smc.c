@@ -141,11 +141,11 @@ void __add_edge(struct genealogy *G, int pop, struct edge *e)
 		ppop->eptrs[idx] = NULL;
 
 	}else{
-		l = __list_pop(eid_queue);
-//		l = eid_queue->front;
+//		l = __list_pop(eid_queue);
+		l = eid_queue->front;
 		ptr = (int *)GET_OBJ(l);
 		idx = *ptr;
-//		__list_remove(eid_queue, l);
+		__list_remove(eid_queue, l);
 		__list_append(&ppop->id_list, l);
 	}
 
@@ -2280,7 +2280,7 @@ void clear_genealogy(struct genealogy *G)
 	while(G->evidx->idx->ls.front){
 		l = __list_pop(&G->evidx->idx->ls);
 		ev = (struct event *)GET_OBJ(l);
-		if(ev->type == EVENT_DUMY && ev->type != EVENT_DXVR)
+		if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR)
 			free(l);
 	}
 
@@ -2431,7 +2431,7 @@ void destroy_genealogy(struct genealogy *G)
 	while(G->evidx->idx->ls.front){
 		l = __list_pop(&G->evidx->idx->ls);
 		ev = (struct event *)GET_OBJ(l);
-		if(ev->type == EVENT_DUMY && ev->type != EVENT_DXVR)
+		if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR)
 			free(l);
 	}
 
