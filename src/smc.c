@@ -1553,7 +1553,7 @@ double recombination(struct genealogy *G)
 	int pop, coalesced, i;	// coalesced: flag indicating whether floating lineage is absorbed
 	struct list_head *l;
 	struct event *ev;
-	struct edge *e, *ef;	// e: edge where recombination event occur
+	struct edge *e, *ef, *cur_choose;	// e: edge where recombination event occur
 	struct dummy_node *nf;
 	double t, like;
 
@@ -1574,6 +1574,7 @@ double recombination(struct genealogy *G)
 //	evl = GET_LIST(ev);
 	eindex_s_set(G->pops[pop].eidx, e);
 	cur_l = eindex_backward(G->pops[pop].eidx);	// Cursor for inserting edges near recombination point
+	cur_choose = cur_l;
 
 #ifdef DEBUG
 	fprintf(stderr, "Recombination on %x, t=%.6f, pop=%d, range=[%x(%d, %.6f), %x(%d, %.6f)]\n", e, t, pop, e->bot, e->bot->type, e->bot->t, e->top, e->top->type, e->top->t);
@@ -1788,11 +1789,34 @@ double recombination(struct genealogy *G)
 			like -= totalprob * (ev->t - t);
 			t = ev->t;
 
-			if(ev->type == EVENT_JOIN){
+			if(ev->type == EVENT_COAL){
+				struct coal_event *cev;
+				struct edge *etmp;
+
+				cev = (struct coal_event *)ev;
+				etmp = cev->nd->out[0];
+				eindex_s_set(G->pops[cev->nd->pop].eidx, etmp);
+
+			}else if(ev->type == EVENT_MIGR){
+				struct migr_event *mev;
+				struct edge *etmp;
+
+				mev = (struct migr_event *)ev;
+				eindex_s_set(G->pops[mev->nd->pop].eidx, mev->nd->in);
+				eindex_s_set(G->pops[mev->nd->out->bot->pop].eidx, mev->nd->out);
+
+			}else if(ev->type == EVENT_JOIN){
 				struct join_event *jev;
 				struct migr_node *nd;
+				struct edge *etmp;
 
 				jev = (struct join_event *)ev;
+				if(jev->ndls.front){
+					nd = (struct migr_node *)GET_OBJ(jev->ndls.front);
+					etmp = nd->in;
+					eindex_s_set(G->pops[nd->pop].eidx, etmp);
+				}
+
 				if(jev->popj == pop){
 					/* Force the floating lineage moving from population j to population i */
 					nd = (struct migr_node *)do_migrate(G, ef, jev->popj, jev->popi, t);
@@ -1806,9 +1830,17 @@ double recombination(struct genealogy *G)
 
 			}else if(ev->type == EVENT_SPLT){
 				struct splt_event *sev;
+				struct migr_node *nd;
+				struct edge *etmp;
 				double u;
 
 				sev = (struct splt_event *)ev;
+				if(sev->ndls.front){
+					nd = (struct migr_node *)GET_OBJ(sev->ndls.front);
+					etmp = nd->in;
+					eindex_s_set(G->pops[nd->pop].eidx, etmp);
+				}
+
 				if(sev->pop == pop){
 					u = dunif01();
 					if(u >= sev->prop){
