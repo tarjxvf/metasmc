@@ -101,6 +101,7 @@ struct edge {
 	int eid;
 	int xtid;	// Index of edge in binary indexed tree
 	int idx;	// Index of the edge in eptr array of population
+	int trunk_id;	// Index in trunk genealogy (used by merge_floating)
 };
 
 struct edge_set {
