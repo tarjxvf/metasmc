@@ -20,6 +20,16 @@ static inline struct edge *eindex_next(seq_traverser *it)
 	return (struct edge *)rbindex_next(it);
 }
 
+static inline struct edge *eindex_forward(struct rbindex *eidx)
+{
+	return (struct edge *)rbindex_next(&eidx->cur_s);
+}
+
+static inline struct edge *eindex_backward(struct rbindex *eidx)
+{
+	return (struct edge *)rbindex_prev(&eidx->cur_s);
+}
+
 static inline void eindex_s_set(struct rbindex *eidx, struct edge *e)
 {
 	rbindex_s_set(eidx, e);
@@ -63,7 +73,8 @@ static inline void eindex_rb_delete(struct rbindex *eidx, struct edge *e)
 
 static inline void eindex_delete(struct rbindex *eidx, struct edge *e)
 {
-	rbindex_delete(eidx, (void *)e);
+	if(GET_LIST(e)->prev)   // If e is in a list
+		rbindex_delete(eidx, (void *)e);
 }
 
 static inline void eindex_rb_insert(struct rbindex *eidx, struct edge *e)
@@ -73,7 +84,8 @@ static inline void eindex_rb_insert(struct rbindex *eidx, struct edge *e)
 
 static inline void eindex_s_insert(struct rbindex *eidx, struct edge *e)
 {
-	rbindex_s_insert(eidx, (void *)e);
+	if(!GET_LIST(e)->prev)	// If e is not in a list
+		rbindex_s_insert(eidx, (void *)e);
 }
 
 static inline void eindex_insert(struct rbindex *eidx, struct edge *e)
