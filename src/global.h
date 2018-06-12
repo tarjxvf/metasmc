@@ -40,6 +40,7 @@ struct coal_event {
 	int *dn;	// dn[pop] == -1 and dn[i] == 0 for other i
 	int *sumdn;
 	int pop;
+	struct coal_node *nd;
 };
 
 struct migr_event {
@@ -49,6 +50,7 @@ struct migr_event {
 	int *sumdn;
 	int spop;
 	int dpop;
+	struct migr_node *nd;
 };
 
 struct grow_event {
@@ -110,6 +112,7 @@ struct join_event {
 	int *sumdn;
 	int popi;	// Subpopulation to be absorbed
 	int popj;
+	struct list ndls;
 };
 
 struct splt_event {
@@ -120,6 +123,7 @@ struct splt_event {
 	int pop;	// Subpopulation to be splitted
 	int newpop;	// New subpopulation
 	double prop;	// proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.
+	struct list ndls;
 };
 
 struct samp_event {

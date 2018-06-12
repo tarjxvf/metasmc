@@ -728,6 +728,7 @@ int add_event_join(struct config *cfg, double t, int popi, int popj)
 	ev = alloc_event(cfg, EVENT_JOIN, t);
 	((struct join_event *)ev)->popi = popi;
 	((struct join_event *)ev)->popj = popj;
+	list_init(&((struct join_event *)ev)->ndls);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
@@ -749,6 +750,7 @@ int add_event_splt(struct config *cfg, double t, int pop, double prop)
 	((struct splt_event *)ev)->newpop = cfg->npop_all++;
 ///	cfg->nsplt++;
 	((struct splt_event *)ev)->prop = prop;
+	list_init(&((struct splt_event *)ev)->ndls);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
