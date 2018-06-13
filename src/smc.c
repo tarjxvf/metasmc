@@ -137,7 +137,13 @@ void __add_edge(struct genealogy *G, int pop, struct edge *e)
 	int idx, *ptr;
 
 	ppop = &G->pops[pop];
-	eid_queue = &ppop->idx_queue;
+	idx = ppop->nedges++;
+	ppop->eptrs[idx] = e;
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: idx=%d, maxedges=%d, nedges=%d, e=%x\n", __func__, __LINE__, idx, ppop->maxedges, ppop->nedges, e);
+#endif
+
+/*	eid_queue = &ppop->idx_queue;
 	if(eid_queue->front == NULL){
 		idx = ppop->nedges++;
 		if(idx >= ppop->maxedges){
@@ -157,7 +163,7 @@ void __add_edge(struct genealogy *G, int pop, struct edge *e)
 
 //	if(ppop->eptrs[idx])
 //		free_edge(G, ppop->eptrs[idx]);
-	ppop->eptrs[idx] = e;
+	ppop->eptrs[idx] = e;*/
 	e->idx = idx;
 }
 
@@ -177,16 +183,20 @@ void __remove_edge(struct genealogy *G, int pop, struct edge *e)
 
 	ppop = &G->pops[pop];
 	idx = e->idx;
+	e = ppop->eptrs[idx];
+	ppop->eptrs[idx] = ppop->eptrs[--(ppop->nedges)];
+	ppop->eptrs[idx]->idx = idx;
+	ppop->eptrs[ppop->nedges] = NULL;
 
 	/* Insert index of the edge into the queue. */
-	if(ppop->id_list.front == NULL)
+/*	if(ppop->id_list.front == NULL)
 		l = malloc(sizeof(struct list_head) + sizeof(int));
 	else
 		l = __list_pop(&ppop->id_list);
 	pidx = l + sizeof(struct list_head);
 	*pidx = idx;
 	__list_append(&ppop->idx_queue, l);
-	ppop->eptrs[idx] = NULL;
+	ppop->eptrs[idx] = NULL;*/
 }
 
 void remove_edge(struct genealogy *G, int pop, struct edge *e)
@@ -1590,7 +1600,7 @@ double recombination(struct genealogy *G)
 		fprintf(stderr, ",G->pops[%d].n=%d, G->pops[%d].enabled=%d", i, G->pops[i].n, i, G->pops[i].enabled);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Next event: ev=%x, type=%d, t=%6f\n", ev, ev->type, ev->t);
-	fprintf(stderr, "cur_l=%x(%.6f, %.6f, %d)\n", cur_l, cur_l->top->t, cur_l->bot->t, cur_l->eid);
+//	fprintf(stderr, "cur_l=%x(%.6f, %.6f, %d)\n", cur_l, cur_l->top->t, cur_l->bot->t, cur_l->eid);
 #endif
 
 //	eindex_delete(G->pops[e->bot->pop].eidx, e);
@@ -1675,7 +1685,7 @@ double recombination(struct genealogy *G)
 //						cur_h = eindex_next(&cur_hh);
 //					}
 #ifdef DEBUG
-					fprintf(stderr, "cur_h=%x(%.6f, %.6f, %d)\n", cur_h, cur_h->top->t, cur_h->bot->t, cur_h->eid);
+//					fprintf(stderr, "cur_h=%x(%.6f, %.6f, %d)\n", cur_h, cur_h->top->t, cur_h->bot->t, cur_h->eid);
 #endif
 //				}
 
@@ -2534,8 +2544,12 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		 
 		list_init(&G->pops[pop].idx_queue);
 		list_init(&G->pops[pop].id_list);
-		G->pops[pop].eptrs = NULL;
-		G->pops[pop].maxedges = G->pops[pop].nedges = 0;
+//		G->pops[pop].eptrs = NULL;
+//		G->pops[pop].maxedges = G->pops[pop].nedges = 0;
+		G->pops[pop].maxedges = prof->nfrag * 3;
+		G->pops[pop].eptrs = malloc(sizeof(struct edge *) * G->pops[pop].maxedges);
+		G->pops[pop].nedges = 0;
+
 		G->pops[pop].eidx = eindex_create(G, pop);
 	}
 	list_init(&G->n_list);
