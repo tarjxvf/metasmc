@@ -849,8 +849,8 @@ struct event *absorption(struct genealogy *G, struct edge_set *trunk, struct edg
 	struct timespec beg, end;
 	int nsec;
 
-n_abs_merge++;
-	clock_gettime(CLOCK_MONOTONIC, &beg);
+//n_abs_merge++;
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	tmrca_old = G->root->t;
 /*	if(t > tmrca_old){
@@ -918,9 +918,9 @@ n_abs_merge++;
 		G->root->in = NULL;
 	}*/
 
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_abs_merge += nsec;
+//	clock_gettime(CLOCK_MONOTONIC, &end);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	t_abs_merge += nsec;
 
 	return ev;
 }
@@ -943,8 +943,8 @@ struct coal_node *coalescent( struct genealogy *G, struct edge_set *F, int pop, 
 	struct timespec beg, end;
 	int nsec;
 
-n_coal++;
-	clock_gettime(CLOCK_MONOTONIC, &beg);
+//n_coal++;
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
@@ -1011,9 +1011,9 @@ n_coal++;
 	fprintf(stderr, "Finishing function %s\n\n", __func__);
 #endif
 
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_coal += nsec;
+//	clock_gettime(CLOCK_MONOTONIC, &end);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	t_coal += nsec;
 
 	return nd;
 }
@@ -1450,10 +1450,10 @@ void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 double abs_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
-struct timespec beg, end;
-	int nsec;
+//struct timespec beg, end;
+//	int nsec;
 
-	clock_gettime(CLOCK_MONOTONIC, &beg);
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
@@ -1472,9 +1472,9 @@ struct timespec beg, end;
 	}
 //	fprintf(stderr, "%d: abs_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_abs_time += nsec;
+//	clock_gettime(CLOCK_MONOTONIC, &end);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	t_abs_time += nsec;
 
 	return dt;
 }
@@ -1482,10 +1482,10 @@ struct timespec beg, end;
 double coal_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
-	struct timespec beg, end;
-	int nsec;
+//	struct timespec beg, end;
+//	int nsec;
 
-	clock_gettime(CLOCK_MONOTONIC, &beg);
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
@@ -1507,9 +1507,9 @@ double coal_time(struct genealogy *G, int nF, int pop, double t)
 
 //	fprintf(stderr, "%d: coal_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_coal_time += nsec;
+//	clock_gettime(CLOCK_MONOTONIC, &end);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	t_coal_time += nsec;
 
 	return dt;
 }
@@ -1733,11 +1733,11 @@ n_abs_time_xover++;
 		}else if(t + at < ev->t || t + mg < ev->t){
 			struct event *evnew;
 
-	struct timespec beg, end;
-	int nsec;
+//	struct timespec beg, end;
+//	int nsec;
 
-n_abs_xover++;
-	clock_gettime(CLOCK_MONOTONIC, &beg);
+//n_abs_xover++;
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 			if(at < mg){		//Next event is absorption
 				seq_traverser cur, cur_ll, cur_hh;
@@ -1866,9 +1866,9 @@ n_abs_xover++;
 				}*/
 
 				coalesced = 1;
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_abs_xover += nsec;
+//	clock_gettime(CLOCK_MONOTONIC, &end);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	t_abs_xover += nsec;
 
 			}else{	// Next event is migration
 				struct migr_node *nd;
@@ -3269,7 +3269,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //	fprintf(stderr, "cnt_rec=%d\n", cnt_rec);
 
-	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
+//	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
 
 /*fprintf(stderr, "t_abs_merge=%lu\n", t_abs_merge);
 fprintf(stderr, "n_abs_merge=%lu\n", n_abs_merge);
