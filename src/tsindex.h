@@ -3,7 +3,6 @@
 
 #include "bit.h"
 #include "global.h"
-#include "smc.h"
 
 /* Tree size index. */
 #define TSINDEX_REBUILD	0x1	// If this flag is set, the index is waiting for batch rebuild and any operations will not update binary index tree
@@ -26,6 +25,11 @@ static inline void tsindex_setflag(struct tsindex *tr, int flag)
 static inline void tsindex_clearflag(struct tsindex *tr, int flag)
 {
 	tr->flags &= ~flag;
+}
+
+static inline int tsindex_isin(struct tsindex *tr, struct edge *e)
+{
+	return e->xtid > 0;
 }
 
 static inline int tsindex_dirty(struct tsindex *tr)

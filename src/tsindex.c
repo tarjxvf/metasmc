@@ -88,6 +88,10 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 	double diff;
 	int id;
 
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->top->t, e->bot->t, e->xtid);
+#endif
+
 	diff = e->top->t - e->bot->t;
 	queue = &tr->free_list;
 
