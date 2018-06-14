@@ -846,8 +846,8 @@ struct event *absorption(struct genealogy *G, struct edge_set *trunk, struct edg
 	double tmrca_old;
 	int u;
 
-	struct timespec beg, end;
-	int nsec;
+//	struct timespec beg, end;
+//	int nsec;
 
 //n_abs_merge++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
@@ -940,8 +940,8 @@ struct coal_node *coalescent( struct genealogy *G, struct edge_set *F, int pop, 
 	struct list_head *l;
 	int c1, c2, i;
 
-	struct timespec beg, end;
-	int nsec;
+//	struct timespec beg, end;
+//	int nsec;
 
 //n_coal++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
@@ -1514,6 +1514,40 @@ double coal_time(struct genealogy *G, int nF, int pop, double t)
 	return dt;
 }
 
+// Time of next coalescent or absorption event
+double ca_time(struct genealogy *G, int nF, int pop, double t)
+{
+	double size, alpha, tlast, r, u, dt;
+	int npair;
+//	struct timespec beg, end;
+//	int nsec;
+
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	npair = nF * (nF - 1) + 2 * nF * G->pops[pop].n;
+
+	size = G->pops[pop].size;
+	alpha = G->pops[pop].grate;
+
+	if(alpha == 0){
+		dt = dexp(npair / size);
+
+	}else{
+		tlast = G->pops[pop].tlast;
+		u = dunif01();
+		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / npair;
+		dt = log(r) / alpha;
+	}
+
+//	fprintf(stderr, "%d: coal_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
+
+//	clock_gettime(CLOCK_MONOTONIC, &end);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	t_coal_time += nsec;
+
+	return dt;
+}
+
+
 /* Remove crossover node and prune old edge above it. */
 void remove_xover_node(struct genealogy *G, struct xover_node *nd)
 {
@@ -1709,10 +1743,12 @@ double recombination(struct genealogy *G)
 		double at, mg, dmig, sublike, totalprob;
 		struct list_head *el;
 
-n_abs_time_xover++;
+//n_abs_time_xover++;
 
 		totalprob = G->pops[pop].n;
+//		at = ca_time(G, 1, pop, t);
 		at = abs_time(G, 1, pop, t);
+
 		dmig = G->pops[pop].mrate[pop] * 1;
 		if(dmig > 0){
 			totalprob += dmig;
@@ -1888,7 +1924,7 @@ n_abs_time_xover++;
 			like += sublike;
 
 		}else{
-ndiscard_xover++;
+//ndiscard_xover++;
 
 			do_event(G, ev);
 			like -= totalprob * (ev->t - t);
@@ -2088,8 +2124,8 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_s
 	struct config *cfg;
 	struct event *ev, *evnew;
 	struct list_head *f;
-	int pop, upop, vpop, zpop, sumnF, i;
-	double t, u, minu, v, minv, z, minz;
+	int pop, uvpop, zpop, sumnF, i;
+	double t, uv, minuv, z, minz;
 	double like;
 
 	cfg = G->cfg;
@@ -2115,43 +2151,24 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_s
 		double totalprob, sublike, rmig;
 
 		totalprob = rmig = 0;
-		minu = minv = minz = INFINITY;
-		upop = vpop = zpop = 0;
-		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
-			if(G->pops[pop].n > 0 && F[pop].n > 0){
-n_abs_time_merge++;
-				u = abs_time(G, F[pop].n, pop, t);
-#ifdef DEBUG
-				fprintf(stderr, "%d: abs_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, u, pop, F[pop].n, pop, G->pops[pop].n);
-#endif
-				totalprob += F[pop].n * G->pops[pop].n;
-
-			}else{
-				u = INFINITY;
-			}
-
-			if(u < minu){
-				minu = u;
-				upop = pop;
-			}
-		}
-
+		minuv = minz = INFINITY;
+		uvpop = zpop = 0;
 		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
 			if(F[pop].n > 0){
-n_coal_time++;
-				v = coal_time(G, F[pop].n, pop, t);
+//n_abs_time_merge++;
+				uv = ca_time(G, F[pop].n, pop, t);
 #ifdef DEBUG
-				fprintf(stderr, "%d: coal_time=%.10f, nF[%d]=%d\n", __LINE__, v, pop, F[pop].n);
+				fprintf(stderr, "%d: ca_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, uv, pop, F[pop].n, pop, G->pops[pop].n);
 #endif
-				totalprob += F[pop].n * (F[pop].n - 1);
+				totalprob += F[pop].n * G->pops[pop].n + F[pop].n * (F[pop].n - 1);
 
 			}else{
-				v = INFINITY;
+				uv = INFINITY;
 			}
 
-			if(v < minv){
-				minv = v;
-				vpop = pop;
+			if(uv < minuv){
+				minuv = uv;
+				uvpop = pop;
 			}
 		}
 
@@ -2170,7 +2187,7 @@ n_coal_time++;
 
 //		ev = (struct event *)GET_OBJ(evl);
 		ev = evindex_s_get(G->evidx);
-		if(isinf(minu) && isinf(minv) && isinf(minz) && isinf(ev->t)){
+		if(isinf(minuv) && isinf(minz) && isinf(ev->t)){
 			like = -INFINITY;
 			fprintf(stderr, "%d: Infinite time to next event\n", __LINE__);
 			exit(-1);
@@ -2185,26 +2202,34 @@ n_coal_time++;
 		fprintf(stderr, "%d: Next event: ev=%x, type=%d, t=%6f\n", __LINE__, ev, ev->type, ev->t);
 #endif
 
-		if(t + minu < ev->t || t + minv < ev->t || t + minz < ev->t){
+		if(t + minuv < ev->t || t + minz < ev->t){
 			struct edge *e;
 			int c, i;
 
-			if(minu < minv && minu < minz){	// Absorption
-				c = dunif(F[upop].n);
-				e = edge_set_remove(&F[upop], c);
+			if(minuv < minz){	// Coalescent or Absorption
+				double pabs, C, rate1, rate2, tdiff;
 
-				sublike = -totalprob * minu;
+				// Calculate probability of absorption event
+				tdiff = ev->t - t;
+				rate1 = 2 * G->pops[uvpop].n * F[uvpop].n;
+				rate2 = F[uvpop].n * (F[uvpop].n - 1);
+				pabs = rate1 / (rate1 + rate2);
 
-				t += minu;
-				evnew = absorption(G, trunk, e, upop, t);
-				sumnF--;
+				t += minuv;
+				if(dunif01() < pabs){	//Absorption
+					c = dunif(F[uvpop].n);
+					e = edge_set_remove(&F[uvpop], c);
 
-			}else if(minv < minu && minv < minz){	// Coalescent
-				struct coal_node *nd;
-				t += minv;
-				sublike = log(2) - totalprob * minv;
-				nd = coalescent(G, F, vpop, t);
-				evnew = (struct event *)nd->ev;
+					sublike = -totalprob * minuv;
+
+					evnew = absorption(G, trunk, e, uvpop, t);
+
+				}else{	// Coalescent
+					struct coal_node *nd;
+					sublike = log(2) - totalprob * minuv;
+					nd = coalescent(G, F, uvpop, t);
+					evnew = (struct event *)nd->ev;
+				}
 				sumnF--;
 
 			}else{	// Migration
@@ -2247,7 +2272,7 @@ finish_selection:
 //			G->evlist->n++;
 
 		}else{
-ndiscard_merge++;
+//ndiscard_merge++;
 			do_event(G, ev);
 			like -= totalprob * (ev->t - t);
 			t = ev->t;
