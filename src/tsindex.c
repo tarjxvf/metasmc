@@ -87,8 +87,10 @@ struct edge *tsindex_search(struct tsindex *tr, double g, double *cum)
 void tsindex_add(struct tsindex *tr, struct edge *e)
 {
 	struct list *queue;
+	struct list_head *l;
 	double diff;
-	int id;
+	int id, *ptr;
+
 
 #ifdef DEBUG
 	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->top->t, e->bot->t, e->xtid);
@@ -108,16 +110,14 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 		}
 		tr->maxnodes++;
 		if(tr->maxnodes >= tr->maxedges){
-			tr->edges = realloc(tr->edges, sizeof(struct edge *) * (tr->maxedges + 1000));
-			memset(tr->edges + tr->maxedges, 0, sizeof(struct edge *) * 1000);
-			tr->maxedges += 1000;
+			tr->edges = realloc(tr->edges, sizeof(struct edge *) * (tr->maxedges + tr->maxedges));
+			memset(tr->edges + tr->maxedges, 0, sizeof(struct edge *) * tr->maxedges);
+			tr->maxedges += tr->maxedges;
 		}
 
 	}else{
-		struct list_head *l;
-		int *ptr;
-
 		/* Get a existing empty node in binary indexed tree. */
+//		l = __list_pop(queue);
 		l = queue->front;
 		ptr = (int *)GET_OBJ(l);
 		id = *ptr;
@@ -158,7 +158,8 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 //		tsindex_setflag(tr, TSINDEX_DIRTY);
 //
 //	}else{
-		diff = bit_getvalue(tr->index, id);
+//		diff = bit_getvalue(tr->index, id);
+		diff = tr->edges[id]->top->t - tr->edges[id]->bot->t;
 		bit_update(tr->index, id, -diff);
 	}
 

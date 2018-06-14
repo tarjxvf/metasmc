@@ -6,7 +6,7 @@
 /***** LIBAVL allocator of population-wise edge index. *****/
 int eindex_compar(struct edge *a, struct edge *b)
 {
-	double diff, diff2;
+/*	double diff, diff2;
 
 	diff = a->top->t - b->top->t;
 	if(diff > 0){
@@ -23,7 +23,7 @@ int eindex_compar(struct edge *a, struct edge *b)
 			return 1;
 		else
 			return a->eid - b->eid;
-	}
+	}*/
 }
 
 void eindex_seq_off(struct rbindex *eidx)
@@ -106,7 +106,7 @@ void eindex_s_seek_t(struct rbindex *eidx, double ttop, double tbot)
 // Sequential seek for full key
 void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid)
 {
-	if(rbindex_isseq(eidx)){
+/*	if(rbindex_isseq(eidx)){
 		seq_traverser lfwd, lbwd;
 		struct edge *ebwd, *efwd;
 
@@ -123,7 +123,7 @@ void eindex_s_seek(struct rbindex *eidx, double ttop, double tbot, int eid)
 		while(efwd->top->t == ttop && efwd->bot->t == tbot && efwd->eid < eid) efwd = eindex_next(&lfwd);
 
 		eidx->cur_s = lfwd;
-	}
+	}*/
 }
 
 void eindex_destroy(struct genealogy *G, struct rbindex *eidx)

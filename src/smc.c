@@ -141,9 +141,9 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 	e->top = top;
 	e->bot = bot;
 	e->xtid = e->idx = 0;
-	e->eid = ++G->edgeid;
+//	e->eid = ++G->edgeid;
 //	l->prev = l->next = NULL;
-	l->prev = NULL;
+//	l->prev = NULL;
 
 
 #ifdef DEBUG
@@ -225,7 +225,6 @@ void remove_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	__remove_edge(G, pop, e);
 	tsindex_clear(G->tr_xover, e);
-//	list_remove(&G->e_list, e);
 	free_edge(G, e);
 }
 
@@ -441,8 +440,8 @@ void dump_edges(struct genealogy *G)
 		for(j = 0; j < G->pops[i].nedges; j++){
 			e = G->pops[i].eptrs[j];
 			if(e)
-				fprintf(stderr, "%x(top=%.10f, top=%.10f, eid=%d, xtid=%d),", e, e->bot->t, e->top->t, e->eid, e->xtid);
-//				fprintf(stderr, "%x(top=%.10f, top=%.10f, xtid=%d),", e, e->bot->t, e->top->t, e->xtid);
+//				fprintf(stderr, "%x(top=%.10f, top=%.10f, eid=%d, xtid=%d),", e, e->bot->t, e->top->t, e->eid, e->xtid);
+				fprintf(stderr, "%x(top=%.10f, top=%.10f, xtid=%d),", e, e->bot->t, e->top->t, e->xtid);
 
 			else
 				fprintf(stderr, "(NULL),");
@@ -462,7 +461,7 @@ void dump_edges(struct genealogy *G)
 		while(l){
 			struct edge *e;
 			e = (struct edge *)GET_OBJ(l);
-			fprintf(stderr, "->%x(%.6f, %.6f, %d)", e, e->bot->t, e->top->t, e->eid);
+			fprintf(stderr, "->%x(%.6f, %.6f, %d)", e, e->bot->t, e->top->t, e->xtid);
 			l = l->next;
 		}
 		fprintf(stderr, "\n");
