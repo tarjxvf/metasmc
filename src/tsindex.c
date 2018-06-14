@@ -37,6 +37,7 @@ struct tsindex *tsindex_alloc(int maxedges)
 	tr->edges = malloc(sizeof(struct edge *) * maxedges);
 	memset(tr->edges, 0, sizeof(struct edge *) * maxedges);
 	list_init(&tr->free_list);
+	list_init(&tr->id_list);
 
 	return tr;
 }
@@ -60,7 +61,8 @@ void tsindex_reset(struct tsindex *tr)
 
 		tmp = l->next;
 		__list_remove(queue, l);
-		free(l);
+		__list_append(&tr->id_list, l);
+//		free(l);
 		l = tmp;
 	}
 }
@@ -120,7 +122,8 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 		ptr = (int *)GET_OBJ(l);
 		id = *ptr;
 		__list_remove(queue, l);
-		free(l);
+		__list_append(&tr->id_list, l);
+//		free(l);
 
 		if(!tsindex_isrebuild(tr)){
 //			tsindex_setflag(tr, TSINDEX_DIRTY);
@@ -163,7 +166,10 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 	e->xtid = 0;
 
 	/* Add freed id to the queue. */
-	l = malloc(sizeof(struct list_head) + sizeof(int));
+	if(tr->id_list.front == NULL)
+		l = malloc(sizeof(struct list_head) + sizeof(int));
+	else
+		l = __list_pop(&tr->id_list);
 	pidx = (int *)GET_OBJ(l);
 	*pidx = id;
 	__list_append(&tr->free_list, l);
@@ -172,6 +178,18 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 
 void tsindex_free(struct tsindex *tr)
 {
+	struct list_head *l;
+
+	while(tr->free_list.front){
+		l = __list_pop(&tr->free_list);
+		free(l);
+	}
+
+	while(tr->id_list.front){
+		l = __list_pop(&tr->id_list);
+		free(l);
+	}
+
 	free(tr->edges);
 	bit_free(tr->index);
 	free(tr);

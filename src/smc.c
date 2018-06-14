@@ -194,7 +194,6 @@ void __add_edge(struct genealogy *G, int pop, struct edge *e)
 void add_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	tsindex_add(G->tr_xover, e);
-//	list_append(&G->e_list, e);
 	__add_edge(G, pop, e);
 }
 

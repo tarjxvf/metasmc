@@ -15,6 +15,7 @@ struct tsindex {
 	int maxedges;
 	struct edge **edges;
 	struct list free_list;
+	struct list id_list;
 };
 
 static inline void tsindex_setflag(struct tsindex *tr, int flag)
