@@ -874,24 +874,27 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 //	eindex_s_delete(G->pops[e->bot->pop].eidx, e);
 
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
+	free_node(G, f->top);
+
 //	tsindex_update(G->tr_xover, e, -(t - e->bot->t));
 	insert_coal_node(G, e, nd);
 
+	e_new = AS_COAL_NODE(e->bot)->out[0];	// Get the new edge allocated by insert_coal_node (Old lineage below coalescent node).
+	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node
+
 	/* Set up another (absorbed) branch below the new coalescent node. */
 	nd->out[1] = f;
-	free_node(G, f->top);
-	f->top = (struct node *)nd;
 	f->itop = 1;
-	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
-	ev->dn[pop] = -1;
-	ev->pop = pop;
-	nd->ev = ev;
-	ev->nd = nd;
+	f->top = (struct node *)nd;
 
 	add_edge(G, pop, f);
 
-	e_new = AS_COAL_NODE(e->bot)->out[0];	// Get the new edge allocated by insert_coal_node (Old lineage below coalescent node).
-	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node
+	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
+	ev->dn[pop] = -1;
+	ev->pop = pop;
+
+	nd->ev = ev;
+	ev->nd = nd;
 
 //	nd = (struct coal_node *)e->bot;
 //	eindex_s_jump(&G->pops[e->bot->pop], t);
@@ -3330,7 +3333,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
 
-fprintf(stderr, "t_abs_merge=%lu\n", t_abs_merge);
+/*fprintf(stderr, "t_abs_merge=%lu\n", t_abs_merge);
 fprintf(stderr, "n_abs_merge=%lu\n", n_abs_merge);
 
 fprintf(stderr, "t_abs_xover=%lu\n", t_abs_xover);
@@ -3347,7 +3350,7 @@ fprintf(stderr, "t_coal_time=%lu\n", t_coal_time);
 fprintf(stderr, "n_coal_time=%lu\n", n_coal_time);
 
 fprintf(stderr, "ndiscard_merge=%lu\n", ndiscard_merge);
-fprintf(stderr, "ndiscard_xover=%lu\n", ndiscard_xover);
+fprintf(stderr, "ndiscard_xover=%lu\n", ndiscard_xover);*/
 
 
 //	if(ub < reflen){
