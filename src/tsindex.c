@@ -27,7 +27,9 @@ void tsindex_rebuild(struct tsindex *tr)
 
 struct tsindex *tsindex_alloc(int maxedges)
 {
+	struct list_head *l;
 	struct tsindex *tr;
+	int i;
 
 	tr = malloc(sizeof(struct tsindex));
 	tr->flags = 0;
@@ -38,6 +40,11 @@ struct tsindex *tsindex_alloc(int maxedges)
 	memset(tr->edges, 0, sizeof(struct edge *) * maxedges);
 	list_init(&tr->free_list);
 	list_init(&tr->id_list);
+
+	for(i = 0; i < maxedges; i++){
+		l = malloc(sizeof(struct list_head) + sizeof(int));
+		__list_append(&tr->id_list, l);
+	}
 
 	return tr;
 }
@@ -89,7 +96,7 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 	struct list *queue;
 	struct list_head *l;
 	double diff;
-	int id, *ptr;
+	int id, *ptr, i;
 
 
 #ifdef DEBUG
@@ -112,6 +119,12 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 		if(tr->maxnodes >= tr->maxedges){
 			tr->edges = realloc(tr->edges, sizeof(struct edge *) * (tr->maxedges + tr->maxedges));
 			memset(tr->edges + tr->maxedges, 0, sizeof(struct edge *) * tr->maxedges);
+
+			for(i = 0; i < tr->maxedges; i++){
+				l = malloc(sizeof(struct list_head) + sizeof(int));
+				__list_append(&tr->id_list, l);
+			}
+
 			tr->maxedges += tr->maxedges;
 		}
 
@@ -167,9 +180,9 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 	e->xtid = 0;
 
 	/* Add freed id to the queue. */
-	if(tr->id_list.front == NULL)
-		l = malloc(sizeof(struct list_head) + sizeof(int));
-	else
+//	if(tr->id_list.front == NULL)
+//		l = malloc(sizeof(struct list_head) + sizeof(int));
+//	else
 		l = __list_pop(&tr->id_list);
 	pidx = (int *)GET_OBJ(l);
 	*pidx = id;

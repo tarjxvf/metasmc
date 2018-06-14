@@ -6,6 +6,7 @@
 void cache_resize(struct cache *nc, int add)
 {
 	int *pid, i, new_size;
+	struct list_head *l;
 	char *obj;
 
 	new_size = nc->cache_size + add;
@@ -16,6 +17,12 @@ void cache_resize(struct cache *nc, int add)
 		*pid = i;
 
 	}
+
+	for(i = nc->cache_size; i < new_size; i++){
+		l = malloc(sizeof(struct list_head) + sizeof(int));
+		__list_append(&nc->id_list, l);
+	}
+
 	nc->cache_size = new_size;
 }
 
@@ -57,9 +64,9 @@ void cache_free(struct cache *nc, void *obj)
 	id = *(int *)((char *)obj + nc->obj_size);
 
 	/* Add freed id to the queue. */
-	if(nc->id_list.front == NULL)
-		l = malloc(sizeof(struct list_head) + sizeof(int));
-	else
+//	if(nc->id_list.front == NULL)
+//		l = malloc(sizeof(struct list_head) + sizeof(int));
+//	else
 		l = __list_pop(&nc->id_list);
 	pidx = (int *)GET_OBJ(l);
 	*pidx = id;
@@ -83,6 +90,7 @@ void cache_clear(struct cache *nc)
 
 struct cache *cache_create(size_t obj_size, int cache_size)
 {
+	struct list_head *l;
 	struct cache *nc;
 	int i, *pid;
 	char *obj;
@@ -102,6 +110,11 @@ struct cache *cache_create(size_t obj_size, int cache_size)
 
 	list_init(&nc->free_list);
 	list_init(&nc->id_list);
+
+	for(i = 0; i < nc->cache_size; i++){
+		l = malloc(sizeof(struct list_head) + sizeof(int));
+		__list_append(&nc->id_list, l);
+	}
 
 	return nc;
 }
