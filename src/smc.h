@@ -14,74 +14,6 @@
 #define NODE_FLOAT	4
 #define NODE_DUMMY	5
 
-struct node;
-struct edge;
-
-typedef size_t map_t;
-#define CELLSIZE 32
-#define NCELL_PER_MAP sizeof(map_t)
-
-struct node {
-	int type;	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in;	// Edge above the node
-};
-
-// node representing coalescent event
-struct coal_node {
-	int type;	// type==NODE_COAL
-	double t;
-	int pop;
-	struct coal_event *ev;
-	struct edge *in;
-	struct edge *out[2];	//Edges below the node
-	char *seq;
-	map_t *mapped;
-};
-
-// Node representing recombination event. Not used in current implementation.
-struct xover_node {
-	int type;	// type==NODE_XOVER
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in_new;
-	struct edge *out;
-	struct edge *in;
-};
-
-// Note representing migration event
-struct migr_node {
-	int type;	// type==NODE_MIGR
-	double t;
-	int pop;
-	struct migr_event *ev;
-	struct edge *in;
-	struct edge *out;
-};
-
-// Node representing sample.
-struct sam_node {
-	int type;	// type==NODE_SAM
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in;
-	struct frag *fg;	// pointer to corresponding fragment
-};
-
-// Node representing tip of dummy lineage which represents trapped ancestral material. Recombination is allowed on this type of lineage but take no effect.
-struct dummy_node {
-	int type;	// type==NODE_DUMMY of type==NODE_FLOAT
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in;
-	struct edge *out;
-};
-
 #define AS_COAL_NODE(n)	((struct coal_node *)(n))
 #define AS_MIGR_NODE(n)	((struct migr_node *)(n))
 #define AS_XOVER_NODE(n)	((struct xover_node *)(n))
@@ -93,16 +25,6 @@ void free_node(struct genealogy *G, struct node *nd);
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
 void free_edge(struct genealogy *G, struct edge *e);
 struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot);
-
-struct edge {
-	struct node *top;
-	struct node *bot;
-	int itop;
-	int eid;
-	int xtid;	// Index of edge in binary indexed tree
-	int idx;	// Index of the edge in eptr array of population
-	int trunk_id;	// Index in trunk genealogy (used by merge_floating)
-};
 
 struct edge_set {
 	int maxn;
