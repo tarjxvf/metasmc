@@ -409,6 +409,8 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	cfg = malloc(sizeof(struct config));
 	memset(cfg, 0, sizeof(struct config));
 
+	cfg->prof = prof;
+
 	/* Set up basic configuration */
 	cfg->npop = cfg->npop_all = npop = prof->npop;
 	cfg->nsplt = nsplt = 0;

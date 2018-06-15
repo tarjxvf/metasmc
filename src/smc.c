@@ -760,6 +760,7 @@ struct event *__absorption_r(struct genealogy *G, struct edge *e, struct edge *f
 {
 	struct coal_event *ev;
 	struct coal_node *nd;
+	struct edge *enew;
 
 #ifdef DEBUG
 //	nabs++;
@@ -807,6 +808,9 @@ struct event *__absorption_r(struct genealogy *G, struct edge *e, struct edge *f
 	}
 
 	/* Set up another (absorbed) branch below the new coalescent node. */
+	enew = nd->out[0];
+	enew->ub = e->ub;
+	e->ub = MAX(enew->ub, f->ub);
 	nd->out[1] = f;
 	free_node(G, f->top);
 	f->top = (struct node *)nd;
@@ -838,7 +842,7 @@ static inline void eindex_s_jump(struct population *ppop, double t)
  * Note that eindex must be in sequential mode because this function is called only if there is a trunk genealogy, which occurs when adding new lineages. */
 static inline struct coal_node *__coalescent(struct genealogy *G, struct edge *e1, struct edge *e2, int pop, double t)
 {
-	struct edge *e, *e_new;
+	struct edge *e_new;
 	struct coal_node *nd;
 	struct coal_event *ev;
 
@@ -849,6 +853,8 @@ static inline struct coal_node *__coalescent(struct genealogy *G, struct edge *e
 	insert_coal_node(G, e1, nd);
 
 	e_new = nd->out[0];
+	e_new->ub = e1->ub;
+	e1->ub = MAX(e_new->ub, e2->ub);
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node.
 
 	/* Set up another branch below the coalescent node */
@@ -884,8 +890,18 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 
 	u = trunk[pop].n * dunif01();
 	e = edge_set_get(&trunk[pop], u);
+//	if(e->ub > G->lb){
+		nd = __coalescent(G, e, f, pop, t);
 
-	nd = __coalescent(G, e, f, pop, t);
+//	}else{
+		/* Because e will be removed, we can skip absorption operation. */
+//		f->top = e->top;
+//		f->itop = e->itop;
+//		edge_set_replace(&trunk[pop], e->trunk_id, f);
+//		free_edge(G, e);
+//		add_edge(G, pop, nd->out[0]);
+//		add_edge(G, pop, f);
+//	}
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -954,6 +970,7 @@ struct migr_node *do_migrate(struct genealogy *G, struct edge *e, int dpop, int 
 	// The edge above nd must be floating
 	insert_migr_node(G, e, nd);
 	e2 = nd->out;
+	e2->ub = e->ub;
 
 //	eindex_s_jump(&G->pops[e->bot->pop], t);
 //	eindex_s_seek(G->pops[e2->bot->pop].eidx, e2->top->t, e2->bot->t, e2->eid);
@@ -1302,13 +1319,16 @@ output:
 void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 {
 	struct list_head *rl, *l;
+	struct profile *prof;
 	struct event *ev0;
-	int i;
+	int i, reflen;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 
+	prof = G->cfg->prof;
+	reflen = prof->ref->chrlen[prof->chrnum];
 	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 	rl = R->front;
 	while(rl){
@@ -1323,6 +1343,7 @@ void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 		e = alloc_edge(G, (struct node *)n2, (struct node *)n1);
 		n1->in = n2->out = e;
 		n1->fg = r;
+		e->ub = (double)n1->fg->end / reflen;
 
 		edge_set_add(&F[r->pop], e);
 		ev0->dn[r->pop]++;
@@ -1575,7 +1596,7 @@ void erase_dummy_path(struct genealogy *G, struct edge *edum)
 }
 
 /* Generate recombination point and modify genealogy */
-double recombination(struct genealogy *G)
+double recombination(struct genealogy *G, double x)
 {
 	struct config *cfg;
 	int pop, coalesced, i;	// coalesced: flag indicating whether floating lineage is absorbed
@@ -1630,6 +1651,8 @@ double recombination(struct genealogy *G)
 	/* Remove recombinant lineage from the genealogy. */
 	nf = (struct dummy_node *)alloc_node(G, NODE_FLOAT, pop, INFINITY);
 	ef = alloc_edge(G, (struct node *)nf, e->bot);
+	ef->ub = e_below_xover->ub = e->ub;
+	e->ub = x;
 	nf->out = ef;
 	nxover->in_new = ef;
 	tsindex_update(G->tr_xover, e, -(e_below_xover->top->t - e_below_xover->bot->t));
@@ -2040,15 +2063,9 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_s
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	reset_populations(G);
-//	evl = G->evlcurr;
-//	evl = G->evlist->front;
 	t = G->t;
-//	t = 0;
 	sumnF = 0;
 	for(pop = 0; pop < cfg->npop_all; pop++){
-//		G->pops[pop].nsam += F[pop].n;
-//		G->nsam += F[pop].n;
 		sumnF += F[pop].n;
 	}
 
@@ -2093,7 +2110,6 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_s
 			minz = INFINITY;
 		}
 
-//		ev = (struct event *)GET_OBJ(evl);
 		ev = evindex_s_get(G->evidx);
 		if(isinf(minuv) && isinf(minz) && isinf(ev->t)){
 			like = -INFINITY;
@@ -2184,13 +2200,34 @@ finish_selection:
 //ndiscard_merge++;
 			like -= totalprob * (ev->t - t);
 			t = ev->t;
+			evindex_s_forward(G->evidx);
 
 			if(ev->type == EVENT_COAL){
 				struct coal_event *cev;
+				int erase = 0;
 
 				cev = (struct coal_event *)ev;
 				edge_set_remove(&trunk[cev->nd->pop], cev->nd->out[0]->trunk_id);
 				edge_set_remove(&trunk[cev->nd->pop], cev->nd->out[1]->trunk_id);
+
+//				if(cev->nd->out[0]->ub < G->lb){
+//					free_node(G, cev->nd->out[0]->bot);
+//					free_edge(G, cev->nd->out[0]);
+//					erase = 1;
+
+//				}else{
+//					add_edge(G, cev->nd->out[0]->pop, cev->nd->out[0]);
+//				}
+
+//				if(cev->nd->out[1]->ub < G->lb){
+//					free_node(G, cev->nd->out[1]->bot);
+//					free_edge(G, cev->nd->out[1]);
+//					erase = 1;
+//				}
+
+//				if(erase)
+//					remove_event(G, ev);
+
 				edge_set_add(&trunk[cev->nd->pop], cev->nd->in);
 				G->pops[((struct coal_event *)ev)->pop].n--;
 
@@ -2199,6 +2236,13 @@ finish_selection:
 
 				mev = (struct migr_event *)ev;
 				edge_set_remove(&trunk[mev->nd->out->bot->pop], mev->nd->out->trunk_id);
+
+//				if(mev->nd->out->ub <= G->lb){
+//					free_node(G, mev->nd->out->bot);
+//					free_edge(G, mev->nd->out);
+//					remove_event(G, ev);
+//				}
+
 				edge_set_add(&trunk[mev->nd->pop], mev->nd->in);
 				G->pops[((struct migr_event *)ev)->dpop].n--;
 				G->pops[((struct migr_event *)ev)->spop].n++;
@@ -2219,6 +2263,13 @@ finish_selection:
 					while(l){
 						nd = (struct migr_node *)GET_OBJ(l);
 						edge_set_remove(&trunk[nd->out->bot->pop], nd->out->trunk_id);
+
+//						if(nd->out->ub <= G->lb){
+//							free_node(G, nd->out->bot);
+//							free_edge(G, nd->out);
+//							remove_event(G, ev);
+//						}
+
 						edge_set_add(&trunk[nd->pop], nd->in);
 						l = l->next;
 					}
@@ -2248,6 +2299,13 @@ finish_selection:
 					while(l){
 						nd = (struct migr_node *)GET_OBJ(l);
 						edge_set_remove(&trunk[nd->out->bot->pop], nd->out->trunk_id);
+
+//						if(nd->out->ub <= G->lb){
+//							free_node(G, nd->out->bot);
+//							free_edge(G, nd->out);
+//							remove_event(G, ev);
+//						}
+
 						edge_set_add(&trunk[nd->pop], nd->in);
 						l = l->next;
 					}
@@ -2319,12 +2377,13 @@ finish_selection:
 					edge_set_add(&F[edum->bot->pop], edum);
 
 					G->root = G->localMRCA = NULL;
+					remove_event(G, ev);
 				}
 			}
 
-			evindex_s_forward(G->evidx);
-			if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR)
-				remove_event(G, ev);
+//			evindex_s_forward(G->evidx);
+//			if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR)
+//				remove_event(G, ev);
 		}
 
 	}
@@ -2865,7 +2924,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		double x;
 //		int x;
 
-//		build_trunk_e(G, lb);
 #ifdef DEBUG
 		fprintf(stderr, "Tree after build_trunk:");
 		if(G->root)
@@ -2900,6 +2958,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 		}else{
 			ub = 1;
 		}
+		G->lb = lb;
+		G->ub = ub;
+
 #ifdef DEBUG
 		l = R.front;
 		fprintf(stderr, "%d: New reads: R", __LINE__);
@@ -3046,6 +3107,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "%d: G->total=%.6f, lb=%.6f, ub=%.6f, x=%.6f, r=%.6f\n", __LINE__, G->total, lb, ub, x, r);
 #endif
 			x = MIN(x + r, ub);
+			G->x = x;
 			inext = x * reflen - ilast;
 
 #ifdef DEBUG
@@ -3079,7 +3141,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 				u = dunif01() * treesize;
 				if(u < G->total){
-					sublike = recombination(G);
+					sublike = recombination(G, x);
 
 				}else{
 					double t;

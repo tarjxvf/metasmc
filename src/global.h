@@ -23,6 +23,8 @@
 
 //#define EVENT_MMUT	10	/* Change of mutation model */
 
+//#define MAX(a, b) ((a) > (b))?(a):(b)
+
 struct config;
 struct genealogy;
 struct mutation;
@@ -207,6 +209,7 @@ void unload_profile(struct profile *prof);
 
 struct mutation;
 struct config {
+	struct profile *prof;
 	unsigned int seed;
 	int print_tree;	// 1 if you wish to print trees
 	int gensam;	// 1 if you wish to generate sequences
@@ -355,6 +358,7 @@ struct edge {
 	int xtid;	// Index of edge in binary indexed tree
 	int idx;	// Index of the edge in eptr array of population
 	int trunk_id;	// Index in trunk genealogy (used by merge_floating)
+	double ub;
 };
 
 #endif
