@@ -3,11 +3,11 @@ AUTOMAKE_OPTIONS=foreign subdir-objects
 
 bin_PROGRAMS=sampler metasmc metaprof
 lib_LTLIBRARIES=libsmc.la
-include_HEADERS=util.h global.h mutation.h smc.h slab.h
+include_HEADERS=util.h list.h global.h mutation.h smc.h cache.h bit.h rb.h rbindex.h tsindex.h eindex.h evindex.h
 
-libsmc_la_SOURCES=smc.c util.c mutation.c global.c rand.c slab.c mt19937-64/mt19937-64.c
+libsmc_la_SOURCES=smc.c util.c list.c mutation.c global.c rand.c cache.c bit.c tsindex.c rb.c rbindex.c eindex.c evindex.c mt19937-64/mt19937-64.c
 libsmc_la_LDFLAGS= -shared -fPIC $(LAPACK_LIBS) -lrt -lm -lgfortran -llapack -llapacke
-libsmc_la_CFLAGS=$(LAPACK_CFLAGS)
+libsmc_la_CFLAGS=$(LAPACK_CFLAGS) 
 
 sampler_SOURCES=sampler.c
 sampler_LDADD=libsmc.la

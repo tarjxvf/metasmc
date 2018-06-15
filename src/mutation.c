@@ -66,16 +66,21 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	edges = malloc(sizeof(struct edge *) * maxedges);
 	tt = 0;
 	weights[0] = 0;
-	el = G->e_list.front;
-	while(el){
-		double w;
+//	el = G->e_list.front;
+//	while(el){
+	for(i = 0; i < G->tr_xover->maxnodes; i++){
+		e = G->tr_xover->edges[i];
+		if(e){
+			double w;
 
-		edges[nedges] = e = (struct edge *)GET_OBJ(el);
-		pop = e->bot->pop;
-		w = (e->top->t - e->bot->t) * G->pops[pop].mmut->theta;
-		weights[nedges + 1] = weights[nedges] + w;
-		nedges++;
-		el = el->next;
+//			e = (struct edge *)GET_OBJ(el);
+			edges[nedges] = e;
+			pop = e->bot->pop;
+			w = (e->top->t - e->bot->t) * G->pops[pop].mmut->theta;
+			weights[nedges + 1] = weights[nedges] + w;
+			nedges++;
+//			el = el->next;
+		}
 	}
 	tt = weights[nedges];
 
@@ -110,7 +115,7 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 			double wsum, u, *hit;
 
 			/* Select point of mutation event. */
-			el = G->e_list.front;
+//			el = G->e_list.front;
 			u = dunif01() * tt;
 			// Get mutation point using binary search
 			hit = (double *)search_interval(&u, (void *)weights, nedges + 1, sizeof(double), (int (*)(void *, void *))dblcompar);
@@ -158,7 +163,7 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 #endif
 			for(i = 0, p = lb; p < ub && i < rd->end - rd->start; i++, j++, p++){
 #ifdef DEBUG
-				fprintf(stderr, "%d: p=%d, j=%d\n", __LINE__, p, j);
+//				fprintf(stderr, "%d: p=%d, j=%d\n", __LINE__, p, j);
 #endif
 				if(ances[j] != deriv[j]){	/* j is a polymorphic site */
 					if(isdesc(G, nmut[j], (struct node *)n)){

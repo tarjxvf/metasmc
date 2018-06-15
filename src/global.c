@@ -8,171 +8,33 @@
 #include "global.h"
 #include "smc.h"
 #include "mutation.h"
+#include "evindex.h"
 
-void list_init(struct list *ls)
-{
-	ls->front = NULL;
-	ls->rear = &ls->front;
-	ls->n = 0;
-}
-
-void list_concat(struct list *dst, struct list *src)
-{
-	*dst->rear = src->front;
-	src->front->prev = dst->rear;
-	dst->rear = src->rear;
-}
-
-/* Add an item in the front of the list. */
-void list_add(struct list *ls, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_add(ls, l);
-}
-
-/* Insert an item before an item. */
-void list_insbefore(struct list_head *ref, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_insbefore(ref, l);
-}
-
-/* Append an item after a  list */
-void list_append(struct list *ls, void *item)
-{
-	struct list_head *l;
-
-	l = GET_LIST(item);
-	__list_append(ls, l);
-}
-
-/* Remove an item from the list. */
-void list_remove(struct list *ls, void *item)
-{
-	struct list_head *l;
-	l = GET_LIST(item);
-	__list_remove(ls, l);
-}
-
-void list_print(struct list_head **head)
-{
-	struct list_head **ptr;
-	ptr = head;
-
-	printf("head=%x", ptr);
-	while(*ptr){
-		printf("->[ptr=%x, *ptr=%x, prev=%x, next=%x, &next=%x]", ptr, *ptr, (*ptr)->prev, (*ptr)->next, &(*ptr)->next);
-		ptr = &(*ptr)->next;
-	}
-	printf("\n");
-}
-
-/* Add an item in the front of the list. *
-void list_add(struct list_head **head, struct list_head *item)
-{
-	if(*head)
-		(*head)->prev = &item->next;
-	item->next = *head;
-	*head = item;
-	item->prev = head;
-}
-
-/* Insert an item before an item. *
-void list_insbefore(struct list_head *ref, struct list_head *item)
-{
-	item->next = ref;
-	item->prev = ref->prev;
-	ref->prev = &item->next;
-	*item->prev = item;
-}
-
-/* Append an item after a  list *
-void list_append(struct list_head **head, struct list_head *item)
-{
-	struct list_head **ptr;
-
-	ptr = head;
-	while(*ptr)
-		ptr = &(*ptr)->next;
-	*ptr = item;
-//	item->next = NULL;
-	item->prev = ptr;
-}
-
-/* Remove an item from the list. *
-void list_remove(struct list_head *item)
-{
-	*item->prev = item->next;
-	if(item->next)
-		item->next->prev = item->prev;
-}
-
-void list_print(struct list_head **head)
-{
-	struct list_head **ptr;
-	ptr = head;
-
-	printf("head=%x", ptr);
-	while(*ptr){
-		printf("->[ptr=%x, *ptr=%x, prev=%x, next=%x, &next=%x]", ptr, *ptr, (*ptr)->prev, (*ptr)->next, &(*ptr)->next);
-		ptr = &(*ptr)->next;
-	}
-	printf("\n");
-}*/
-
-char nucl[] = {'A', 'C', 'G', 'T'};
-
-int nucl_index(int ch)
-{
-	switch(ch){
-		case 'a':case 'A':
-			return 0;
-		case 'c':case 'C':
-			return 1;
-		case 'g':case 'G':
-			return 2;
-		case 't':case 'T':
-			return 3;
-		default:
-			return -1;
-	}
-}
-
-void remove_event(struct genealogy *G, struct event *ev)
-{
-	struct list_head *l;
-
-#ifdef DEBUG
-	fprintf(stderr, "Entering function %s, event=%x, type=%d, t=%.6f\n", __func__, ev, ev->type, ev->t);
-#endif
-	l = GET_LIST(ev);
-	list_remove(G->evlist, ev);
-//	if(ev->type <= EVENT_MIGR)
-//		free(l);
-
-//	else
-		free(l);
-}
-
-size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event)};
+size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct samp_event)};
 
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
 struct event *alloc_event(struct config *cfg, int type, double t)
 {
 	struct list_head *l;
 	struct event *ev;
+	int npop_all;
 
+	npop_all = cfg->npop + cfg->nsplt;
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = malloc(evsize[type]);
+	if(type == EVENT_COAL || type == EVENT_MIGR)
+		l = cache_alloc(cfg->event_cache[type]);
+	else
+		l = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
+
 	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
+	ev->dn = (int *)((char *)l + evsize[type]);
+	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
+//	memset(ev->dn, 0, sizeof(int) * 2 * npop_all);
+	dn_clear(npop_all, ev->dn);
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
@@ -180,12 +42,24 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	return ev;
 }
 
-void print_event(struct event *ev)
+void free_event(struct config *cfg, struct event *ev)
+{
+	if(ev->type == EVENT_COAL || ev->type == EVENT_MIGR)
+		cache_free(cfg->event_cache[ev->type], GET_LIST(ev));
+	else
+		free(GET_LIST(ev));
+}
+
+void print_event(struct config *cfg, struct event *ev)
 {
 	struct list_head *l;
+	int i;
 
 	l = GET_LIST(ev);
-	fprintf(stderr, "(%x, %x)[type=%d, t=%.6f", l, ev, ev->type, ev->t);
+	fprintf(stderr, "(%x, %x)[type=%d, t=%.6f, dn=(", l, ev, ev->type, ev->t);
+	for(i = 0; i < cfg->npop_all; i++)
+		fprintf(stderr, "%d, ", ev->dn[i]);
+	fprintf(stderr, ")");
 	if(ev->type == EVENT_COAL){
 		fprintf(stderr, ", pop=%d", ((struct coal_event *)ev)->pop);
 	}else if(ev->type == EVENT_MIGR){
@@ -209,9 +83,28 @@ void print_event(struct event *ev)
 /*	}else if(ev->type == EVENT_MMUT){
 		fprintf(stderr, ", pop=%d", ((struct mmut_event *)ev)->pop);
 		dump_mutation_model(((struct mmut_event *)ev)->mmut);*/
+	}else if(ev->type == EVENT_SAMP){
 	}
 
 	fprintf(stderr, "]");
+}
+
+char nucl[] = {'A', 'C', 'G', 'T'};
+
+int nucl_index(int ch)
+{
+	switch(ch){
+		case 'a':case 'A':
+			return 0;
+		case 'c':case 'C':
+			return 1;
+		case 'g':case 'G':
+			return 2;
+		case 't':case 'T':
+			return 3;
+		default:
+			return -1;
+	}
 }
 
 int fgcompar(const void *a, const void *b)
@@ -558,21 +451,36 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	}
 
 	/* Initialize object caches. */
-/*	cfg->node_cache[NODE_COAL] = mem_cache_create(sizeof(struct coal_node), NULL, NULL);
-	cfg->node_cache[NODE_MIGR] = mem_cache_create(sizeof(struct migr_node), NULL, NULL);
-	cfg->node_cache[NODE_XOVER] = mem_cache_create(sizeof(struct xover_node), NULL, NULL);
-	cfg->node_cache[NODE_SAM] = mem_cache_create(sizeof(struct list_head) + sizeof(struct sam_node), NULL, NULL);
-	cfg->node_cache[NODE_FLOAT] = mem_cache_create(sizeof(struct dummy_node), NULL, NULL);
+/*	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node), maxfrag * 4);
+	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), maxfrag * 4);
+	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), maxfrag * 4);
+	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), maxfrag * 4);
+	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
+	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];*/
 
-	cfg->event_cache[EVENT_COAL] = mem_cache_create(sizeof(struct list_head) + sizeof(struct coal_event), NULL, NULL);
-	cfg->event_cache[EVENT_MIGR] = mem_cache_create(sizeof(struct list_head) + sizeof(struct migr_event), NULL, NULL);
+//	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
+//	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
+/*	cfg->event_cache[EVENT_JOIN] = cfg->event_cache[NODE_MIGR];
+	cfg->event_cache[EVENT_GROW] = cache_create(sizeof(struct list_head) + sizeof(struct grow_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_SIZE] = cfg->event_cache[EVENT_GROW];
+	cfg->event_cache[EVENT_RMIG] = cache_create(sizeof(struct list_head) + sizeof(struct rmig_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_GMIG] = cache_create(sizeof(struct list_head) + sizeof(struct gmig_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_GSIZ] = cfg->event_cache[EVENT_GGRO] = cfg->event_cache[EVENT_GMIG];
+	cfg->event_cache[EVENT_SPLT] = cache_create(sizeof(struct list_head) + sizeof(struct splt_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_DUMY] = cache_create(sizeof(struct list_head) + sizeof(struct dumy_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_DXVR] = cache_create(sizeof(struct list_head) + sizeof(struct dxvr_event) + sizeof(int) * 2 * npop_all, 10);
+	cfg->event_cache[EVENT_SAMP] = cache_create(sizeof(struct list_head) + sizeof(struct samp_event) + sizeof(int) * 2 * npop_all, 10);*/
 
-	cfg->edge_cache = mem_cache_create(sizeof(struct list_head) + sizeof(struct edge), NULL, NULL);*/
-	cfg->frag_cache = mem_cache_create(sizeof(struct list_head) + sizeof(struct frag *), NULL, NULL);
+//	cfg->edge_cache = cache_create(sizeof(struct list_head) + sizeof(struct edge), maxfrag * 4);
+//	cfg->frag_cache = cache_create(sizeof(struct list_head) + sizeof(struct frag *), maxfrag);
 
 	/* Set up empty event list (contains only one dummy event) */
 	ev = alloc_event(cfg, EVENT_GSIZ, INFINITY);
+
 	list_init(&cfg->evlist);
+	cfg->ndevents = 0;
+	cfg->devents = malloc(sizeof(struct event *) * 10);
+
 	list_append(&cfg->evlist, ev);
 	((struct gsiz_event *)ev)->size = 1;
 
@@ -623,7 +531,7 @@ void dump_config(struct config *cfg)
 	fprintf(stderr, "\nPrint event list:\n");
 	l = cfg->evlist.front;
 	while(l){
-		print_event((struct event *)GET_OBJ(l));
+		print_event(cfg, (struct event *)GET_OBJ(l));
 		l = l->next;
 		fprintf(stderr, "\n");
 	}
@@ -639,32 +547,44 @@ void destroy_config(struct config *cfg)
 {
 	struct list_head *l, *tmp;
 	struct event *ev;
+	int i;
 
 	// Release space of event list
-	l = cfg->evlist.front;
-	while(l){
+//	l = cfg->evlist.front;
+/*	while(l){
 		tmp = l;
 		ev = (struct event *)GET_OBJ(l);
 		l = l->next;
 //		if(ev->type == EVENT_MMUT)
 //			free(((struct mmut_event *)ev)->mmut);
 		free(tmp);
-	}
+	}*/
+	free(cfg->evlist.front);
 	list_init(&cfg->evlist);
+	for(i = 0; i < cfg->ndevents; i++){
+		l = GET_LIST(cfg->devents[i]);
+		free(l);
+	}
 
-/*	mem_cache_destroy(cfg->node_cache[NODE_COAL]);
-	mem_cache_destroy(cfg->node_cache[NODE_MIGR]);
-	mem_cache_destroy(cfg->node_cache[NODE_XOVER]);
-	mem_cache_destroy(cfg->node_cache[NODE_SAM]);
-	mem_cache_destroy(cfg->node_cache[NODE_FLOAT]);
+/*	cache_destroy(cfg->node_cache[NODE_COAL]);
+	cache_destroy(cfg->node_cache[NODE_MIGR]);
+	cache_destroy(cfg->node_cache[NODE_XOVER]);
+	cache_destroy(cfg->node_cache[NODE_SAM]);
 
-	mem_cache_destroy(cfg->event_cache[EVENT_COAL]);
-	mem_cache_destroy(cfg->event_cache[EVENT_MIGR]);
+	cache_destroy(cfg->edge_cache);
+	cache_destroy(cfg->frag_cache);*/
 
-	mem_cache_destroy(cfg->edge_cache);*/
-	if(cfg->frag_cache)
-		mem_cache_destroy(cfg->frag_cache);
+//	cache_destroy(cfg->event_cache[EVENT_COAL]);
+//	cache_destroy(cfg->event_cache[EVENT_MIGR]);
+/*	cache_destroy(cfg->event_cache[EVENT_GROW]);
+	cache_destroy(cfg->event_cache[EVENT_RMIG]);
+	cache_destroy(cfg->event_cache[EVENT_GMIG]);
+	cache_destroy(cfg->event_cache[EVENT_SPLT]);
+	cache_destroy(cfg->event_cache[EVENT_DUMY]);
+	cache_destroy(cfg->event_cache[EVENT_DXVR]);
+	cache_destroy(cfg->event_cache[EVENT_SAMP]);*/
 
+	free(cfg->devents);
 	free(cfg->mmut);
 	free(cfg->grate);
 	free(cfg->mmig[0]);
@@ -726,6 +646,7 @@ int add_event_ggro(struct config *cfg, double t, double alpha)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -743,6 +664,7 @@ int add_event_grow(struct config *cfg, double t, int pop, double alpha)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -758,6 +680,7 @@ int add_event_gmig(struct config *cfg, double t, double rmig)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -776,6 +699,7 @@ int add_event_rmig(struct config *cfg, double t, int popi, int popj, double rmig
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -791,6 +715,7 @@ int add_event_gsiz(struct config *cfg, double t, double size)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -803,10 +728,12 @@ int add_event_join(struct config *cfg, double t, int popi, int popj)
 	ev = alloc_event(cfg, EVENT_JOIN, t);
 	((struct join_event *)ev)->popi = popi;
 	((struct join_event *)ev)->popj = popj;
+	list_init(&((struct join_event *)ev)->ndls);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -815,22 +742,26 @@ int add_event_splt(struct config *cfg, double t, int pop, double prop)
 {
 	struct list_head *evl;
 	struct event *ev;
+	int npop_all;
 
+	npop_all = cfg->npop + cfg->nsplt;
 	ev = alloc_event(cfg, EVENT_SPLT, t);
 	((struct splt_event *)ev)->pop = pop;
 	((struct splt_event *)ev)->newpop = cfg->npop_all++;
-	cfg->nsplt++;
+///	cfg->nsplt++;
 	((struct splt_event *)ev)->prop = prop;
+	list_init(&((struct splt_event *)ev)->ndls);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
-	cfg->mmut = realloc(cfg->mmut, sizeof(struct mutation *) * cfg->npop_all);
+	cfg->mmut = realloc(cfg->mmut, sizeof(struct mutation *) * npop_all);
 	cfg->mmut[cfg->npop_all - 1] = NULL;
-	cfg->size = realloc(cfg->size, sizeof(double) * cfg->npop_all);
+	cfg->size = realloc(cfg->size, sizeof(double) * npop_all);
 	cfg->size[cfg->npop_all - 1] = cfg->size[pop];
-	cfg->grate = realloc(cfg->grate, sizeof(double) * cfg->npop_all);
+	cfg->grate = realloc(cfg->grate, sizeof(double) * npop_all);
 	cfg->grate[cfg->npop_all - 1] = 0;
+	cfg->ndevents++;
 
 	return 0;
 }
@@ -847,6 +778,22 @@ int add_event_size(struct config *cfg, double t, int pop, double size)
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
 	list_insbefore(evl, ev);
+	cfg->ndevents++;
+
+	return 0;
+}
+
+int add_event_samp(struct config *cfg, double t, int pop, double size)
+{
+	struct list_head *evl;
+	struct event *ev;
+
+	ev = alloc_event(cfg, EVENT_SAMP, t);
+
+	evl = cfg->evlist.front;
+	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
+	list_insbefore(evl, ev);
+	cfg->ndevents++;
 
 	return 0;
 }

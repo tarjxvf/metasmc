@@ -9,7 +9,7 @@
 #include "global.h"
 #include "smc.h"
 #include "mutation.h"
-#include "slab.h"
+#include "cache.h"
 
 #define NEXT_NOBLANK(fp, ch)    while(isblank((ch) = fgetc(fp)))
 
@@ -78,7 +78,7 @@ void usage(char *prog)
 	fprintf(stderr, "-es t i proportion  (Split: pop i -> pop-i + pop-npop, npop increases by 1.\n");
 	fprintf(stderr, "        proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.\n");
 	fprintf(stderr, "        Size of pop npop is set to N0 and alpha = 0.0 , size and alpha of pop i are unchanged.\n");
-	fprintf(stderr, "-ej t i j   ( Join lineages in pop i and pop j into pop j\n");
+	fprintf(stderr, "-ej t i j   ( Join lineages in pop i and pop j into pop i\n");
 	fprintf(stderr, "        size, alpha and M are unchanged.\n");
 }
 
@@ -219,6 +219,7 @@ int main(int argc, char *argv[])
 
 	// Third round: set up splitting events
 	i = 1;
+	nsplt = 0;
 	while(i < argc){
 		char *ptr, *optarg, *endptr;
 		double t;	// Event time
@@ -248,7 +249,39 @@ int main(int argc, char *argv[])
 								fprintf(stderr, "Invalid parameter for -es\n");
 								goto abnormal;
 							}
+							nsplt++;
 
+							break;
+					}
+
+					break;
+			}
+		}
+		i++;
+	}
+	cfg->nsplt = nsplt;
+
+	i = 1;
+	while(i < argc){
+		char *ptr, *optarg, *endptr;
+		double t;	// Event time
+		int j, k;
+
+		ptr = argv[i];
+		if(*ptr == '-'){
+			ptr++;
+
+			switch(*ptr){
+				case 'e':	/* User-specified demographic event. */
+					t = atof(argv[++i]);
+					ptr++;
+					switch(*ptr){
+						double prop;
+						int pop;
+
+						case 's':	/* Split a population. */
+							pop = strtol(argv[++i], &endptr, 10);
+							prop = strtod(argv[++i], &endptr);
 							add_event_splt(cfg, t, pop, prop);
 
 							break;
@@ -259,8 +292,6 @@ int main(int argc, char *argv[])
 		}
 		i++;
 	}
-
-	nsplt = cfg->nsplt;
 
 	mmut = malloc(sizeof(struct mutation) * cfg->npop_all);
 	memset(mmut, 0, sizeof(struct mutation) * cfg->npop_all);
@@ -682,12 +713,24 @@ int main(int argc, char *argv[])
 		init_mutation_model(&mmut[i]);
 	}
 
+	cfg->devents = realloc(cfg->devents, sizeof(struct event *) * cfg->ndevents);
+	l = cfg->evlist.front;
+	for(i = 0; i < cfg->ndevents; i++){
+//	while(l){
+		struct list_head *tmp;
+
+		cfg->devents[i] = (struct event *)GET_OBJ(l);
+		tmp = l->next;
+		__list_remove(&cfg->evlist, l);
+		l = tmp;
+	}
+
 	G = alloc_genealogy(cfg, prof);
 
 	/* Sort fragments according to start positions. */
 	qsort((void *)fgset, (size_t)nfrag, sizeof(struct frag), fgcompar);
 
-	fprintf(stderr, "seed=%d\n", sd);
+//	fprintf(stderr, "seed=%d\n", sd);
 	init_rand(sd);
 
 //	dump_config(cfg);
@@ -696,7 +739,7 @@ int main(int argc, char *argv[])
 
 	/* Print reads */
 	for(i = 0; i < prof->nfrag; i++){
-		print_fragment(stdout, &prof->fgset[i]);
+//		print_fragment(stdout, &prof->fgset[i]);
 	}
 
 	free(mmut);
