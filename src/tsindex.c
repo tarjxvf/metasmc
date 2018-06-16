@@ -55,10 +55,10 @@ void tsindex_reset(struct tsindex *tr)
 	struct list *queue;
 
 	tr->flags = 0;
-	memset(tr->edges, 0, sizeof(struct edge *) * tr->maxedges);
+//	memset(tr->edges, 0, sizeof(struct edge *) * tr->maxedges);
 	tr->nedges = tr->maxnodes = 0;
 	bit_clear(tr->index);
-	memset(tr->index->freq, 0, sizeof(double) * tr->index->n);
+//	memset(tr->index->freq, 0, sizeof(double) * tr->index->n);
 
 	/* Clear free list. */
 	queue = &tr->free_list;
