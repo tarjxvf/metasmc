@@ -1850,11 +1850,65 @@ double recombination(struct genealogy *G, double x)
 
 		}else{
 //ndiscard_xover++;
-//			update_demography(G, ev);
 			like -= totalprob * (ev->t - t);
 			t = ev->t;
 
-			if(ev->type == EVENT_COAL){
+			if(ev->t == G->localMRCA->t){
+				struct edge_set *F;
+				struct edge *edum;
+				struct node *ndum, *n;
+				double troot_old;
+				struct list_head *cur_ll;
+				struct edge_set *trunk;
+
+				troot_old = G->root->t;
+
+				trunk = malloc(sizeof(struct edge_set) * cfg->npop_all);
+				F = malloc(sizeof(struct edge_set) * cfg->npop_all);
+				for(i = 0; i < cfg->npop_all; i++){
+					edge_set_init(&trunk[i], 1);
+					edge_set_init(&F[i], 2);
+//					G->pops[G->localMRCA->pop].n = 0;
+				}
+
+				edge_set_add(&trunk[G->localMRCA->pop], G->localMRCA->in);
+				G->pops[G->localMRCA->pop].n = 1;
+				edge_set_add(&F[ef->bot->pop], ef);
+
+//				G->root = G->localMRCA = NULL;	// localMRCA is cancelled because new local MRCA must be above current root
+
+				G->t = t;
+				evindex_s_forward(G->evidx);
+				like += merge_floating(G, trunk, F);
+
+				{
+					struct edge *e_new, *e_below, *e_prev_in;
+
+					erase_dangling2(G, nxover->in);
+
+					e_new = nxover->in_new;
+					e_below = nxover->out;
+					tsindex_update(G->tr_xover, e_new, e_below->top->t - e_below->bot->t);
+					e_new->bot = e_below->bot;
+					e_new->bot->in = e_new;
+//					remove_edge(G, e_below->bot->pop, e_below);
+					free_edge(G, e_below);
+					free_node(G, (struct node *)nxover);
+
+//					eindex_s_set(G->pops[cur_l->bot->pop].eidx, cur_l);
+//					eindex_s_seek(G->pops[e_new->bot->pop].eidx, e_new->top->t, e_new->bot->t, e_new->eid);
+//					eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
+				}
+
+				for(i = 0; i < cfg->npop_all; i++){
+					edge_set_destroy(&trunk[i]);
+					edge_set_destroy(&F[i]);
+				}
+				free(F);
+				free(trunk);
+				coalesced = 1;
+
+			}else if(ev->type == EVENT_COAL){
 //				struct coal_event *cev;
 //				struct edge *etmp;
 
@@ -1926,122 +1980,12 @@ double recombination(struct genealogy *G, double x)
 						}
 					}
 
-				}else if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR){
-					struct edge_set *F;
-					struct edge *edum;
-					struct node *ndum, *n;
-					double troot_old;
-					struct list_head *cur_ll;
-					struct edge_set *trunk;
-
-					troot_old = G->root->t;
-
-/*					if(cur_l == nxover->in_new){
-						cur_ll = GET_LIST(cur_l);
-						cur_l = eindex_prev(&cur_ll);
-					}*/
-
-//					eindex_delete(G->pops[nxover->pop].eidx, nxover->in);
-//					eindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
-
-#ifdef DEBUG
-					if(ev->type == EVENT_DUMY){
-						fprintf(stderr, "%s: %d: DUMY event is found at time %.6f\n", __func__, __LINE__, ev->t);
-
-					}else{
-						fprintf(stderr, "%s: %d: DXVR event is found at time %.6f\n", __func__, __LINE__, ev->t);
-					}
-#endif
-
-					// Move edges in dummy edge list to in-tree edge list until t (Note that edges in dummy edge list are ordered by time)
-					edum = G->localMRCA->in;
-					ndum = edum->top;
-					while(ndum->t < ev->t){
-						tsindex_add(G->tr_xover, edum);
-						edum = ndum->in;
-						ndum = edum->top;
-					}
-//					eindex_delete(G->pops[edum->bot->pop].eidx, edum);
-
-					// Remove remaining edges in dummy edge list
-					if(ev->type == EVENT_DXVR){
-/*						struct edge *erm;
-						struct node *nrm;
-						int poprm;*/
-
-						/* Remove dangling edges above dummy recombination event from red-black tree. */
-						erase_dummy_path(G, edum);
-
-					}else{
-						G->pops[G->root->pop].n = 0;
-						ndum->ev = NULL;
-
-						// Create new floating lineage
-						ndum->type = NODE_FLOAT;
-						ndum->t = INFINITY;
-					}
-
-					trunk = malloc(sizeof(struct edge_set) * cfg->npop_all);
-					F = malloc(sizeof(struct edge_set) * cfg->npop_all);
-					for(i = 0; i < cfg->npop_all; i++){
-						edge_set_init(&trunk[i], 1);
-						edge_set_init(&F[i], 2);
-					}
-
-					__remove_edge(G, edum->bot->pop, edum);
-					edge_set_add(&F[edum->bot->pop], edum);
-					edge_set_add(&F[ef->bot->pop], ef);
-
-					G->root = G->localMRCA = NULL;	// localMRCA is cancelled because new local MRCA must be above current root
-
-					G->t = t;
-					evindex_s_forward(G->evidx);
-					like += merge_floating(G, trunk, F);
-
-					{
-						struct edge *e_new, *e_below, *e_prev_in;
-
-//						eindex_delete(G->pops[nxover->pop].eidx, nxover->in);
-//						eindex_delete(G->pops[nxover->pop].eidx, nxover->in_new);
-
-//						e_prev_in = eindex_prev(&G->pops[nxover->pop].eidx->cur_s);
-
-/*						if(cur_l->top == nxover->in->top){
-							struct list_head *cur_ll;
-							cur_ll = GET_LIST(cur_l);
-							cur_l = eindex_prev(&cur_ll);
-						}*/
-
-						erase_dangling2(G, nxover->in);
-
-						e_new = nxover->in_new;
-						e_below = nxover->out;
-						tsindex_update(G->tr_xover, e_new, e_below->top->t - e_below->bot->t);
-						e_new->bot = e_below->bot;
-						e_new->bot->in = e_new;
-//						remove_edge(G, e_below->bot->pop, e_below);
-						free_edge(G, e_below);
-						free_node(G, (struct node *)nxover);
-
-//						eindex_s_set(G->pops[cur_l->bot->pop].eidx, cur_l);
-//						eindex_s_seek(G->pops[e_new->bot->pop].eidx, e_new->top->t, e_new->bot->t, e_new->eid);
-//						eindex_insert(G->pops[e_new->bot->pop].eidx, e_new);
-					}
-
-					for(i = 0; i < cfg->npop_all; i++){
-						edge_set_destroy(&trunk[i]);
-						edge_set_destroy(&F[i]);
-					}
-					free(F);
-					free(trunk);
-					coalesced = 1;
 				}
 			}
 
-//			evl = evl->next;
 			evindex_s_forward(G->evidx);
-			if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR)
-				remove_event_rb(G, ev);
+//			if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR)
+//				remove_event_rb(G, ev);
 
 		}
 	}while(!coalesced);
@@ -2351,6 +2295,8 @@ finish_selection:
 #ifdef DEBUG
 						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
+						if(!tsindex_isin(G->tr_xover, edum))
+							tsindex_add(G->tr_xover, edum);
 						edum = ndum->in;
 						ndum = edum->top;
 					}

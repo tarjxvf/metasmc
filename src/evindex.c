@@ -197,6 +197,8 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
     }
   item = p->rb_data;
   ev = (struct event *)item;
+  if(GET_LIST(ev) == evidx->idx->cur_s)
+	  rbindex_forward(evidx->idx);
   list_remove(&evidx->idx->ls, ev);
   evindex_propagate_sub(k - 1, pa + 1, evidx->npop_all, ev->dn);
 
