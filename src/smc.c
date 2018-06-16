@@ -768,44 +768,8 @@ struct event *__absorption_r(struct genealogy *G, struct edge *e, struct edge *f
 #endif
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
 
-	if(t > G->localMRCA->t){
-		struct list_head *l;
-		struct edge *e2;
-		int change;
-
-		struct edge *edum;
-		struct node *ndum, *n;
-
-#ifdef DEBUG
-		fprintf(stderr, "e->bot == G->root!!\n");
-#endif
-//		change = 0;
-//		if(G->root->pop != pop){
-//			change = 1;
-//			remove_edge(G, G->root->pop, e);
-//		}
-
-//		Add dummy edges into in-tree edge list
-		edum = G->localMRCA->in;
-		ndum = edum->top;
-		while(ndum->t < t){
-			tsindex_add(G->tr_xover, edum);
-//			list_add(&G->e_list, edum);
-			edum = ndum->in;
-			ndum = edum->top;
-		}
-
-		// The edge above nd is dangling, so tsindex need not to be updated.
-		insert_coal_node(G, e, nd);
-		G->localMRCA = (struct node *)nd;
-
-//		if(change)
-//			add_edge(G, pop, e);
-
-	}else{
-		tsindex_update(G->tr_xover, e, -(t - e->bot->t));
-		insert_coal_node(G, e, nd);
-	}
+	tsindex_update(G->tr_xover, e, -(t - e->bot->t));
+	insert_coal_node(G, e, nd);
 
 	/* Set up another (absorbed) branch below the new coalescent node. */
 	enew = nd->out[0];
