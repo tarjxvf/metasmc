@@ -82,6 +82,7 @@ struct genealogy {
 	int x;
 
 	struct tsindex *tr_xover;
+	struct edge_set *trunk;
 };
 
 static inline void insert_event_join_increase(struct genealogy *G, struct join_event *jev)
