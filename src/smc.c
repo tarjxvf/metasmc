@@ -506,24 +506,12 @@ void insert_coal_node(struct genealogy *G, struct edge *e, struct coal_node *nd)
 #endif
 	pop = e->bot->pop;
 	e2 = alloc_edge(G, (struct node *)nd, e->bot);
-//	if(e->bot->type == NODE_XOVER){	// This case occur when a new lineage created by recombination is absorbed back to old lineage.
-//		AS_XOVER_NODE(e->bot)->in = e2;
-//
-//	}else{
-//		e->bot->in = e2;
-//	}
-
-//	else if(e->bot->type == NODE_MIGR)
-//		((struct migr_node *)e->bot)->in = e2;
-
-//	else if(e->bot->type == NODE_SAM)
-//		((struct sam_node *)e->bot)->in = e2;
 
 	nd->out[0] = e2;
 	e2->itop = 0;
 	nd->in = e;
 	e->bot = e2->top = (struct node *)nd;
-	add_edge(G, pop, e2);
+//	add_edge(G, pop, e2);
 }
 
 void insert_migr_node(struct genealogy *G, struct edge *e, struct migr_node *nd)
@@ -533,26 +521,12 @@ void insert_migr_node(struct genealogy *G, struct edge *e, struct migr_node *nd)
 
 	pop = e->bot->pop;
 	e2 = alloc_edge(G, (struct node *)nd, e->bot);
-//	if(e->bot->type == NODE_XOVER){
-//		AS_XOVER_NODE(e->bot)->in_new = e2;
-
-//	}else{
-		e->bot->in = e2;	// If node below e is XOVER, e is a new lineage from xover node, which corresponds to e->in (see definition of struct node and struct xover_node).
-//	}
-
-//	if(e->bot->type == NODE_SAM)
-//		((struct sam_node *)e->bot)->in = e2;
-
-//	else if(e->bot->type == NODE_COAL)
-//		((struct coal_node *)e->bot)->in = e2;
-
-//	else if(e->bot->type == NODE_MIGR)
-//		((struct migr_node *)e->bot)->in = e2;
+	e->bot->in = e2;	// If node below e is XOVER, e is a new lineage from xover node, which corresponds to e->in (see definition of struct node and struct xover_node).
 
 	e->bot = e2->top = (struct node *)nd;
 	nd->in = e;
 	nd->out = e2;
-	add_edge(G, pop, e2);
+//	add_edge(G, pop, e2);
 }
 
 /* Erase dangling lineage until a coalescent node is reached. */
@@ -773,6 +747,7 @@ struct event *__absorption_r(struct genealogy *G, struct edge *e, struct edge *f
 
 	/* Set up another (absorbed) branch below the new coalescent node. */
 	enew = nd->out[0];
+	add_edge(G, pop, enew);
 	enew->ub = e->ub;
 	e->ub = MAX(enew->ub, f->ub);
 	nd->out[1] = f;
@@ -817,6 +792,7 @@ static inline struct coal_node *__coalescent(struct genealogy *G, struct edge *e
 	insert_coal_node(G, e1, nd);
 
 	e_new = nd->out[0];
+	add_edge(G, pop, e_new);
 	e_new->ub = e1->ub;
 	e1->ub = MAX(e_new->ub, e2->ub);
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node.
@@ -934,6 +910,7 @@ struct migr_node *do_migrate(struct genealogy *G, struct edge *e, int dpop, int 
 	// The edge above nd must be floating
 	insert_migr_node(G, e, nd);
 	e2 = nd->out;
+	add_edge(G, e2->bot->pop, e2);
 	e2->ub = e->ub;
 
 //	eindex_s_jump(&G->pops[e->bot->pop], t);
@@ -2868,8 +2845,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 		}else{
 			ub = 1;
 		}
-		G->lb = lb;
-		G->ub = ub;
+		G->lb = lb * reflen;
+		G->ub = ub * reflen;
 
 #ifdef DEBUG
 		l = R.front;

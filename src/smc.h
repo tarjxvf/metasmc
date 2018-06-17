@@ -77,9 +77,9 @@ struct genealogy {
 
 //	struct edge **pTreeEdgesToCoalesceArray;
 	struct node *localMRCA;
-	double lb;
-	double ub;
-	double x;
+	int lb;
+	int ub;
+	int x;
 
 	struct tsindex *tr_xover;
 };
