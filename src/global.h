@@ -356,6 +356,9 @@ struct dummy_node {
 	struct edge *out;
 };
 
+#define NODE_FLAG_VISITED_LEFT 0x1
+#define NODE_FLAG_VISITED_RIGHT 0x2
+
 struct edge {
 	struct node *top;
 	struct node *bot;
