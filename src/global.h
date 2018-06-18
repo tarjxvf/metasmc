@@ -290,7 +290,8 @@ typedef size_t map_t;
 #define NCELL_PER_MAP sizeof(map_t)
 
 struct node {
-	int type;	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
+	char type;	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
+	char flags;
 	double t;
 	int pop;
 	struct event *ev;
@@ -299,7 +300,8 @@ struct node {
 
 // node representing coalescent event
 struct coal_node {
-	int type;	// type==NODE_COAL
+	char type;	// type==NODE_COAL
+	char flags;
 	double t;
 	int pop;
 	struct coal_event *ev;
@@ -311,7 +313,8 @@ struct coal_node {
 
 // Node representing recombination event. Not used in current implementation.
 struct xover_node {
-	int type;	// type==NODE_XOVER
+	char type;	// type==NODE_XOVER
+	char flags;
 	double t;
 	int pop;
 	struct event *ev;
@@ -322,7 +325,8 @@ struct xover_node {
 
 // Note representing migration event
 struct migr_node {
-	int type;	// type==NODE_MIGR
+	char type;	// type==NODE_MIGR
+	char flags;
 	double t;
 	int pop;
 	struct migr_event *ev;
@@ -332,7 +336,8 @@ struct migr_node {
 
 // Node representing sample.
 struct sam_node {
-	int type;	// type==NODE_SAM
+	char type;	// type==NODE_SAM
+	char flags;
 	double t;
 	int pop;
 	struct event *ev;
@@ -342,7 +347,8 @@ struct sam_node {
 
 // Node representing tip of dummy lineage which represents trapped ancestral material. Recombination is allowed on this type of lineage but take no effect.
 struct dummy_node {
-	int type;	// type==NODE_DUMMY of type==NODE_FLOAT
+	char type;	// type==NODE_DUMMY of type==NODE_FLOAT
+	char flags;
 	double t;
 	int pop;
 	struct event *ev;
