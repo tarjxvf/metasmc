@@ -1939,8 +1939,10 @@ double recombination(struct genealogy *G, double x)
 				}else{
 					struct edge *e_new, *e_below;
 
-					tsindex_update(G->tr_xover, e, -tdiff_below);
+//					tsindex_update(G->tr_xover, e, -tdiff_below);
 
+					e_below = nxover->out;
+					e->bot = e_below->bot;
 					evnew = __absorption_r(G, e2, ef, pop, t);
 					insert_event_rb(G, evnew);
 
@@ -1950,8 +1952,7 @@ double recombination(struct genealogy *G, double x)
 
 					e_new = nxover->in_new;
 
-					e_below = nxover->out;
-					tsindex_update(G->tr_xover, e_new, e_below->top->t - e_below->bot->t);
+					tsindex_update(G->tr_xover, e_new, tdiff_below);
 					e_new->bot = e_below->bot;
 					e_new->bot->in = e_new;
 
@@ -2012,6 +2013,7 @@ double recombination(struct genealogy *G, double x)
 
 //				G->root = G->localMRCA = NULL;	// localMRCA is cancelled because new local MRCA must be above current root
 
+				e->bot = nxover->out->bot;
 				G->t = t;
 				evindex_s_forward(G->evidx);
 				like += merge_floating(G, trunk, F);
@@ -2023,7 +2025,7 @@ double recombination(struct genealogy *G, double x)
 
 					e_new = nxover->in_new;
 					e_below = nxover->out;
-					tsindex_update(G->tr_xover, e_new, e_below->top->t - e_below->bot->t);
+					tsindex_update(G->tr_xover, e_new, tdiff_below);
 					e_new->bot = e_below->bot;
 					e_new->bot->in = e_new;
 //					remove_edge(G, e_below->bot->pop, e_below);
