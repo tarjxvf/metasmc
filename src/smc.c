@@ -646,7 +646,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 #endif
 }
 
-void trunk_down(struct genealogy *G, struct edge_set *trunk, double t)
+struct edge *trunk_search(struct genealogy *G, struct edge_set *trunk, int pop, double t, int u)
 {
 	struct list_head *l, *evl;
 	struct coal_event *cev;
@@ -656,7 +656,7 @@ void trunk_down(struct genealogy *G, struct edge_set *trunk, double t)
 	struct event *ev;
 	struct coal_node *cnd;
 	struct migr_node *mnd;
-	int i;
+	int i, c;
 
 	for(i = 0; i < G->cfg->npop_all; i++)
 		edge_set_clear(&G->trunk[i]);
@@ -664,18 +664,37 @@ void trunk_down(struct genealogy *G, struct edge_set *trunk, double t)
 
 	evl = GET_LIST(G->localMRCA->ev);
 	ev = G->localMRCA->ev;
+	c = 0;
 	while(ev->t > t){
 		if(ev->type == EVENT_COAL){
 			cev = (struct coal_event *)ev;
 			cnd = cev->nd;
 			edge_set_remove(&trunk[cnd->pop], cnd->in->trunk_id);
+//			edge_set_add(&trunk[cnd->pop], cnd->out[0]);
+//			edge_set_add(&trunk[cnd->pop], cnd->out[1]);
+
+			if(cnd->pop == pop && cnd->out[0]->bot->t < t && cnd->t > t){
+				if(c < u) c++;
+				else return cnd->out[0];
+			}
 			edge_set_add(&trunk[cnd->pop], cnd->out[0]);
+
+			if(cnd->pop == pop && cnd->out[1]->bot->t < t && cnd->t > t){
+				if(c < u) c++;
+				else return cnd->out[1];
+			}
 			edge_set_add(&trunk[cnd->pop], cnd->out[1]);
 
 		}else if(ev->type == EVENT_MIGR){
 			mev = (struct migr_event *)ev;
 			mnd = mev->nd;
 			edge_set_remove(&trunk[mnd->pop], mnd->in->trunk_id);
+//			edge_set_add(&trunk[mnd->out->bot->pop], mnd->out);
+
+			if(mnd->out->bot->pop == pop && mnd->out->bot->t < t && mnd->t > t){
+				if(c < u) c++;
+				else return mnd->out;
+			}
 			edge_set_add(&trunk[mnd->out->bot->pop], mnd->out);
 
 		}else if(ev->type == EVENT_JOIN){
@@ -684,7 +703,14 @@ void trunk_down(struct genealogy *G, struct edge_set *trunk, double t)
 			while(l){
 				mnd = (struct migr_node *)GET_OBJ(l);
 				edge_set_remove(&trunk[mnd->pop], mnd->in->trunk_id);
+//				edge_set_add(&trunk[mnd->out->bot->pop], mnd->out);
+
+				if(mnd->out->bot->pop == pop && mnd->out->bot->t < t && mnd->t > t){
+					if(c < u) c++;
+					else return mnd->out;
+				}
 				edge_set_add(&trunk[mnd->out->bot->pop], mnd->out);
+
 				l = l->next;
 			}
 
@@ -694,13 +720,22 @@ void trunk_down(struct genealogy *G, struct edge_set *trunk, double t)
 			while(l){
 				mnd = (struct migr_node *)GET_OBJ(l);
 				edge_set_remove(&G->trunk[mnd->pop], mnd->in->trunk_id);
-				edge_set_add(&G->trunk[mnd->out->bot->pop], mnd->out);
+//				edge_set_add(&G->trunk[mnd->out->bot->pop], mnd->out);
+
+				if(mnd->out->bot->pop == pop && mnd->out->bot->t < t && mnd->t > t){
+					if(c < u) c++;
+					else return mnd->out;
+				}
+				edge_set_add(&trunk[mnd->out->bot->pop], mnd->out);
+
 				l = l->next;
 			}
 		}
 		evl = (struct list_head *)evl->prev;
 		ev = (struct event *)GET_OBJ(evl);
 	}
+
+	return NULL;
 }
 
 /* MaCS-like procedure for choosing coalescing edge. */
@@ -717,12 +752,12 @@ seq_traverser choose_tedge(struct genealogy *G, int pop, double t)
 //		n += G->pops[pop].n;
 	/* Calculate red-black index threshold. */
 
-	C = 50;
+	C = 1;
 	nthres = 0;	// Disable red-black index
 //	nthres = n;	// Disable naive sampling
 	avg1 = (double)G->pops[pop].nedges / n;		// Expected number of steps that method 1 find desired edge
-//	avg2 = (double)(2 * G->pops[pop].n - 3) / 2;	// Expected number of steps that method 2 find desired edge
-	avg2 = (double)(2 * G->pops[pop].n - 2);
+	avg2 = (double)(2 * G->pops[pop].n - 3) / 2;	// Expected number of steps that method 2 find desired edge
+//	avg2 = (double)(2 * G->pops[pop].n - 2);
 
 #ifdef DEBUG
 	fprintf(stderr, "%s: %d: pop->n=%d, nthres=%d, t=%.6f\n", __func__, __LINE__, n, nthres, t);
@@ -738,65 +773,10 @@ seq_traverser choose_tedge(struct genealogy *G, int pop, double t)
 		}while(e == NULL || !(e->bot->t < t && e->top->t > t));
 
 	}else{	// Choose edge using red-black index
-		int i, c, u;
+		int u;
 
-		trunk_down(G, G->trunk, t);
-		u = G->trunk[pop].n * dunif01();
-		e = edge_set_get(&G->trunk[pop], u);
-
-
-
-/*		u = G->pops[pop].n * dunif01();
-		c = 0;
-		for(i = G->pops[pop].nedges - 1; i >= 0; i--){
-			e = G->pops[pop].eptrs[i];
-			if(e->bot->t < t && e->top->t > t){
-				if(c < u)
-					c++;
-				else
-					break;
-			}
-		}*/
-
-
-
-
-//		seq_traverser tr;
-//		struct node top, bot;
-//		struct edge key;
-//		int u, c;
-
-/*		if(rbindex_isseq(pop->eidx)){
-			eindex_s_seek_ttop(pop->eidx, t);
-			tr = pop->eidx->cur_s;
-			e = (struct edge *)GET_OBJ(tr);
-
-		}else{
-			top.t = t;
-			bot.t = 0;
-			key.top = &top;
-			key.bot = &bot;
-			e = eindex_find(&tr, pop->eidx, &key);
-#ifdef DEBUG
-			fprintf(stderr, " Using red-black index: key=(%.6f, %.6f), start from e=(%6f, %.6f)\n", key.bot->t, key.top->t, e->bot->t, e->top->t);
-#endif
-
-		}
-		u = pop->n * dunif01();
-		c = 0;
-		while(e){
-			if(e->bot->t < t && e->top->t > t){
-				if(c < u)
-					c++;
-				else
-					break;
-			}
-			e = eindex_next(&tr);
-		}
-#ifdef DEBUG
-		fprintf(stderr, "Choosed: (%x(%.6f, %d), %x(%.6f, %d))\n", e->bot, e->bot->t, e->bot->pop, e->top, e->top->t, e->top->pop);
-#endif
-*/
+		u = G->pops[pop].n * dunif01();
+		e = trunk_search(G, G->trunk, pop, t, u);
 	}
 
 //if(G->cfg->debug)
