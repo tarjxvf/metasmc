@@ -50,10 +50,6 @@ struct population {
 	struct edge **eptrs;		// Array of edge pointers
 	struct list idx_queue;	// Queue of index in eptrs
 	struct list id_list;
-
-	/***** Red-black tree index of edges. The tree is ordered by times of top nodes. *****/
-//	struct rb_table *etree;
-	struct rbindex *eidx;
 };
 
 struct genealogy {
