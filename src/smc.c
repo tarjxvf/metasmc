@@ -1902,25 +1902,42 @@ double recombination(struct genealogy *G, double x)
 #endif
 
 				if(e2 == e){	// Floating lineage is absorbed to the same lineage (loop in ARG)
-					struct edge *e_old;
+					struct edge *e_old, *e_below, *e_new;
 
-					tsindex_update(G->tr_xover, e, -tdiff_below);
-
-					evnew = __absorption_r(G, e2, ef, pop, t);
-					insert_event_rb(G, evnew);
-
-					nxover->in = AS_COAL_NODE(e2->bot)->out[0];
 					e_old = nxover->in;
+					e_new = nxover->in_new;
+					e_below = nxover->out;
+
+					free_node(G, ef->top);
+					ef->top = e->top;
+					if(e->top->type == NODE_COAL){
+						ef->itop = e->itop;
+						AS_COAL_NODE(e->top)->out[e->itop] = ef;
+
+					}else{
+						AS_MIGR_NODE(e->top)->out = ef;
+					}
+
+					e_new->bot = e_below->bot;
+					e_below->bot->in = e_new;
 
 //					// e_old->top is the new coalescent node which has to be removed. In this case, e2 must be in local genealogy, so tsindex must be updateda
-					__remove_edge(G, pop, e_old);
+					e->bot = e_below->bot;
+					remove_edge(G, e->bot->pop, e);
 
-					tsindex_clear(G->tr_xover, e_old);
-					remove_coal_node(G, AS_COAL_NODE(e_old->top), e_old->itop, 1);
-					free_edge(G, e_old);
+					if(ef == e_new){
+						add_edge(G, ef->bot->pop, ef);
+
+					}else{
+						add_edge(G, ef->bot->pop, ef);
+						tsindex_update(G->tr_xover, e_new, tdiff_below);
+					}
+
+					free_node(G, (struct node *)nxover);
+					free_edge(G, e_below);
 
 				}else{
-					struct edge *e_new;	// The new edge allocated by insert_coal_node
+					struct edge *e_new, *e_below;
 
 					tsindex_update(G->tr_xover, e, -tdiff_below);
 
@@ -1930,10 +1947,6 @@ double recombination(struct genealogy *G, double x)
 					e_new = AS_COAL_NODE(e2->bot)->out[0];
 					e_new->bot->in = e_new;
 					erase_dangling2(G, nxover->in);
-				}
-
-				{
-					struct edge *e_new, *e_below;
 
 					e_new = nxover->in_new;
 
