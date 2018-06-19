@@ -1996,7 +1996,8 @@ double recombination(struct genealogy *G, double x)
 				struct list_head *cur_ll;
 				struct edge_set *trunk;
 
-				tsindex_update(G->tr_xover, e, -tdiff_below);
+				e->bot = nxover->out->bot;
+//				tsindex_update(G->tr_xover, e, -tdiff_below);
 				troot_old = G->root->t;
 
 				trunk = malloc(sizeof(struct edge_set) * cfg->npop_all);
@@ -2013,7 +2014,7 @@ double recombination(struct genealogy *G, double x)
 
 //				G->root = G->localMRCA = NULL;	// localMRCA is cancelled because new local MRCA must be above current root
 
-				e->bot = nxover->out->bot;
+//				e->bot = nxover->out->bot;
 				G->t = t;
 				evindex_s_forward(G->evidx);
 				like += merge_floating(G, trunk, F);
