@@ -10,6 +10,10 @@
 
 FILE *seedfilp;
 
+#define BUF_SIZE 100000
+double rnd_buffer[BUF_SIZE];
+int buf_cur = BUF_SIZE;
+
 /* Generating [0, 1) uniform random variable. */
 /*double dunif01()
 {
@@ -19,12 +23,23 @@ FILE *seedfilp;
 	return (double)r / RAND_MAX;
 }*/
 
+void populate_buf()
+{
+	int i;
+	for(i = 0; i < BUF_SIZE; i++)
+		rnd_buffer[i] = genrand64_real3();
+	buf_cur = 0;
+}
+
 /* Generate uniform distribution on [0,1). */
 double dunif01()
 {
 	double r;
 //	r = mt_drand();
-	r = genrand64_real3();
+	if(buf_cur >= BUF_SIZE)
+		populate_buf();
+	r = rnd_buffer[buf_cur++];
+//	r = genrand64_real3();
 
 //fprintf(stderr, "unifRV()=%.10f\n", r);
 	return r;
