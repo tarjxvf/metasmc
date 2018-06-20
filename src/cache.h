@@ -24,4 +24,6 @@ void cache_clear(struct cache *nc);
 struct cache *cache_create(size_t obj_size, int cache_size);
 void cache_destroy(struct cache *nc);
 
+extern int n_resize;
+
 #endif

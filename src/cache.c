@@ -3,11 +3,15 @@
 #include "global.h"
 #include "cache.h"
 
+int n_resize = 0;
+
 void cache_resize(struct cache *nc, int add)
 {
 	int *pid, i, new_size;
 	struct list_head *l, *cl;
 	char *obj, *objs;
+
+	n_resize++;
 
 	new_size = nc->cache_size + add;
 	objs = malloc((nc->obj_size + sizeof(int)) * add);
