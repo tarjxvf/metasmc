@@ -6,16 +6,23 @@
 void cache_resize(struct cache *nc, int add)
 {
 	int *pid, i, new_size;
-	struct list_head *l;
-	char *obj;
+	struct list_head *l, *cl;
+	char *obj, *objs;
 
 	new_size = nc->cache_size + add;
+	objs = malloc((nc->obj_size + sizeof(int)) * add);
+	cl = malloc(sizeof(char *) + sizeof(struct list_head));
+	*( (char **) GET_OBJ(cl)) = objs;
+	__list_append(&nc->chunk_list, cl);
+
 	nc->objs = realloc(nc->objs, sizeof(void *) * new_size);
+	obj = objs;
 	for(i = nc->cache_size; i < new_size; i++){
-		nc->objs[i] = obj = malloc(nc->obj_size + sizeof(int));
+//		nc->objs[i] = obj = malloc(nc->obj_size + sizeof(int));
+		nc->objs[i] = obj;
 		pid = (int *)(obj + nc->obj_size);
 		*pid = i;
-
+		obj += nc->obj_size + sizeof(int);
 	}
 
 	for(i = nc->cache_size; i < new_size; i++){
@@ -98,9 +105,17 @@ struct cache *cache_create(size_t obj_size, int cache_size)
 	nc = malloc(sizeof(struct cache));
 
 	nc->obj_size = obj_size;
-	nc->cache_size = cache_size;
-	nc->maxnodes = 0;
-	nc->objs = malloc(sizeof(void *) * cache_size);
+//	nc->cache_size = cache_size;
+	nc->cache_size = nc->maxnodes = 0;
+	nc->objs = NULL;
+
+	list_init(&nc->chunk_list);
+	list_init(&nc->free_list);
+	list_init(&nc->id_list);
+
+	cache_resize(nc, cache_size);
+
+/*	nc->objs = malloc(sizeof(void *) * cache_size);
 	for(i = 0; i < cache_size; i++){
 		obj = (char *)malloc(obj_size + sizeof(int));
 		nc->objs[i] = (void *)obj;
@@ -108,13 +123,10 @@ struct cache *cache_create(size_t obj_size, int cache_size)
 		*pid = i;
 	}
 
-	list_init(&nc->free_list);
-	list_init(&nc->id_list);
-
 	for(i = 0; i < nc->cache_size; i++){
 		l = malloc(sizeof(struct list_head) + sizeof(int));
 		__list_append(&nc->id_list, l);
-	}
+	}*/
 
 	return nc;
 }
@@ -122,6 +134,7 @@ struct cache *cache_create(size_t obj_size, int cache_size)
 void cache_destroy(struct cache *nc)
 {
 	struct list_head *l;
+	char *obj;
 	int i;
 
 	cache_clear(nc);
@@ -131,8 +144,16 @@ void cache_destroy(struct cache *nc)
 		free(l);
 	}
 
-	for(i = 0; i < nc->cache_size; i++)
-		free(nc->objs[i]);
+//	for(i = 0; i < nc->cache_size; i++)
+//		free(nc->objs[i]);
+
+	while(nc->chunk_list.front){
+		l = __list_pop(&nc->chunk_list);
+		obj = *((char **)GET_OBJ(l));
+		free(obj);
+		free(l);
+	}
+
 	free(nc->objs);
 	free(nc);
 }
