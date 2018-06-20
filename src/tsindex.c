@@ -9,6 +9,25 @@
 
 unsigned long long t_ts_rebuild = 0;
 
+void tsindex_resize(struct tsindex *tr, int add)
+{
+	struct list_head *l;
+	int i;
+
+	tr->edges = realloc(tr->edges, sizeof(struct edge *) * (tr->maxedges + add));
+	memset(tr->edges + tr->maxedges, 0, sizeof(struct edge *) * add);
+
+//	tr->weights = realloc(tr->weights, sizeof(double) * (tr->maxedges + add));
+//	memset(tr->weights + tr->maxedges, 0, sizeof(double) * add);
+
+	for(i = 0; i < add; i++){
+		l = malloc(sizeof(struct list_head) + sizeof(int));
+		__list_append(&tr->id_list, l);
+	}
+
+	tr->maxedges += add;
+}
+
 void tsindex_rebuild(struct tsindex *tr)
 {
 	double *weights;
@@ -20,6 +39,7 @@ void tsindex_rebuild(struct tsindex *tr)
 	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	weights = malloc(sizeof(double) * tr->maxnodes);
+//	weights = tr->weights;
 	for(i = 0; i < tr->maxnodes; i++){
 		struct edge *e;
 
@@ -48,17 +68,13 @@ struct tsindex *tsindex_alloc(int maxedges)
 	tr = malloc(sizeof(struct tsindex));
 	tr->flags = 0;
 	tr->index = bit_alloc(maxedges);
-	tr->maxedges = maxedges;
+	tr->maxedges = 0;
 	tr->maxnodes = tr->nedges = 0;
-	tr->edges = malloc(sizeof(struct edge *) * maxedges);
-	memset(tr->edges, 0, sizeof(struct edge *) * maxedges);
+	tr->edges = NULL;
 	list_init(&tr->free_list);
 	list_init(&tr->id_list);
 
-	for(i = 0; i < maxedges; i++){
-		l = malloc(sizeof(struct list_head) + sizeof(int));
-		__list_append(&tr->id_list, l);
-	}
+	tsindex_resize(tr, maxedges);
 
 	return tr;
 }
@@ -131,15 +147,7 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 		}
 		tr->maxnodes++;
 		if(tr->maxnodes >= tr->maxedges){
-			tr->edges = realloc(tr->edges, sizeof(struct edge *) * (tr->maxedges + tr->maxedges));
-			memset(tr->edges + tr->maxedges, 0, sizeof(struct edge *) * tr->maxedges);
-
-			for(i = 0; i < tr->maxedges; i++){
-				l = malloc(sizeof(struct list_head) + sizeof(int));
-				__list_append(&tr->id_list, l);
-			}
-
-			tr->maxedges += tr->maxedges;
+			tsindex_resize(tr, tr->maxedges);
 		}
 
 	}else{
