@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "rand.h"
 #include "util.h"
 #include "global.h"
 

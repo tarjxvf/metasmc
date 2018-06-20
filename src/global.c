@@ -4,6 +4,7 @@
 #include <math.h>
 #include <limits.h>
 
+#include "rand.h"
 #include "util.h"
 #include "global.h"
 #include "smc.h"

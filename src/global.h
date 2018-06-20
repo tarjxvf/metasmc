@@ -272,15 +272,15 @@ int add_event_samp(struct config *cfg, double t, int pop, double size);
 extern char nucl[];
 int nucl_index(int ch);
 
-double dunif01();
-double dexp();
-unsigned int dunif(unsigned int max);
-int poisso(double u);
-void seedit( char *flag );
+//double dunif01();
+//double dexp();
+//unsigned int dunif(unsigned int max);
+//int poisso(double u);
+//void seedit( char *flag );
 //void init_rand();
-void init_rand(unsigned int s);
-void finish_rand();
-void seed();
+//void init_rand(unsigned int s);
+//void finish_rand();
+//void seed();
 
 struct node;
 struct edge;

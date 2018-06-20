@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "rand.h"
 #include "util.h"
 #include "smc.h"
 #include "mutation.h"

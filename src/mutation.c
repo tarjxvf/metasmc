@@ -5,6 +5,7 @@
 
 #include <lapacke.h>
 
+#include "rand.h"
 #include "util.h"
 #include "mutation.h"
 
