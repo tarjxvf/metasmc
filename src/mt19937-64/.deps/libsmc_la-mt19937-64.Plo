@@ -10,8 +10,7 @@ mt19937-64/libsmc_la-mt19937-64.lo: mt19937-64/mt19937-64.c \
  /usr/include/_G_config.h /usr/include/wchar.h \
  /usr/lib/gcc/x86_64-linux-gnu/6/include/stdarg.h \
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
- /usr/include/x86_64-linux-gnu/bits/sys_errlist.h \
- /usr/include/x86_64-linux-gnu/bits/stdio.h mt19937-64/mt64.h
+ /usr/include/x86_64-linux-gnu/bits/sys_errlist.h mt19937-64/mt64.h
 
 /usr/include/stdc-predef.h:
 
@@ -44,7 +43,5 @@ mt19937-64/libsmc_la-mt19937-64.lo: mt19937-64/mt19937-64.c \
 /usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
 
 /usr/include/x86_64-linux-gnu/bits/sys_errlist.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio.h:
 
 mt19937-64/mt64.h:

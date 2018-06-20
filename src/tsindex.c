@@ -107,23 +107,6 @@ void tsindex_reset(struct tsindex *tr)
 	}
 }
 
-struct edge *tsindex_search(struct tsindex *tr, double g, double *cum)
-{
-	int eid;
-
-//	if(tsindex_dirty(tr)){
-	if(tsindex_isrebuild(tr)){
-		/* Search operation is disabled when dirty bit is set. */
-		return NULL;
-
-	}else{
-		eid = bit_getindex(tr->index, g);
-		*cum = bit_cumfreq(tr->index, eid - 1);
-
-		return tr->edges[eid];
-	}
-}
-
 void tsindex_add(struct tsindex *tr, struct edge *e)
 {
 	struct list *queue;
@@ -173,14 +156,6 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 	e->xtid = id;
 	tr->edges[id] = e;
 	tr->nedges++;
-}
-
-void tsindex_update(struct tsindex *tr, struct edge *e, double diff)
-{
-	if(!tsindex_isrebuild(tr))
-//		tsindex_setflag(tr, TSINDEX_DIRTY);
-//	else
-		bit_update(tr->index, e->xtid, diff);
 }
 
 /* Clear a node in binary indexed tree. */

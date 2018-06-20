@@ -47,6 +47,29 @@ static inline int tsindex_isrebuild(struct tsindex *tr)
 	return tr->flags & TSINDEX_REBUILD;
 }
 
+static inline struct edge *tsindex_search(struct tsindex *tr, double g, double *cum)
+{
+	int eid;
+
+	if(tsindex_isrebuild(tr)){
+		return NULL;
+
+	}else{
+		eid = bit_getindex(tr->index, g);
+		*cum = bit_cumfreq(tr->index, eid - 1);
+
+		return tr->edges[eid];
+	}
+}
+
+static inline void tsindex_update(struct tsindex *tr, struct edge *e, double diff)
+{
+	if(!tsindex_isrebuild(tr))
+//		tsindex_setflag(tr, TSINDEX_DIRTY);
+//	else
+		bit_update(tr->index, e->xtid, diff);
+}
+
 static inline double tsindex_size(struct tsindex *tr)
 {
 	if(tsindex_isrebuild(tr))

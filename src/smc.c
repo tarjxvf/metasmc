@@ -753,7 +753,7 @@ struct event *__absorption_r(struct genealogy *G, struct edge *e, struct edge *f
 }
 
 /* This must be called from merge_floating. */
-static inline struct coal_node *__coalescent(struct genealogy *G, struct edge *e1, struct edge *e2, int pop, double t)
+struct coal_node *__coalescent(struct genealogy *G, struct edge *e1, struct edge *e2, int pop, double t)
 {
 	struct edge *e_new;
 	struct coal_node *nd;
@@ -852,7 +852,7 @@ struct coal_node *coalescent( struct genealogy *G, struct edge_set *F, int pop, 
 
 	nd = __coalescent(G, e1, e2, pop, t);
 
-///	clock_gettime(CLOCK_MONOTONIC, &end);
+//	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_coal += nsec;
 
@@ -1496,7 +1496,7 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 //	fprintf(stderr, "%d: abs_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
-////	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_abs_time += nsec;
 
 	return dt;
