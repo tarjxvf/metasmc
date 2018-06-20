@@ -46,7 +46,7 @@ void list_init(struct list *ls)
 {
 	ls->front = NULL;
 	ls->rear = &ls->front;
-	ls->n = 0;
+//	ls->n = 0;
 }
 
 void list_concat(struct list *dst, struct list *src)

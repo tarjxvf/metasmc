@@ -12,6 +12,8 @@ typedef struct list_head * seq_traverser;
 
 struct rbindex {
 	int flags;
+	int n;	// Number of nodes in the tree
+
 	rb_comparison_func *compar;
 	struct rb_table *tree;
 	struct list_head *lsentinel;
@@ -45,8 +47,7 @@ static inline int rbindex_isseq(struct rbindex *eidx)
 static inline void rbindex_s_insert(struct rbindex *eidx, void *obj)
 {
 	__list_insbefore(eidx->cur_s, GET_LIST(obj));
-	eidx->ls.n++;
-//	return (void **)GET_LIST(obj);
+	eidx->n++;
 }
 
 extern struct libavl_allocator rbindex_allocator;
@@ -116,12 +117,14 @@ static inline void rbindex_s_delete(struct rbindex *eidx, void *obj)
 	if(GET_LIST(obj) == eidx->cur_s)
 		rbindex_next(&eidx->cur_s);
 	__list_remove(&eidx->ls, GET_LIST(obj));
+	eidx->n--;
 }
 
 static inline void rbindex_rb_delete(struct rbindex *eidx, void *obj)
 {
 	if(rb_delete(eidx->tree, obj))
 		list_remove(&eidx->ls, obj);
+	eidx->n--;
 }
 
 static inline void rbindex_delete(struct rbindex *eidx, void *obj)

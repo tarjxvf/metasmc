@@ -12,7 +12,7 @@ struct list_head {
 struct list {
 	struct list_head *front;
 	struct list_head **rear;
-	int n;
+//	int n;
 };
 
 void list_init(struct list *ls);
@@ -36,7 +36,7 @@ static inline void __list_add__(struct list *ls, struct list_head *l)
 	l->next = ls->front;
 	ls->front = l;
 	l->prev = &ls->front;
-	ls->n++;
+//	ls->n++;
 }
 
 /* Insert an item before an item. */
@@ -64,7 +64,7 @@ static inline void __list_append__(struct list *ls, struct list_head *l)
 	*ls->rear = l;
 	l->prev = ls->rear;
 	ls->rear = &l->next;
-	ls->n++;
+//	ls->n++;
 }
 
 /* Get and remove last element from NON-EMPTY list. Use with causion. */
@@ -85,7 +85,7 @@ static inline void __list_remove__(struct list *ls, struct list_head *l)
 		l->next->prev = l->prev;
 	else	// If the removed item is the last one
 		ls->rear = l->prev;
-	ls->n--;
+//	ls->n--;
 //	l->prev = l->next = NULL;
 	l->next = NULL;
 	l->prev = NULL;

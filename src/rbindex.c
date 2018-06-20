@@ -73,7 +73,7 @@ void rbindex_rb_insert (struct rbindex *idx, void *item)
   }else{
 	  list_insafter(GET_LIST(pa[k - 1]->rb_data), item);
   }
-  idx->ls.n++;
+  idx->n++;
 
   while (k >= 3 && pa[k - 1]->rb_color == RB_RED)
     {
@@ -156,6 +156,7 @@ void rbindex_rb_clear(struct rbindex *eidx)
 	/* Clear free list. */
 	cache_clear(eidx->nc);
 
+//	eidx->n = 0;
 	eidx->tree->rb_count = 0;
 	eidx->tree->rb_generation = 0;
 }
@@ -309,7 +310,7 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 	struct list_head *l;
 	void **objs;
 
-	nnodes = eidx->ls.n;
+	nnodes = eidx->n;
 	rbindex_rb_clear(eidx);
 	if(nnodes >= eidx->nc->cache_size)
 		cache_resize(eidx->nc, nnodes - eidx->nc->cache_size);
@@ -523,6 +524,7 @@ struct rbindex *rbindex_create(rb_comparison_func *compar, int cache_size)
 	eidx->allocator.libavl_free = rbindex_free;
 
 	eidx->flags = 0;
+	eidx->n = 0;
 	eidx->compar = compar;
 	list_init(&eidx->ls);
 

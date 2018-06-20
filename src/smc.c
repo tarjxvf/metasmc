@@ -2491,12 +2491,14 @@ void clear_genealogy(struct genealogy *G)
 
 	// Detach right sentinel from event index
 	l = __list_pop(&G->evidx->idx->ls);
+	G->evidx->idx->n--;
 	ev0 = (struct event *)GET_OBJ(l);
 	dn_clear(cfg->npop_all, ev0->dn);
 
 	// Detach left sentinel from event index
 	l = G->evidx->idx->ls.front;
 	__list_remove(&G->evidx->idx->ls, l);
+	G->evidx->idx->n--;
 	ev0 = (struct event *)GET_OBJ(l);
 	dn_clear(cfg->npop_all, ev0->dn);
 
@@ -2771,7 +2773,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct list_head *l;
 	struct frag *fgset;
 	int f, pop, npop_all, ilast, i;
-	int nfrag, reflen;
+	int nfrag, reflen, nR, nRold;
 	struct list R, Rold;
 	struct edge_set *F;
 	struct timespec begin, end;
@@ -2836,6 +2838,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	f = 0;
 	G->ev_dxvr = NULL;
 
+	nR = nRold = 0;
 	list_init(&R);
 	list_init(&Rold);
 	G->nsam = 0;
@@ -2873,6 +2876,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 			*((struct frag **)GET_OBJ(l)) = fg = &fgset[f];
 			list_append(&R, GET_OBJ(l));
+			nR++;
 //			list_add(&R, GET_OBJ(l));
 
 			if((double)fg->end / reflen > ub)
@@ -2902,7 +2906,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		create_floating(G, &R, F);
 
-		n0 = G->n_list.n + R.n;
+//		n0 = G->n_list.n + R.n;
+		n0 = G->nsam + nR;
 		for(i = 0; i < npop_all; i++)
 			edge_set_init(&G->trunk[i], (n0 + 1));
 		nl = G->n_list.front;
@@ -2932,7 +2937,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		/* Remove reads in temporary list to main list. */
 		list_concat(&Rold, &R);
+		nRold += nR;
 		list_init(&R);
+		nR = 0;
 #ifdef DEBUG
 		l = Rold.front;
 		fprintf(stderr, "%d: Rold", __LINE__);
@@ -3026,7 +3033,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 
 		x = lb;
-//		x = 0;
 		do{
 			double u, rrho, r, treesize;
 			int inext, to;
@@ -3043,8 +3049,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			}else{
 				r = (ub - x);	/* No recombination. */
 			}
-//			r = (double)1 / 100000;
-//			r = (double)1 / 100;
 
 #ifdef DEBUG
 			fprintf(stderr, "%d: G->total=%.6f, lb=%.6f, ub=%.6f, x=%.6f, r=%.6f\n", __LINE__, G->total, lb, ub, x, r);
@@ -3060,7 +3064,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "\n");
 #endif
 			if(inext > 0){	// If next recombination doesn't occur on current nucleotide position, output local tree or sequence
-//			if(r >= 1){	// If next recombination doesn't occur on current nucleotide position, output local tree or sequence
 				to = x * reflen;
 				if(cfg->print_tree){
 					fprintf(cfg->treefp, "[%d]", to - ilast);
@@ -3104,34 +3107,18 @@ int simulate(struct genealogy *G, struct profile *prof)
 							remove_event(G, G->ev_dxvr);
 
 							/* Change on 2018/05/31: Find first event after time of new event. The old version crashes in the presence of migration. */
-//							evl = G->evlist->front;
-//							while(((struct event *)GET_OBJ(evl))->t < ev_dxvr->t)
-//								evl = evl->next;
-//							evindex_s_rewind(G->evidx);
 							evindex_s_seek(G->evidx, ev_dxvr->t);
-//							while((evindex_s_get(G->evidx))->t < ev_dxvr->t)
-//								evindex_s_forward(G->evidx);
 							/* End of change. */
-//							list_insbefore(evl, ev_dxvr);
 							insert_event(G, ev_dxvr);
 							G->ev_dxvr = ev_dxvr;
 						}
 
 					}else{
 						G->ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
-//						evl = G->evlist->front;
-//						while(((struct event *)GET_OBJ(evl))->t < G->ev_dxvr->t)
-//							evl = evl->next;
-//						evindex_s_rewind(G->evidx);
 						evindex_s_seek(G->evidx, G->ev_dxvr->t);
-//						while((evindex_s_get(G->evidx))->t < G->ev_dxvr->t)
-//							evindex_s_forward(G->evidx);
-//						list_insbefore(evl, G->ev_dxvr);
 						insert_event(G, G->ev_dxvr);
 					}
 				}
-//				cnt_rec++;
-//				like += sublike;
 			}
 
 #ifdef DEBUG
@@ -3170,23 +3157,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 				fprintf(stderr, "Finishing fragment %d\n", fg->id);
 #endif
 				__list_remove(&Rold, fgl);
-//				G->nsam--;
-//				free(fgl);
 				cache_free(cfg->frag_cache, (void *)fgl);
 			}
 			fgl = tmp;
 		}
-
-#ifdef DEBUG
-		l = Rold.front;
-		fprintf(stderr, "%d: Remaining reads: Rold", __LINE__);
-		while(l){
-			fg =  *((struct frag **)GET_OBJ(l));
-			fprintf(stderr, "->(%d, start=%d, end=%d)", fg->id, fg->start, fg->end);
-			l = l->next;
-		}
-		fprintf(stderr, "\n");
-#endif
 
 		for(i = 0; i < npop_all; i++){
 			edge_set_destroy(&G->trunk[i]);
@@ -3194,7 +3168,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		}
 
 	}while(lb < 1);
-//fprintf(stderr, "\n");
 		
 	{
 	struct list_head *fgl;
@@ -3212,7 +3185,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fg->rd[j].seq = NULL;
 		}
 		__list_remove(&Rold, fgl);
-//		free(fgl);
+		nRold--;
 		cache_free(cfg->frag_cache, (void *)fgl);
 
 		fgl = tmp;
@@ -3220,7 +3193,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	}
 	free(F);
 	free(G->trunk);
-//	unload_reference(ref);
 
 	clock_gettime(CLOCK_MONOTONIC, &end);
 

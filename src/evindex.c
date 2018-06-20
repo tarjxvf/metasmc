@@ -90,7 +90,7 @@ void evindex_seq_off(struct evindex *evidx)
 
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	nnodes = evidx->idx->ls.n;
+	nnodes = evidx->idx->n;
 	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
 	rbindex_rebuild_tree(evidx->idx);
 
@@ -222,6 +222,7 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
   if(GET_LIST(ev) == evidx->idx->cur_s)
 	  rbindex_forward(evidx->idx);
   list_remove(&evidx->idx->ls, ev);
+  evidx->idx->n--;
   evindex_propagate_sub(k - 1, pa + 1, evidx->npop_all, ev->dn);
 
   if (p->rb_link[1] == NULL)
@@ -521,7 +522,7 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
   }else{
 	  list_insafter(GET_LIST(pa[k - 1]->rb_data), ev);
   }
-  evidx->idx->ls.n++;
+  evidx->idx->n++;
 
   // Propagating change of summary statistics toward root
   dn_set(evidx->npop_all, ev->sumdn, ev->dn);
@@ -649,8 +650,11 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
 void evindex_reset(struct genealogy *G, struct evindex *evidx)
 {
 	list_init(&evidx->idx->ls);
+	evidx->idx->n = 0;
 	list_append(&evidx->idx->ls, GET_OBJ(evidx->idx->lsentinel));
+	evidx->idx->n++;
 	list_append(&evidx->idx->ls, GET_OBJ(evidx->idx->rsentinel));
+	evidx->idx->n++;
 	rbindex_rb_clear(evidx->idx);
 }
 
@@ -701,12 +705,14 @@ struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
 	evidx->idx->lsentinel = GET_LIST(ev);
 
 	list_append(&evidx->idx->ls, ev);
+	evidx->idx->n++;
 
 	ev = alloc_event(G->cfg, EVENT_GSIZ, INFINITY);
 	((struct gsiz_event *)ev)->size = 1;
 	evidx->idx->rsentinel = GET_LIST(ev);
 
 	list_append(&evidx->idx->ls, ev);
+	evidx->idx->n++;
 
 	return evidx;
 }
