@@ -4,6 +4,8 @@
 #include "bit.h"
 #include "global.h"
 
+extern unsigned long long t_ts_rebuild;
+
 /* Tree size index. */
 #define TSINDEX_REBUILD	0x1	// If this flag is set, the index is waiting for batch rebuild and any operations will not update binary index tree
 #define TSINDEX_DIRTY	0x2	// This flag indicates that binary index tree is inconsistent to object list. The inconsistency must be fixed by tsindex_rebuild. Search operation is disabled if this flag is set.

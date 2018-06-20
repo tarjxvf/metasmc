@@ -1,13 +1,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "tsindex.h"
+
+#define MAXNSEC 1000000000
+
+unsigned long long t_ts_rebuild = 0;
 
 void tsindex_rebuild(struct tsindex *tr)
 {
 	double *weights;
 	int i;
+
+	struct timespec beg, end;
+	int nsec;
+
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	weights = malloc(sizeof(double) * tr->maxnodes);
 	for(i = 0; i < tr->maxnodes; i++){
@@ -23,6 +33,10 @@ void tsindex_rebuild(struct tsindex *tr)
 	free(weights);
 	tsindex_clearflag(tr, TSINDEX_DIRTY);
 	tsindex_clearflag(tr, TSINDEX_REBUILD);
+
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_ts_rebuild += nsec;
 }
 
 struct tsindex *tsindex_alloc(int maxedges)
@@ -174,6 +188,7 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 //		diff = bit_getvalue(tr->index, id);
 		diff = tr->edges[id]->top->t - tr->edges[id]->bot->t;
 		bit_update(tr->index, id, -diff);
+	}else{
 	}
 
 	tr->edges[id] = NULL;

@@ -103,7 +103,7 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 	nd->flags = 0;
 	nd->pop = pop;
 	nd->t = t;
-	nd->in = NULL;
+//	nd->in = NULL;
 #ifdef DEBUG
 	fprintf(stderr, "Allocated node %x at time %.6f with type %d in subpopulation %d\n\n", nd, nd->t, nd->type, nd->pop);
 #endif
@@ -1444,6 +1444,7 @@ void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 		e = alloc_edge(G, (struct node *)n2, (struct node *)n1);
 		n1->in = n2->out = e;
 		n1->fg = r;
+		n2->in = NULL;
 //		if(n1->fg->trunk == 0)
 //			e->ub = (double)n1->fg->end;
 //		else
@@ -1611,6 +1612,7 @@ void erase_dummy_path_rb(struct genealogy *G, struct edge *edum)
 	G->ev_dxvr = NULL;
 	erm = ndum->in;
 	poprm = ndum->pop;
+	ndum->in = NULL;
 	while(erm){
 		nrm = erm->top;
 		__remove_edge(G, poprm, erm);
@@ -1658,6 +1660,7 @@ void erase_dummy_path_s(struct genealogy *G, struct edge *edum)
 	G->ev_dxvr = NULL;
 	erm = ndum->in;
 	poprm = ndum->pop;
+	ndum->in = NULL;
 	while(erm){
 		nrm = erm->top;
 		__remove_edge(G, poprm, erm);
@@ -2310,12 +2313,14 @@ finish_selection:
 						edum = ndum->in;
 						ndum = edum->top;
 					}
+
 					for(i = 0; i < cfg->npop_all; i++)
 						edge_set_clear(&trunk[i]);
 
 					// Remove remaining edges in dummy edge list
 					if(ev->type == EVENT_DXVR){
 						/* Remove dangling edges above dummy recombination event from red-black tree. */
+			//			edum->bot->in = NULL;
 						erase_dummy_path(G, edum);
 
 					}else{
@@ -2325,9 +2330,8 @@ finish_selection:
 						// Create new floating lineage
 						ndum->type = NODE_FLOAT;
 						ndum->t = INFINITY;
+						ndum->in = NULL;
 					}
-
-
 					__remove_edge(G, edum->bot->pop, edum);
 					edge_set_add(&F[edum->bot->pop], edum);
 
@@ -2350,6 +2354,7 @@ finish_selection:
 		e->top->type = NODE_DUMMY;
 		e->top->t = e->bot->t;
 		e->top->pop = e->bot->pop;
+		e->top->in = NULL;
 		__add_edge(G, e->bot->pop, e);
 //		if(G->troot > e->top->t){
 //			e->top->t = G->troot; // Change on 2018/05/23: This leads to missing of migration by population join/split.
@@ -3263,7 +3268,12 @@ fprintf(stderr, "n_build_trunk=%lu\n", n_build_trunk);
 fprintf(stderr, "t_build_trunk=%lu\n", t_build_trunk);
 
 fprintf(stderr, "n_clear_tree=%lu\n", n_clear_tree);
-fprintf(stderr, "t_clear_tree=%lu\n", t_clear_tree);*/
+fprintf(stderr, "t_clear_tree=%lu\n", t_clear_tree);
+
+fprintf(stderr, "t_ts_rebuild=%lu\n", t_ts_rebuild);
+
+fprintf(stderr, "t_ev_tree=%lu\n", t_ev_tree);
+fprintf(stderr, "t_ev_summary=%lu\n", t_ev_summary);*/
 
 //	if(ub < reflen){
 //		return -Inf;

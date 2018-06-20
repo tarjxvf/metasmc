@@ -2,9 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #include "evindex.h"
 #include "smc.h"
+
+#define MAXNSEC 1000000000
+
+unsigned long long t_ev_summary = 0;
+unsigned long long t_ev_tree = 0;
 
 void
 __print_event_tree(const struct evindex *evidx, struct rb_node *node, int level)
@@ -79,10 +85,22 @@ void evindex_seq_off(struct evindex *evidx)
 	struct rb_node **nodes;
 	int nnodes, i, j;
 
+	struct timespec beg, end;
+	int nsec;
+
+	clock_gettime(CLOCK_MONOTONIC, &beg);
+
 	nnodes = evidx->idx->ls.n;
 	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
 	rbindex_rebuild_tree(evidx->idx);
+
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_ev_tree += nsec;
+
 	nodes = (struct rb_node **)evidx->idx->nc->objs;
+
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	for(i = nnodes - 1; i >= 0; i--){
 		struct event *ev, *left, *right;
@@ -101,6 +119,10 @@ void evindex_seq_off(struct evindex *evidx)
 			dn_add(evidx->npop_all, ev->sumdn, right->sumdn);
 		}
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_ev_summary += nsec;
 }
 
 /* Calculate number of lineages at time t. */
