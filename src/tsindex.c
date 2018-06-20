@@ -8,11 +8,14 @@
 #define MAXNSEC 1000000000
 
 unsigned long long t_ts_rebuild = 0;
+unsigned long long n_ts_resize = 0;
 
 void tsindex_resize(struct tsindex *tr, int add)
 {
 	struct list_head *l;
 	int i;
+
+	n_ts_resize++;
 
 	tr->edges = realloc(tr->edges, sizeof(struct edge *) * (tr->maxedges + add));
 	memset(tr->edges + tr->maxedges, 0, sizeof(struct edge *) * add);
@@ -36,7 +39,7 @@ void tsindex_rebuild(struct tsindex *tr)
 	struct timespec beg, end;
 	int nsec;
 
-	clock_gettime(CLOCK_MONOTONIC, &beg);
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	weights = malloc(sizeof(double) * tr->maxnodes);
 //	weights = tr->weights;
@@ -54,9 +57,9 @@ void tsindex_rebuild(struct tsindex *tr)
 	tsindex_clearflag(tr, TSINDEX_DIRTY);
 	tsindex_clearflag(tr, TSINDEX_REBUILD);
 
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_ts_rebuild += nsec;
+//	clock_gettime(CLOCK_MONOTONIC, &end);
+//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//	t_ts_rebuild += nsec;
 }
 
 struct tsindex *tsindex_alloc(int maxedges)
@@ -146,9 +149,8 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 			id = bit_append(tr->index, diff);
 		}
 		tr->maxnodes++;
-		if(tr->maxnodes >= tr->maxedges){
+		if(tr->maxnodes >= tr->maxedges)
 			tsindex_resize(tr, tr->maxedges);
-		}
 
 	}else{
 		/* Get a existing empty node in binary indexed tree. */

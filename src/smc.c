@@ -158,7 +158,7 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 	return e;
 }
 
-void __add_edge(struct genealogy *G, int pop, struct edge *e)
+static inline void __add_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	struct population *ppop;
 	struct list *eid_queue;
@@ -182,7 +182,7 @@ void add_edge(struct genealogy *G, int pop, struct edge *e)
 	__add_edge(G, pop, e);
 }
 
-void __remove_edge(struct genealogy *G, int pop, struct edge *e)
+static inline void __remove_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	struct population *ppop;
 	void *l;
@@ -852,7 +852,7 @@ struct coal_node *coalescent( struct genealogy *G, struct edge_set *F, int pop, 
 
 	nd = __coalescent(G, e1, e2, pop, t);
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
+///	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_coal += nsec;
 
@@ -1496,7 +1496,7 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 //	fprintf(stderr, "%d: abs_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+////	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_abs_time += nsec;
 
 	return dt;
@@ -3258,6 +3258,7 @@ fprintf(stderr, "n_clear_tree=%lu\n", n_clear_tree);
 fprintf(stderr, "t_clear_tree=%lu\n", t_clear_tree);
 
 fprintf(stderr, "t_ts_rebuild=%lu\n", t_ts_rebuild);
+fprintf(stderr, "n_ts_resize=%lu\n", n_ts_resize);
 
 fprintf(stderr, "t_ev_tree=%lu\n", t_ev_tree);
 fprintf(stderr, "t_ev_summary=%lu\n", t_ev_summary);*/

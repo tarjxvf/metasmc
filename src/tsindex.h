@@ -5,6 +5,7 @@
 #include "global.h"
 
 extern unsigned long long t_ts_rebuild;
+extern unsigned long long n_ts_resize;
 
 /* Tree size index. */
 #define TSINDEX_REBUILD	0x1	// If this flag is set, the index is waiting for batch rebuild and any operations will not update binary index tree
