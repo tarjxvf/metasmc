@@ -492,7 +492,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	struct config *cfg;
 	struct migr_node *nm;
 	struct coal_node *ntop;
-	struct edge *ebelow, *eabove, *etmp;
+	struct edge *ebelow, *eabove;
 	int pop;
 
 #ifdef DEBUG
@@ -500,17 +500,9 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	dump_edges(G);
 #endif
 
-	/* Remove dangling edges from red-black trees. */
-	etmp = e;
-	while(etmp->top->type == NODE_MIGR){
-		etmp = etmp->top->in;
-	}
-	ntop = (struct coal_node *)etmp->top;
 #ifdef DEBUG
 	fprintf(stderr, "eabove=%x, ebelow=%x, ein=%x\n", ntop->in, ntop->out[1 - etmp->itop], etmp);
 #endif
-	eabove = ntop->in;
-	ebelow = ntop->out[1 - etmp->itop];
 
 	/* Remove dangling edges. */
 	pop = e->bot->pop;
@@ -531,6 +523,10 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 
 		free_node(G, (struct node *)nm);
 	}
+
+	ntop = (struct coal_node *)e->top;
+	eabove = ntop->in;
+	ebelow = ntop->out[1 - e->itop];
 
 	/* If the erased lineage is below localMRCA, then move down localMRCA. */
 	if(e->top == G->root){
@@ -1603,12 +1599,8 @@ void erase_dummy_path_rb(struct genealogy *G, struct edge *edum)
 	int poprm;
 
 	ndum = edum->top;
-	/* Remove dangling edges above dummy recombination event from red-black tree. */
-	erm = ndum->in;
-	while(erm){
-		erm = erm->top->in;
-	}
 
+	/* Remove dangling edges above dummy recombination event from red-black tree. */
 	G->ev_dxvr = NULL;
 	erm = ndum->in;
 	poprm = ndum->pop;
@@ -1652,11 +1644,6 @@ void erase_dummy_path_s(struct genealogy *G, struct edge *edum)
 
 	ndum = edum->top;
 	/* Remove dangling edges above dummy recombination event from red-black tree. */
-	erm = ndum->in;
-	while(erm){
-		erm = erm->top->in;
-	}
-
 	G->ev_dxvr = NULL;
 	erm = ndum->in;
 	poprm = ndum->pop;
