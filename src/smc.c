@@ -60,8 +60,8 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-//		cache_free(G->cfg->node_cache[nd->type], l);
-		free(l);
+		cache_free(G->cfg->node_cache[nd->type], l);
+//		free(l);
 
 	}
 //	else{
@@ -82,10 +82,10 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	ptr = cache_alloc(G->cfg->node_cache[type]);
+	ptr = cache_alloc(G->cfg->node_cache[type]);
 //	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
 
-	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 //	memset(ptr, 0, nodesize[type]);
 
 //	if(type == NODE_SAM)
@@ -122,8 +122,8 @@ void free_edge(struct genealogy *G, struct edge *e)
 #endif
 	l = GET_LIST(e);
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
-//	cache_free(G->cfg->edge_cache, l);
-	free(l);
+	cache_free(G->cfg->edge_cache, l);
+//	free(l);
 #ifdef DEBUG
 	fprintf(stderr, "Freed edge %x (%x)\n", e, l);
 #endif
@@ -140,8 +140,8 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	l = cache_alloc(G->cfg->edge_cache);
-	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
+	l = cache_alloc(G->cfg->edge_cache);
+//	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
@@ -152,7 +152,6 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 //	e->eid = ++G->edgeid;
 //	l->prev = l->next = NULL;
 //	l->prev = NULL;
-
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated edge %x, top node=%x(t=%.6f, type=%d), bot node=%x(t=%.6f, type=%d)\n", e, e->top, e->top->t, e->top->type, e->bot, e->bot->t, e->bot->type);
@@ -829,23 +828,26 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 	u = trunk[pop].n * dunif01();
 	e = edge_set_get(&trunk[pop], u);
 	if(e->deleted){	// This absorption can be ignored
-//	if(e->ub <= G->lb){	// This absorption can be ignored
-		free_node(G, f->top);
-		f->top = e->top;
-		if(e->top->type == NODE_COAL){
-			f->itop = e->itop;
-			AS_COAL_NODE(e->top)->out[e->itop] = f;
-
-		}else{
-			AS_MIGR_NODE(e->top)->out = f;
-		}
-
-		edge_set_replace(&trunk[pop], e->trunk_id, f);
-//		if(e->bot->type != NODE_SAM)
-//			free_node(G, e->bot);
-		remove_edge(G, pop, e);
-		add_edge(G, pop, f);
+		e->bot = f->bot;
+		f->bot->in = e;
+		e->deleted = 0;
 		nd = NULL;
+
+//		f->top = e->top;
+//		if(e->top->type == NODE_COAL){
+//			f->itop = e->itop;
+//			AS_COAL_NODE(e->top)->out[e->itop] = f;
+
+//		}else{
+//			AS_MIGR_NODE(e->top)->out = f;
+//		}
+
+//		edge_set_replace(&trunk[pop], e->trunk_id, f);
+//		remove_edge(G, pop, e);
+//		add_edge(G, pop, f);
+
+		free_node(G, f->top);
+		free_edge(G, f);
 
 	}else{
 		nd = __coalescent(G, e, f, pop, t);
@@ -915,7 +917,6 @@ struct migr_node *do_migrate(struct genealogy *G, struct edge *e, int dpop, int 
 	// The edge above nd must be floating
 	insert_migr_node(G, e, nd);
 	e2 = nd->out;
-//	e2->ub = e->ub;
 	add_edge(G, e2->bot->pop, e2);
 
 	((struct dummy_node *)e->top)->pop = spop;
@@ -1119,79 +1120,18 @@ void clear_tree(struct genealogy *G)
 	}
 
 	/* Find new MRCA */
-//	e = AS_DUMMY_NODE(G->root)->out;
-///	nd = e->bot;
 	nd = G->root;
-//	while(nd->type != NODE_COAL && nd != NODE_SAM){
 	while(nd->type != NODE_COAL){
 		e = AS_MIGR_NODE(nd)->out;
 		if(tsindex_isin(G->tr_xover, e))
 			tsindex_clear(G->tr_xover, e);
 		nd = e->bot;
 	}
-//	}while(nd->type == NODE_MIGR);
 	G->localMRCA = nd;
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_clear_tree += nsec;
-}
-
-
-void build_trunk_e(struct genealogy *G, int lb)
-{
-	struct config *cfg;
-	struct list_head *nl, *next;
-	struct event *ev0;
-	int pop;
-
-//	struct timespec beg, end;
-//	int nsec;
-
-//	n_build_trunk++;
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
-
-	cfg = G->cfg;
-	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
-#ifdef DEBUG
-	fprintf(stderr, "Entering function %s, lb=%d\n", __func__, lb);
-#endif
-	nl = G->n_list.front;
-	while(nl){
-		struct sam_node *nd;
-
-		next = nl->next;
-		nd = (struct sam_node *)GET_OBJ(nl);
-#ifdef DEBUG
-		fprintf(stderr, "node=%x, frag end=%d\n", nd, nd->fg->end);
-#endif
-		if(nd->fg->end <= lb && nd->fg->trunk == 0){
-//		if(nd->fg->end <= lb){
-
-			struct edge *e;
-#ifdef DEBUG
-			fprintf(stderr, "Finishing node %x (fragment %d)\n", nd, nd->fg->id);
-#endif
-			G->nsam--;
-			G->pops[nd->pop].nsam--;
-			ev0->dn[nd->pop]--;
-			__list_remove(&G->n_list, nl);
-			e = nd->in;
-#ifdef DEBUG
-			fprintf(stderr, "Erasing finished lineage.\n");
-#endif
-			erase_dangling2(G, e);
-			free_node(G, (struct node *)nd);
-		}
-		nl = next;
-	}
-#ifdef DEBUG
-	fprintf(stderr, "Finishing function %s\n\n", __func__);
-#endif
-
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_build_trunk += nsec;
 }
 
 /* Modify population configuration according to an event. */
@@ -1427,9 +1367,6 @@ void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 		n2->in = NULL;
 
 		if(r->end <= G->lb && r->trunk == 0)
-//		if(r->trunk)
-//			e->ub = reflen;
-//		else
 			e->deleted = 1;
 
 		edge_set_add(&F[r->pop], e);
@@ -1718,8 +1655,6 @@ double recombination(struct genealogy *G, double x)
 	/* Remove recombinant lineage from the genealogy. */
 	nf = (struct dummy_node *)alloc_node(G, NODE_FLOAT, pop, INFINITY);
 	ef = alloc_edge(G, (struct node *)nf, e->bot);
-//	ef->ub = e_below_xover->ub = e->ub;
-//	e->ub = x;
 	nf->out = ef;
 	nxover->in_new = ef;
 	tdiff_below = e_below_xover->top->t - e_below_xover->bot->t;
@@ -2503,7 +2438,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-		destroy_tree(G, G->root);
+//		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->edge_cache);
