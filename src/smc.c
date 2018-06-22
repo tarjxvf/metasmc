@@ -1818,9 +1818,6 @@ double recombination(struct genealogy *G, double x)
 				}
 
 				edge_set_add(&trunk[G->localMRCA->pop], G->localMRCA->in);
-				reflen = G->cfg->prof->ref->chrlen[G->cfg->prof->chrnum];
-//				G->localMRCA->in->ub = reflen;
-//				G->localMRCA->in->deleted = 0;
 				G->pops[G->localMRCA->pop].n = 1;
 				edge_set_add(&F[ef->bot->pop], ef);
 
