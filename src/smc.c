@@ -60,8 +60,8 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-//		cache_free(G->cfg->node_cache[nd->type], l);
-		free(l);
+		cache_free(G->cfg->node_cache[nd->type], l);
+//		free(l);
 
 	}
 //	else{
@@ -82,10 +82,10 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	ptr = cache_alloc(G->cfg->node_cache[type]);
+	ptr = cache_alloc(G->cfg->node_cache[type]);
 //	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
 
-	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 //	memset(ptr, 0, nodesize[type]);
 
 //	if(type == NODE_SAM)
@@ -122,8 +122,8 @@ void free_edge(struct genealogy *G, struct edge *e)
 #endif
 	l = GET_LIST(e);
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
-//	cache_free(G->cfg->edge_cache, l);
-	free(l);
+	cache_free(G->cfg->edge_cache, l);
+//	free(l);
 #ifdef DEBUG
 	fprintf(stderr, "Freed edge %x (%x)\n", e, l);
 #endif
@@ -140,8 +140,8 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	l = cache_alloc(G->cfg->edge_cache);
-	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
+	l = cache_alloc(G->cfg->edge_cache);
+//	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
@@ -2502,7 +2502,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-		destroy_tree(G, G->root);
+//		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->edge_cache);
