@@ -52,7 +52,7 @@ void free_node(struct genealogy *G, struct node *nd)
 
 	cfg = G->cfg;
 #ifdef DEBUG
-	fprintf(stderr, "Entering function %s, nd=%x\n", __func__, nd);
+	fprintf(stderr, "Entering function %s, nd=%x(%.6f)\n", __func__, nd, nd->t);
 #endif
 
 //	if(nd->type == NODE_SAM)
@@ -60,8 +60,8 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-		cache_free(G->cfg->node_cache[nd->type], l);
-//		free(l);
+//		cache_free(G->cfg->node_cache[nd->type], l);
+		free(l);
 
 	}
 //	else{
@@ -82,10 +82,10 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	ptr = cache_alloc(G->cfg->node_cache[type]);
+//	ptr = cache_alloc(G->cfg->node_cache[type]);
 //	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
 
-//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 //	memset(ptr, 0, nodesize[type]);
 
 //	if(type == NODE_SAM)
@@ -122,8 +122,8 @@ void free_edge(struct genealogy *G, struct edge *e)
 #endif
 	l = GET_LIST(e);
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
-	cache_free(G->cfg->edge_cache, l);
-//	free(l);
+//	cache_free(G->cfg->edge_cache, l);
+	free(l);
 #ifdef DEBUG
 	fprintf(stderr, "Freed edge %x (%x)\n", e, l);
 #endif
@@ -140,8 +140,8 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = cache_alloc(G->cfg->edge_cache);
-//	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
+//	l = cache_alloc(G->cfg->edge_cache);
+	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
@@ -189,6 +189,9 @@ static inline void __remove_edge(struct genealogy *G, int pop, struct edge *e)
 	void *l;
 	int *pidx, idx;
 
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: e=%x(top=%x(%.6f))\n", __func__, __LINE__, e, e->top, e->top->t);
+#endif
 	ppop = &G->pops[pop];
 	idx = e->idx;
 	e = ppop->eptrs[idx];
@@ -280,7 +283,7 @@ void dump_events(struct genealogy *G)
 
 	l = G->evidx->idx->ls.front;
 	ev = (struct event *)GET_OBJ(l);
-	fprintf(stderr, "Event list: G->evlist");
+	fprintf(stderr, "nevents=%d, Event list: G->evlist", G->evidx->idx->n);
 	while(l){
 		fprintf(stderr, "->");
 		print_event(G->cfg, ev);
@@ -320,6 +323,13 @@ void edge_set_add(struct edge_set *set, struct edge *e)
 struct edge *edge_set_get(struct edge_set *set, int i)
 {
 	return set->edges[i];
+}
+
+void edge_set_replace(struct edge_set *set, int i, struct edge *e)
+{
+	set->edges[i]->trunk_id = -1;
+	e->trunk_id = i;
+	set->edges[i] = e;
 }
 
 struct edge *edge_set_remove(struct edge_set *set, int i)
@@ -389,22 +399,13 @@ void dump_edges(struct genealogy *G)
 	fprintf(stderr, "Entering %s\n", __func__);
 
 	cfg = G->cfg;
-/*	l = G->e_list.front;
-	fprintf(stderr, "Global edge list");
-	while(l){
-		e = (struct edge *)GET_OBJ(l);
-		fprintf(stderr, "->%x(bot=%x(%.10f, %d), top=%x(%.10f, %d), xtid=%d)", e, e->bot, e->bot->t, e->bot->pop, e->top, e->top->t, e->top->pop, e->xtid);
-		l = l->next;
-	}*/
-//	fprintf(stderr, "\n");
-//	fprintf(stderr, "G->e_list.n=%d\n\n", G->e_list.n);
 	tsindex_dump(G->tr_xover);
 	fprintf(stderr, "Dangling edges:");
 	n = G->localMRCA;
 	while(n && n->in){
 		e = n->in;
 //		fprintf(stderr, "%x(%.6f, %.6f, %d), ", e, e->bot->t, e->top->t, e->eid);
-		fprintf(stderr, "%x(%.6f, %.6f), ", e, e->bot->t, e->top->t);
+		fprintf(stderr, "%x(%.6f, %.6f, ub=%d), ", e, e->bot->t, e->top->t, e->ub);
 		n = e->top;
 	}
 	fprintf(stderr, "\n\n");
@@ -417,7 +418,7 @@ void dump_edges(struct genealogy *G)
 			e = G->pops[i].eptrs[j];
 			if(e)
 //				fprintf(stderr, "%x(top=%.10f, top=%.10f, eid=%d, xtid=%d),", e, e->bot->t, e->top->t, e->eid, e->xtid);
-				fprintf(stderr, "%x(top=%.10f, top=%.10f, xtid=%d),", e, e->bot->t, e->top->t, e->xtid);
+				fprintf(stderr, "%x(j=%d, top=%.10f, top=%.10f, xtid=%d, idx=%d, ub=%d),", e, j, e->bot->t, e->top->t, e->xtid, e->idx, e->ub);
 
 			else
 				fprintf(stderr, "(NULL),");
@@ -492,9 +493,10 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 {
 	struct config *cfg;
 	struct migr_node *nm;
-	struct coal_node *ntop;
+	struct coal_node *nd;
+	struct node *ntop, *nnext;
 	struct edge *ebelow, *eabove;
-	int pop;
+	int pop, itop;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering %s\n", __func__);
@@ -502,7 +504,7 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 #endif
 
 	/* Remove dangling edges. */
-	pop = e->bot->pop;
+/*	pop = e->bot->pop;
 	while(e->top->type == NODE_MIGR){
 		nm = (struct migr_node *)e->top;
 #ifdef DEBUG
@@ -522,15 +524,35 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 
 	ntop = (struct coal_node *)e->top;
 	eabove = ntop->in;
-	ebelow = ntop->out[1 - e->itop];
+	ebelow = ntop->out[1 - e->itop];*/
+
+	itop = e->itop;
+	ntop = e->top;
+	remove_edge(G, e->bot->pop, e);
+	while(ntop->type == NODE_MIGR){
+		if(ntop->ev->type == EVENT_JOIN)
+			list_remove(&((struct join_event *)ntop->ev)->ndls, ntop);
+		else if(ntop->ev->type == EVENT_SPLT)
+			list_remove(&((struct splt_event *)ntop->ev)->ndls, ntop);
+		remove_event_josp(G, (struct event *)ntop->ev);
+
+		e = ntop->in;
+		itop = e->itop;
+		pop = ntop->pop;
+		nnext = e->top;
+
+		remove_edge(G, pop, e);
+		free_node(G, ntop);
+
+		ntop = nnext;
+	}
+
+	nd = (struct coal_node *)ntop;
+	eabove = ntop->in;
+	ebelow = AS_COAL_NODE(ntop)->out[1 - itop];
 
 	/* If the erased lineage is below localMRCA, then move down localMRCA. */
-	if(e->top == G->root){
-		remove_event(G, (struct event *)e->top->ev);
-		free_node(G, e->top);
-		G->root = G->localMRCA = NULL;
-
-	}else if(e->top == G->localMRCA){
+	if(ntop == G->localMRCA){
 		struct coal_node *mrca;
 		struct migr_node *nm;
 		struct node *nbot, *ntop;
@@ -551,21 +573,23 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 		}
 		G->localMRCA = ntop;
 
-#ifdef DEBUG
-		fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f)", __func__, __LINE__, e, e->top->t, e->bot->t);
-#endif
+//#ifdef DEBUG
+//		fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f)", __func__, __LINE__, e, e->top->t, e->bot->t);
+//#endif
 		// The edge above removed coalescent node is not in local genealogy, so we do not need to update tsindex. */
-		__remove_edge(G, pop, e);
-		tsindex_clear(G->tr_xover, e);
-		remove_coal_node(G, (struct coal_node *)e->top, e->itop, 0);
-		free_edge(G, e);
+//		__remove_edge(G, pop, e);
+//		tsindex_clear(G->tr_xover, e);
+//		remove_coal_node(G, (struct coal_node *)e->top, e->itop, 0);
+		remove_coal_node(G, (struct coal_node *)nd, itop, 0);
+//		free_edge(G, e);
 
 	}else{
 		// The edge above removed coalescent node is in local genealogy, so tsindex need to be updated. */
-		__remove_edge(G, pop, e);
-		tsindex_clear(G->tr_xover, e);
-		remove_coal_node(G, (struct coal_node *)e->top, e->itop, 1);
-		free_edge(G, e);
+//		__remove_edge(G, pop, e);
+//		tsindex_clear(G->tr_xover, e);
+//		remove_coal_node(G, (struct coal_node *)e->top, e->itop, 1);
+		remove_coal_node(G, (struct coal_node *)nd, itop, 1);
+//		free_edge(G, e);
 	}
 
 #ifdef DEBUG
@@ -716,23 +740,35 @@ struct event *__absorption_r(struct genealogy *G, struct edge *e, struct edge *f
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
 
 	tsindex_update(G->tr_xover, e, -(t - e->bot->t));
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 	insert_coal_node(G, e, nd);
 
 	/* Set up another (absorbed) branch below the new coalescent node. */
 	enew = nd->out[0];
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 	add_edge(G, pop, enew);
-//	enew->ub = e->ub;
-//	e->ub = MAX(enew->ub, f->ub);
+
+	enew->ub = e->ub;
+	e->ub = MAX(enew->ub, f->ub);
+
 	nd->out[1] = f;
 	free_node(G, f->top);
 	f->top = (struct node *)nd;
 	f->itop = 1;
+
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev->dn[pop] = -1;
 	ev->pop = pop;
 	nd->ev = ev;
 	ev->nd = nd;
 
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 	add_edge(G, pop, f);
 
 #ifdef DEBUG
@@ -764,6 +800,9 @@ struct coal_node *__coalescent(struct genealogy *G, struct edge *e1, struct edge
 	e2->itop = 1;
 	e2->top = (struct node *)nd;
 
+	e_new->ub = e1->ub;
+	e1->ub = MAX(e_new->ub, e2->ub);
+
 	add_edge(G, pop, e2);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
@@ -791,7 +830,27 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 
 	u = trunk[pop].n * dunif01();
 	e = edge_set_get(&trunk[pop], u);
-	nd = __coalescent(G, e, f, pop, t);
+	if(e->ub <= G->lb){	// This absorption can be ignored
+		free_node(G, f->top);
+		f->top = e->top;
+		if(e->top->type == NODE_COAL){
+			f->itop = e->itop;
+			AS_COAL_NODE(e->top)->out[e->itop] = f;
+
+		}else{
+			AS_MIGR_NODE(e->top)->out = f;
+		}
+
+		edge_set_replace(&trunk[pop], e->trunk_id, f);
+//		if(e->bot->type != NODE_SAM)
+//			free_node(G, e->bot);
+		remove_edge(G, pop, e);
+		add_edge(G, pop, f);
+		nd = NULL;
+
+	}else{
+		nd = __coalescent(G, e, f, pop, t);
+	}
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -848,25 +907,20 @@ struct migr_node *do_migrate(struct genealogy *G, struct edge *e, int dpop, int 
 	struct edge *e2;
 	double u;
 
-#ifdef DEBUG
-	fprintf(stderr, "Entering function %s\n", __func__);
-#endif
 	nmigr++;
 #ifdef DEBUG
-	fprintf(stderr, "Moving lineage %x(%x) from population %d to %d\n", e, GET_LIST(e), dpop, spop);
+	fprintf(stderr, "%s: %d: Moving lineage %x(%x) from population %d to %d\n", __func__, __LINE__, e, GET_LIST(e), dpop, spop);
 #endif
 	nd = (struct migr_node *)alloc_node(G, NODE_MIGR, spop, t);
 
 	// The edge above nd must be floating
 	insert_migr_node(G, e, nd);
 	e2 = nd->out;
+	e2->ub = e->ub;
 	add_edge(G, e2->bot->pop, e2);
 
 	((struct dummy_node *)e->top)->pop = spop;
 
-#ifdef DEBUG
-	fprintf(stderr, "Finishing function %s\n\n", __func__);
-#endif
 	return nd;
 }
 
@@ -895,7 +949,7 @@ struct migr_node *__migration(struct genealogy *G, struct edge *e, int dpop, dou
 			break;
 	}
 #ifdef DEBUG
-	fprintf(stderr, "Moving lineage %x(%x) from population %d to %d at time %.10f\n", e, GET_LIST(e), dpop, spop, t);
+	fprintf(stderr, "%s: %d: Moving lineage %x(%x) from population %d to %d at time %.10f\n", __func__, __LINE__, e, GET_LIST(e), dpop, spop, t);
 #endif
 	nd = do_migrate(G, e, dpop, spop, t);
 
@@ -936,86 +990,19 @@ static inline void unvisit(struct node *nd)
 	nd->flags &= ~(NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
 }
 
-/*void finish_trunk(struct genealogy *G, struct edge_set *trunk)
-{
-	struct edge *e, *e2;
-	struct node *nd;
-	int pop, i;
-
-	for(pop = 0; pop < G->cfg->npop_all; pop++){
-		i = 0;
-		while(i < trunk[pop].n){
-			e = edge_set_get(&trunk[pop], i);
-			if(e->ub <= G->lb)
-				edge_set_remove(&trunk[pop], i);
-			else
-				i++;
-		}
-	}
-
-	for(pop = 0; pop < G->cfg->npop_all; pop++){
-		if(trunk[pop].n > 0){
-			e = edge_set_remove(&trunk[pop], 0);
-			break;
-		}
-	}
-
-	nd = e->top;
-	while(nd != G->root){
-		if(nd->type == NODE_COAL)
-			visit(nd, e->itop);
-		else
-			visit(nd, 2);
-		e2 = nd->in;
-		e2->ub = MAX(e->ub, e2->ub);
-		e = e2;
-		nd = e->top;
-	}
-
-	* Mark edges in new local genealogy and find new MRCA. *
-	for(; pop < G->cfg->npop_all; pop++){
-		for(i = 0; i < trunk[pop].n; i++){
-			e = edge_set_get(&trunk[pop], i);
-			nd = e->top;
-			while(!isvisited(nd)){
-				if(nd->type == NODE_COAL)
-					visit(nd, e->itop);
-				else
-					visit(nd, 2);
-				e2 = nd->in;
-				e2->ub = MAX(e->ub, e2->ub);
-				e = e2;
-				nd = e->top;
-			}
-			unvisit(nd);
-//			nd->in->ub = MAX(e->ub, nd->in->ub);
-		}
-	}
-
-	// Find new MRCA
-	nd = AS_DUMMY_NODE(G->root)->out->bot;
-	while(isvisited(nd)){
-		unvisit(nd);
-		if(nd->type == NODE_COAL)
-			nd = AS_COAL_NODE(nd)->out[visited_lr(nd)]->bot;
-		else
-			nd = AS_MIGR_NODE(nd)->out->bot;
-	}
-	G->localMRCA = nd;
-}*/
-
-void clear_tree_fast(struct genealogy *G)
+/* Clear nodes and edges of finished reads. */
+void clear_tree(struct genealogy *G)
 {
 	struct config *cfg;
-	struct list_head *nl, *next;
+	struct list remove_list;	// Coalescent nodes to be removed
+	struct list_head *nl, *next, *l;
+	struct edge_set *trunk;
 	struct event *ev0;
 	struct sam_node *snd;
 	struct migr_node *nm;
 	struct node *nd;
 	struct edge *e, *e2, *ebelow;
-	struct list_head *l;
-	struct list remove_list;
-	int pop;
+	int pop, itop, i, j;
 
 //	struct timespec beg, end;
 //	int nsec;
@@ -1023,36 +1010,48 @@ void clear_tree_fast(struct genealogy *G)
 //	n_clear_tree++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	list_init(&remove_list);
+	trunk = G->trunk;
 	cfg = G->cfg;
-	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
-	nl = G->n_list.front;
-	while(nl){
+	for(i = 0; i < cfg->npop_all; i++){
+		j = 0;
+		while(j < trunk[i].n){
+			e = edge_set_get(&trunk[i], j);
+			if(e->ub > G->lb)
+				edge_set_remove(&trunk[i], j);
+			else
+				j++;
+		}
+	}
 
-		next = nl->next;
-		snd = (struct sam_node *)GET_OBJ(nl);
-		nd = (struct node *)snd;
-		if(snd->fg->end <= G->lb && snd->fg->trunk == 0){
-			struct edge *e;
-			int itop;
-
-			G->nsam--;
-			G->pops[nd->pop].nsam--;
-			ev0->dn[nd->pop]--;
-			__list_remove(&G->n_list, nl);
-
-			e = nd->in;
-			pop = nd->pop;
-			free_node(G, nd);
-			nd = e->top;
+	list_init(&remove_list);
+	for(i = 0; i < cfg->npop_all; i++){
+		j = 0;
+		for(j = 0; j < trunk[i].n; j++){
+			e = edge_set_get(&trunk[i], j);
+			pop = i;
 			do{
+				nd = e->top;
 				while(nd->type == NODE_MIGR){
+#ifdef DEBUG
+					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 					remove_edge(G, pop, e);
-					if(nd->ev->type == EVENT_JOIN)
+					if(nd->ev->type == EVENT_JOIN){
 						list_remove(&((struct join_event *)nd->ev)->ndls, nd);
-					else if(nd->ev->type == EVENT_SPLT)
+						remove_event_join_decrease(G, (struct join_event *)nd->ev);
+
+					}else if(nd->ev->type == EVENT_SPLT){
 						list_remove(&((struct splt_event *)nd->ev)->ndls, nd);
+						remove_event_splt_decrease(G, (struct splt_event *)nd->ev);
+
+					}else{
+						remove_event(G, nd->ev);
+					}
 					e = nd->in;
+					pop = nd->pop;
+#ifdef DEBUG
+					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 					free_node(G, nd);
 					nd = e->top;
 				}
@@ -1063,19 +1062,20 @@ void clear_tree_fast(struct genealogy *G)
 				}
 				itop = e->itop;
 				visit(nd, itop);
+				remove_edge(G, pop, e);
 				e = nd->in;
-			}while(visited_lr(nd) == (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT));	// Continue if both branch of a coalescent node is removed
+			}while(visited_lr(nd) == (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT) - 1);	// Continue if both branch of a coalescent node is removed
 		}
-		nl = next;
 	}
 
-	/* Remove edges from remove_list. */
+	/* Remove coalescent nodes from remove_list. */
 	*remove_list.rear = NULL;
 	l = remove_list.front;
 	while(l){
+		next = l->next;
 		nd = (struct node *)GET_OBJ(l);
 		remove_event(G, nd->ev);
-		if(visited_lr(nd) == 2){	// Both edges are removed
+		if(visited_lr(nd) == (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT) - 1){	// Both edges are removed
 			free_node(G, nd);
 
 		}else{	// One edge is still in the local genealogy
@@ -1083,107 +1083,41 @@ void clear_tree_fast(struct genealogy *G)
 			e = nd->in;
 			e->bot = ebelow->bot;
 			ebelow->bot->in = e;
+#ifdef DEBUG
+			fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 			remove_edge(G, ebelow->bot->pop, ebelow);
+
 			free_node(G, nd);
 		}
 
-		l = l->next;
+		l = next;
 	}
 
 	/* Find new MRCA */
-//	e = AS_DUMMY_NODE(G->root)->out;
-///	nd = e->bot;
 	nd = G->root;
-//	while(nd->type != NODE_COAL && nd != NODE_SAM){
 	while(nd->type != NODE_COAL){
 		e = AS_MIGR_NODE(nd)->out;
 		if(tsindex_isin(G->tr_xover, e))
 			tsindex_clear(G->tr_xover, e);
 		nd = e->bot;
 	}
-//	}while(nd->type == NODE_MIGR);
 	G->localMRCA = nd;
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_clear_tree += nsec;
-}
-
-/* Clear nodes and edges of finished reads. */
-void clear_tree(struct genealogy *G)
-{
-	struct config *cfg;
-	struct list_head *nl, *next;
-	struct event *ev0;
-	struct sam_node *snd;
-	struct migr_node *nm;
-	struct node *nd;
-	struct edge *e, *e2;
-	int pop;
-
-//	struct timespec beg, end;
-//	int nsec;
-
-//	n_clear_tree++;
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
-
-	cfg = G->cfg;
 	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 	nl = G->n_list.front;
 	while(nl){
-
 		next = nl->next;
 		snd = (struct sam_node *)GET_OBJ(nl);
-		nd = (struct node *)snd;
 		if(snd->fg->end <= G->lb && snd->fg->trunk == 0){
-			struct edge *e;
-			int itop;
-
 			G->nsam--;
-			G->pops[nd->pop].nsam--;
-			ev0->dn[nd->pop]--;
+			G->pops[snd->pop].nsam--;
+			ev0->dn[snd->pop]--;
 			__list_remove(&G->n_list, nl);
-
-			e = nd->in;
-			pop = nd->pop;
-			free_node(G, nd);
-			nd = e->top;
-//			do{
-				while(nd->type == NODE_MIGR){
-					remove_edge(G, pop, e);
-					if(nd->ev->type == EVENT_JOIN)
-						list_remove(&((struct join_event *)nd->ev)->ndls, nd);
-					else if(nd->ev->type == EVENT_SPLT)
-						list_remove(&((struct splt_event *)nd->ev)->ndls, nd);
-					remove_event_s_josp(G, nd->ev);
-					pop = nd->pop;
-					e = nd->in;
-					free_node(G, nd);
-					nd = e->top;
-				}
-				itop = e->itop;
-//				visit(nd, itop);
-//				e = nd->in;
-//			}while(visited(nd));
-//			}while(e && e->ub < G->lb);
-
-/*			if(e){// The node below e must be coalescent*/
-				e2 = AS_COAL_NODE(nd)->out[1 - itop];
-				e2->bot->in = nd->in;
-				nd->in->bot = e2->bot;
-				remove_edge(G, nd->pop, e2);
-				remove_edge(G, nd->pop, e);
-				remove_event(G, nd->ev);
-				free_node(G, nd);
-
-/*			}else{
-				free_node(G, nd);		// nd has been detached from the local genealogy. In this case, the corresponding event has already been removed.
-			}*/
-
+			free_node(G, (struct node *)snd);
 		}
 		nl = next;
 	}
-
 
 	/* Find new MRCA */
 //	e = AS_DUMMY_NODE(G->root)->out;
@@ -1493,6 +1427,11 @@ void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 		n1->fg = r;
 		n2->in = NULL;
 
+		if(r->trunk)
+			e->ub = reflen;
+		else
+			e->ub = r->end;
+
 		edge_set_add(&F[r->pop], e);
 		ev0->dn[r->pop]++;
 
@@ -1746,6 +1685,7 @@ double recombination(struct genealogy *G, double x)
 
 	struct edge *e_below_xover;	// For simulating behavior of macs
 	struct xover_node *nxover;
+	int reflen;
 
 	// Leave sequential mode and rebuild red-black tree index
 	if(rbindex_isseq(G->evidx->idx))
@@ -1778,8 +1718,8 @@ double recombination(struct genealogy *G, double x)
 	/* Remove recombinant lineage from the genealogy. */
 	nf = (struct dummy_node *)alloc_node(G, NODE_FLOAT, pop, INFINITY);
 	ef = alloc_edge(G, (struct node *)nf, e->bot);
-//	ef->ub = e_below_xover->ub = e->ub;
-//	e->ub = x;
+	ef->ub = e_below_xover->ub = e->ub;
+	e->ub = x;
 	nf->out = ef;
 	nxover->in_new = ef;
 	tdiff_below = e_below_xover->top->t - e_below_xover->bot->t;
@@ -1943,6 +1883,8 @@ double recombination(struct genealogy *G, double x)
 				}
 
 				edge_set_add(&trunk[G->localMRCA->pop], G->localMRCA->in);
+				reflen = G->cfg->prof->ref->chrlen[G->cfg->prof->chrnum];
+				G->localMRCA->in->ub = reflen;
 				G->pops[G->localMRCA->pop].n = 1;
 				edge_set_add(&F[ef->bot->pop], ef);
 
@@ -1995,6 +1937,9 @@ double recombination(struct genealogy *G, double x)
 
 					if(jev->popj == pop){
 						/* Force the floating lineage moving from population j to population i */
+#ifdef DEBUG
+						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 						nd = (struct migr_node *)do_migrate(G, ef, jev->popj, jev->popi, t);
 						nd->ev = (struct migr_event *)ev;
 						list_append(&jev->ndls, nd);
@@ -2037,6 +1982,78 @@ double recombination(struct genealogy *G, double x)
 	}while(!coalesced);
 
 	return like;
+}
+
+/* Process coalescent event in trunk genealogy. */
+int trunk_coal(struct genealogy *G, struct edge_set *trunk, struct coal_event *cev)
+{
+	struct edge *out1, *out2, *in;
+	int dead1, dead2;
+
+	in = cev->nd->in;
+	out1 = cev->nd->out[0];
+	out2 = cev->nd->out[1];
+	in->ub = MAX(out1->ub, out2->ub);
+
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: ev=%x(%.6f), in=%x(%.6f, %.6f, out1=(%x, trunk_id=%d), out2=(%x, trunk_id=%d)\n", __func__, __LINE__, cev, cev->t, in, in->bot->t, in->top->t, out1, out1->trunk_id, out2, out2->trunk_id);
+#endif
+
+	edge_set_replace(&trunk[cev->nd->pop], out1->trunk_id, in);
+	edge_set_remove(&trunk[cev->nd->pop], out2->trunk_id);
+
+	dead1 = out1->ub <= G->lb;
+	dead2 = out2->ub <= G->lb;
+
+	if(dead1 || dead2){
+		if(!dead1){
+			in->bot = out1->bot;
+			out1->bot->in = in;
+		}else if(!dead2){
+			in->bot = out2->bot;
+			out2->bot->in = in;
+		}
+
+		remove_edge(G, cev->nd->pop, out1);
+		remove_edge(G, cev->nd->pop, out2);
+		free_node(G, (struct node *)cev->nd);
+		remove_event(G, (struct event *)cev);
+	}
+	return dead1 + dead2;
+}
+
+/* Process migration/join/split event in trunk genealogy. */
+void __trunk_migr(struct genealogy *G, struct edge_set *trunk, int dpop, int spop, struct event *ev, struct migr_node *nd)
+{
+	struct edge *e, *in, *out;
+
+	in = nd->in;
+	out = nd->out;
+	in->ub = out->ub;
+	edge_set_remove(&trunk[dpop], out->trunk_id);
+	edge_set_add(&trunk[spop], in);
+
+	if(out->ub <= G->lb){
+		remove_edge(G, dpop, out);
+		if(ev->type == EVENT_SPLT){
+			remove_event_splt_decrease(G, (struct splt_event *)ev);
+			list_remove(&((struct splt_event *)ev)->ndls, nd);
+
+		}else if(ev->type == EVENT_JOIN){
+			remove_event_join_decrease(G, (struct join_event *)ev);
+			list_remove(&((struct join_event *)ev)->ndls, nd);
+
+		}else{
+			remove_event_s(G, ev);
+		}
+		free_node(G, (struct node *)nd);
+	}
+}
+
+/* Process migration event in trunk genealogy. */
+static inline void trunk_migr(struct genealogy *G, struct edge_set *trunk, struct migr_event *mev)
+{
+	__trunk_migr(G, trunk, mev->dpop, mev->spop, (struct event *)mev, mev->nd);
 }
 
 double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_set *F)
@@ -2120,6 +2137,7 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_s
 			struct edge *e;
 			int c, i;
 
+			evnew = NULL;
 			if(minuv < minz){	// Coalescent or Absorption
 				double pabs, C, rate1, rate2, tdiff;
 
@@ -2137,7 +2155,8 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_s
 					sublike = -totalprob * minuv;
 
 					last = (struct node *)absorption(G, trunk, e, uvpop, t);
-					evnew = last->ev;
+					if(last)
+						evnew = last->ev;
 
 				}else{	// Coalescent
 					struct coal_node *nd;
@@ -2174,6 +2193,9 @@ finish_selection:
 				em = edge_set_remove(&F[zpop], c);
 
 				/* Perform migration */
+#ifdef DEBUG
+				fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 				nd = __migration(G, em, zpop, t);
 				last = (struct node *)nd;
 				evnew = (struct event *)nd->ev;
@@ -2184,7 +2206,8 @@ finish_selection:
 			}
 
 			like += sublike;
-			insert_event(G, evnew);
+			if(evnew)	// evnew is NULL when the absorption event is ignored because the absorption target will be removed later
+				insert_event(G, evnew);
 
 		}else{
 //ndiscard_merge++;
@@ -2193,49 +2216,43 @@ finish_selection:
 			evindex_s_forward(G->evidx);
 
 			if(ev->type == EVENT_COAL){
-				struct coal_event *cev;
-				int erase = 0;
-
-				cev = (struct coal_event *)ev;
-				edge_set_remove(&trunk[cev->nd->pop], cev->nd->out[0]->trunk_id);
-				edge_set_remove(&trunk[cev->nd->pop], cev->nd->out[1]->trunk_id);
-
-//				if(cev->nd->out[0]->ub < G->lb){
-//					free_node(G, cev->nd->out[0]->bot);
-//					free_edge(G, cev->nd->out[0]);
-//					erase = 1;
-
-//				}else{
-//					add_edge(G, cev->nd->out[0]->pop, cev->nd->out[0]);
-//				}
-
-//				if(cev->nd->out[1]->ub < G->lb){
-//					free_node(G, cev->nd->out[1]->bot);
-//					free_edge(G, cev->nd->out[1]);
-//					erase = 1;
-//				}
-
-//				if(erase)
-//					remove_event(G, ev);
-
-				edge_set_add(&trunk[cev->nd->pop], cev->nd->in);
 				G->pops[((struct coal_event *)ev)->pop].n--;
 
+				if(((struct coal_event *)ev)->nd != (struct coal_node *)G->localMRCA){
+					trunk_coal(G, trunk, (struct coal_event *)ev);
+
+				}else{
+					struct edge *in;
+					double troot_old;
+					int pop, ret;
+
+					in = ((struct coal_event *)ev)->nd->in;
+					pop = G->localMRCA->pop;
+					ret = trunk_coal(G, trunk, (struct coal_event *)ev);
+					if(ret == 2){
+#ifdef DEBUG
+						fprintf(stderr, "Both branch of old MRCA is removed!!!\n");
+#endif
+						G->pops[pop].n--;
+						G->troot = G->root->t;
+						edge_set_remove(&trunk[pop], in->trunk_id);
+						erase_dummy_path(G, in);
+						if(G->ev_dxvr)
+							remove_event(G, G->ev_dxvr);
+						G->localMRCA = G->root = NULL;
+
+					}else if(ret == 1){
+#ifdef DEBUG
+						fprintf(stderr, "A branch of old MRCA is removed!!!\n");
+#endif
+						G->localMRCA = in->bot;	// Move down MRCA
+					}
+				}
+
 			}else if(ev->type == EVENT_MIGR){
-				struct migr_event *mev;
-
-				mev = (struct migr_event *)ev;
-				edge_set_remove(&trunk[mev->nd->out->bot->pop], mev->nd->out->trunk_id);
-
-//				if(mev->nd->out->ub <= G->lb){
-//					free_node(G, mev->nd->out->bot);
-//					free_edge(G, mev->nd->out);
-//					remove_event(G, ev);
-//				}
-
-				edge_set_add(&trunk[mev->nd->pop], mev->nd->in);
 				G->pops[((struct migr_event *)ev)->dpop].n--;
 				G->pops[((struct migr_event *)ev)->spop].n++;
+				trunk_migr(G, trunk, (struct migr_event *)ev);
 
 			}else{
 				update_demography(G, ev);
@@ -2243,7 +2260,7 @@ finish_selection:
 				if(ev->type == EVENT_JOIN){
 					struct join_event *jev;
 					struct migr_node *nd;
-					struct list_head *l;
+					struct list_head *l, *next;
 					struct edge *e;
 					int i;
 
@@ -2251,22 +2268,18 @@ finish_selection:
 					/* Move edges of trunk genealogy. */
 					l = jev->ndls.front;
 					while(l){
+						next = l->next;
 						nd = (struct migr_node *)GET_OBJ(l);
-						edge_set_remove(&trunk[nd->out->bot->pop], nd->out->trunk_id);
-
-//						if(nd->out->ub <= G->lb){
-//							free_node(G, nd->out->bot);
-//							free_edge(G, nd->out);
-//							remove_event(G, ev);
-//						}
-
-						edge_set_add(&trunk[nd->pop], nd->in);
-						l = l->next;
+						__trunk_migr(G, trunk, jev->popj, jev->popi, ev, nd);
+						l = next;
 					}
 
 					/* Move all new lineages in population j to population i. */
 					for(i = 0; i < F[jev->popj].n; i++){
 						e = edge_set_get(&F[jev->popj], i);
+#ifdef DEBUG
+						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
 						nd = (struct migr_node *)do_migrate(G, e, jev->popj, jev->popi, t);
 						edge_set_add(&F[jev->popi], e);
 						nd->ev = (struct migr_event *)ev;
@@ -2279,7 +2292,7 @@ finish_selection:
 				}else if(ev->type == EVENT_SPLT){
 					struct splt_event *sev;
 					struct migr_node *nd;
-					struct list_head *l;
+					struct list_head *l, *next;
 					struct edge *e;
 					int i, nfrom;
 
@@ -2287,17 +2300,10 @@ finish_selection:
 					/* Move edges of trunk genealogy. */
 					l = sev->ndls.front;
 					while(l){
+						next = l->next;
 						nd = (struct migr_node *)GET_OBJ(l);
-						edge_set_remove(&trunk[nd->out->bot->pop], nd->out->trunk_id);
-
-//						if(nd->out->ub <= G->lb){
-//							free_node(G, nd->out->bot);
-//							free_edge(G, nd->out);
-//							remove_event(G, ev);
-//						}
-
-						edge_set_add(&trunk[nd->pop], nd->in);
-						l = l->next;
+						__trunk_migr(G, trunk, sev->pop, sev->newpop, ev, nd);
+						l = next;
 					}
 
 					/* Move new lineages in population old population to new population with probability sev->prop. */
@@ -2380,10 +2386,16 @@ finish_selection:
 		struct node *ndum;
 		struct edge *e;
 
-		for(i = 0; i < cfg->npop; i++)
-			if(F[i].n > 0)
+		for(i = 0; i < cfg->npop; i++){
+			if(F[i].n > 0){
+				e = edge_set_remove(&F[i], 0);
 				break;
-		e = edge_set_remove(&F[i], 0);
+			}
+			if(trunk[i].n > 0){
+				e = edge_set_remove(&trunk[i], 0);
+				break;
+			}
+		}
 		e->top->type = NODE_DUMMY;
 		e->top->t = e->bot->t;
 		e->top->pop = e->bot->pop;
@@ -2423,36 +2435,7 @@ finish_selection:
 	}
 
 #ifdef DEBUG
-	fprintf(stderr, "%d:", __LINE__);
-	for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-		fprintf(stderr, ",G->pops[%d].n=%d, G->pops[%d].enabled=%d", i, G->pops[i].n, i, G->pops[i].enabled);
-	fprintf(stderr, "\n");
-
-	/* Print current population size. */
-	fprintf(stderr, "%d: Current population size:[", __LINE__);
-	for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-		fprintf(stderr, "%.6f,", G->pops[i].size);
-	fprintf(stderr, "]\n");
-
-	/* Print current growth rate. */
-	fprintf(stderr, "%d: Current growth rate:[", __LINE__);
-	for(i = 0; i < cfg->npop + cfg->nsplt; i++)
-		fprintf(stderr, "%.6f,", G->pops[i].grate);
-	fprintf(stderr, "]\n");
-
-	/* Print current migration matrix. */
-	fprintf(stderr, "Current migration matrix:[\n");
-	for(i = 0; i < cfg->npop + cfg->nsplt; i++){
-		int j;
-		for(j = 0; j < cfg->npop + cfg->nsplt; j++)
-			fprintf(stderr, "%.6f,", G->pops[i].mrate[j]);
-		fprintf(stderr, "\n");
-	}
-	fprintf(stderr, "]\n");
-
-	dump_edges(G);
-
-	fprintf(stderr, "Finishing function %s\n\n", __func__);
+	fprintf(stderr, "%d: Leaving %s", __LINE__, __func__);
 #endif
 	return like;
 //	return 0;
@@ -2519,7 +2502,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->edge_cache);
@@ -2635,8 +2618,6 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		G->pops[pop].nedges = 0;
 	}
 	list_init(&G->n_list);
-//	list_init(&G->e_list);
-//	G->evlist = &cfg->evlist;
 	G->evidx = evindex_create(G, G->cfg);
 	evindex_seq_on(G->evidx);
 	evindex_s_rewind(G->evidx);
@@ -2649,11 +2630,9 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	}
 
 	/* Set up mutation model of populations generated by SPLT event. */
-//	l = G->evlist->front;
 	evindex_s_rewind(G->evidx);
 	while(!evindex_s_end(G->evidx)){
 		struct event *ev;
-//		ev = (struct event *)GET_OBJ(l);
 		ev = evindex_s_get(G->evidx);
 		if(ev->type == EVENT_SPLT){
 			struct splt_event *sev;
@@ -2737,7 +2716,7 @@ void print_tree(FILE *out_fp, struct node *nd)
 	if(nd->type == NODE_SAM){
 #ifdef DEBUG
 //		fprintf(stderr, "sam_node=%x;edge=%d", nd, nd->in->eid);
-		fprintf(stderr, "sam_node=%x;edge=%d", nd, nd->in);
+		fprintf(stderr, "sam_node=%x;edge=%x", nd, nd->in);
 #else
 		fprintf(out_fp, "%d", AS_SAM_NODE(nd)->fg->id);
 //		fprintf(out_fp, "%d_%d", AS_SAM_NODE(nd)->fg->id, nd->in->id);
@@ -2960,6 +2939,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 		while(nl){
 			struct sam_node *nd;
 			nd = ((struct sam_node *)GET_OBJ(nl));
+			if(nd->fg->trunk)
+				nd->in->ub = reflen;
+			else
+				nd->in->ub = nd->fg->end;
 			edge_set_add(&G->trunk[nd->pop], nd->in);
 			nl = nl->next;
 		}
@@ -3024,13 +3007,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		sublike = merge_floating(G, G->trunk, F);
 
 #ifdef DEBUG
-		fprintf(stderr, "%s: %d: Tree after merge_floating:", __func__, __LINE__);
-		if(G->root)
-			print_tree(stderr, G->root);
-		fprintf(stderr, "\n");
-#endif
-
-#ifdef DEBUG
 		fprintf(stderr, "%s: %d: G->root=%x(%.6f), G->localMRCA=%x(%.6f)\n\n", __func__, __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
 #endif
 		like += sublike;
@@ -3045,6 +3021,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 		if(G->root)
 			print_tree(stderr, G->root);
 		fprintf(stderr, "\n");
+		dump_edges(G);
 #endif
 
 #ifdef DEBUG
@@ -3174,7 +3151,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			dump_edges(G);
 			fprintf(stderr, "\n");
 			print_tree(stderr, G->localMRCA);
-
+			fprintf(stderr, "\n");
 #endif
 		}while(x < ub);
 		lb = ub;

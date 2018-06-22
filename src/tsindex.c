@@ -166,6 +166,9 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 	double diff;
 
 	id = e->xtid;
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: id=%d\n", __func__, __LINE__, id);
+#endif
 	if(!tsindex_isrebuild(tr)){
 //		tsindex_setflag(tr, TSINDEX_DIRTY);
 //
