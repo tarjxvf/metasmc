@@ -150,7 +150,8 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 	e->top = top;
 	e->bot = bot;
 	e->xtid = e->idx = 0;
-	e->deleted = 0;
+	edge_flag_undelete(e);
+//	e->deleted = 0;
 //	e->eid = ++G->edgeid;
 //	l->prev = l->next = NULL;
 //	l->prev = NULL;
@@ -469,11 +470,10 @@ void insert_coal_node(struct genealogy *G, struct edge *e, struct coal_node *nd)
 	e2 = alloc_edge(G, (struct node *)nd, e->bot);
 
 	nd->out[0] = e2;
-	edge_flag_setitop(e2, 0);
-//	e2->itop = 0;
+	edge_flag_setleft(e2);
+//	edge_flag_setitop(e2, 0);
 	nd->in = e;
 	e->bot = e2->top = (struct node *)nd;
-//	add_edge(G, pop, e2);
 }
 
 void insert_migr_node(struct genealogy *G, struct edge *e, struct migr_node *nd)
@@ -488,7 +488,6 @@ void insert_migr_node(struct genealogy *G, struct edge *e, struct migr_node *nd)
 	e->bot = e2->top = (struct node *)nd;
 	nd->in = e;
 	nd->out = e2;
-//	add_edge(G, pop, e2);
 }
 
 /* Erase dangling lineage until a coalescent node is reached. */
@@ -508,7 +507,6 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 
 	/* Remove dangling edges. */
 	itop = edge_flag_getitop(e);
-//	itop = e->itop;
 	ntop = e->top;
 	remove_edge(G, e->bot->pop, e);
 	while(ismigrnode(ntop)){
@@ -520,7 +518,6 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 
 		e = ntop->in;
 		itop = edge_flag_getitop(e);
-//		itop = e->itop;
 		pop = ntop->pop;
 		nnext = e->top;
 
@@ -730,8 +727,8 @@ struct event *__absorption_r(struct genealogy *G, struct edge *e, struct edge *f
 	nd->out[1] = f;
 	free_node(G, f->top);
 	f->top = (struct node *)nd;
-	edge_flag_setitop(f, 1);
-//	f->itop = 1;
+//	edge_flag_setitop(f, 1);
+	edge_flag_setright(f);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev->dn[pop] = -1;
@@ -770,12 +767,9 @@ struct coal_node *__coalescent(struct genealogy *G, struct edge *e1, struct edge
 
 	/* Set up another branch below the coalescent node */
 	nd->out[1] = e2;
-	edge_flag_setitop(e2, 1);
-//	e2->itop = 1;
+	edge_flag_setright(e2);
+//	edge_flag_setitop(e2, 1);
 	e2->top = (struct node *)nd;
-
-//	e_new->ub = e1->ub;
-//	e1->ub = MAX(e_new->ub, e2->ub);
 
 	add_edge(G, pop, e2);
 
@@ -1025,7 +1019,6 @@ void clear_tree(struct genealogy *G)
 					remove_list.rear = (struct list_head **)*remove_list.rear;
 				}
 				itop = edge_flag_getitop(e);
-//				itop = e->itop;
 				visit(nd, itop);
 				remove_edge(G, pop, e);
 				e = nd->in;

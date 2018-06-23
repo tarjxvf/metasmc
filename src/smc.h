@@ -86,6 +86,16 @@ static inline int edge_flag_getitop(struct edge *e)
 	return e->itop;
 }
 
+static inline void edge_flag_setleft(struct edge *e)
+{
+	e->itop = 0;
+}
+
+static inline void edge_flag_setright(struct edge *e)
+{
+	e->itop = 1;
+}
+
 static inline void edge_flag_setitop(struct edge *e, char flag)
 {
 	e->itop = flag;
