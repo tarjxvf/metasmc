@@ -532,7 +532,11 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 	ebelow = AS_COAL_NODE(ntop)->out[1 - itop];
 
 	/* If the erased lineage is below localMRCA, then move down localMRCA. */
-	if(ntop == G->localMRCA){
+	if(ntop != G->localMRCA){
+		// The edge above removed coalescent node is in local genealogy, so tsindex need to be updated. */
+		remove_coal_node(G, (struct coal_node *)nd, itop, 1);
+
+	}else{
 		struct coal_node *mrca;
 		struct migr_node *nm;
 		struct node *nbot, *ntop;
@@ -558,10 +562,6 @@ void erase_dangling2(struct genealogy *G, struct edge *e)
 //#endif
 		// The edge above removed coalescent node is not in local genealogy, so we do not need to update tsindex. */
 		remove_coal_node(G, (struct coal_node *)nd, itop, 0);
-
-	}else{
-		// The edge above removed coalescent node is in local genealogy, so tsindex need to be updated. */
-		remove_coal_node(G, (struct coal_node *)nd, itop, 1);
 	}
 
 #ifdef DEBUG
