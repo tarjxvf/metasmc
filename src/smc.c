@@ -60,8 +60,8 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-		cache_free(G->cfg->node_cache[nd->type], l);
-//		free(l);
+//		cache_free(G->cfg->node_cache[nd->type], l);
+		free(l);
 
 	}
 //	else{
@@ -82,10 +82,10 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	ptr = cache_alloc(G->cfg->node_cache[type]);
+//	ptr = cache_alloc(G->cfg->node_cache[type]);
 //	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
 
-//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 //	memset(ptr, 0, nodesize[type]);
 
 //	if(type == NODE_SAM)
@@ -122,8 +122,8 @@ void free_edge(struct genealogy *G, struct edge *e)
 #endif
 	l = GET_LIST(e);
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
-	cache_free(G->cfg->edge_cache, l);
-//	free(l);
+//	cache_free(G->cfg->edge_cache, l);
+	free(l);
 #ifdef DEBUG
 	fprintf(stderr, "Freed edge %x (%x)\n", e, l);
 #endif
@@ -140,8 +140,8 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = cache_alloc(G->cfg->edge_cache);
-//	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
+//	l = cache_alloc(G->cfg->edge_cache);
+	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
@@ -1715,38 +1715,35 @@ double recombination(struct genealogy *G, double x)
 
 				if(e2 == e){	// Floating lineage is absorbed to the same lineage (loop in ARG)
 					struct edge *e_old, *e_below, *e_new;
+					double tbot_old, tbot_new;
 
+#ifdef DEBUG
+					fprintf(stderr, "%s: %d: A loop occurs!!!\n", __func__, __LINE__);
+#endif
 					e_old = nxover->in;
 					e_new = nxover->in_new;
 					e_below = nxover->out;
-
-					free_node(G, ef->top);
-					ef->top = e->top;
-					if(e->top->type == NODE_COAL){
-						ef->itop = e->itop;
-						AS_COAL_NODE(e->top)->out[e->itop] = ef;
-
-					}else{
-						AS_MIGR_NODE(e->top)->out = ef;
-					}
-
-					e_new->bot = e_below->bot;
-					e_below->bot->in = e_new;
+					tbot_old = e_below->bot->t;
+					tbot_new = ef->bot->t;
 
 //					// e_old->top is the new coalescent node which has to be removed. In this case, e2 must be in local genealogy, so tsindex must be updateda
-					e->bot = e_below->bot;
-					remove_edge(G, e->bot->pop, e);
-
-					if(ef == e_new){
-						add_edge(G, ef->bot->pop, ef);
+					if(ef != e_new){
+						e->bot = ef->bot;
+						ef->bot->in = e;
+						e_new->bot = e_below->bot;
+						e_below->bot->in = e_new;
+						tsindex_update(G->tr_xover, e_new, tdiff_below);
+						tsindex_update(G->tr_xover, e, tbot_old - tbot_new);
 
 					}else{
-						add_edge(G, ef->bot->pop, ef);
-						tsindex_update(G->tr_xover, e_new, tdiff_below);
+						e->bot = e_below->bot;
+						e_below->bot->in = e;
 					}
 
 					free_node(G, (struct node *)nxover);
 					free_edge(G, e_below);
+					free_node(G, ef->top);
+					free_edge(G, ef);
 
 				}else{
 					struct edge *e_new, *e_below;
@@ -2435,7 +2432,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->edge_cache);
