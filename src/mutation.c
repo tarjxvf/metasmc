@@ -606,7 +606,7 @@ void __genseq(struct mutation *mmut, struct node *n, char *seq_old, struct node 
 	char *seq;
 	double dt;
 
-	while(n2->type == NODE_MIGR)
+	while(ismigrnode(n2))
 		n2 = ((struct migr_node *)n2)->out->bot;
 
 	seq = malloc(sizeof(char) * (to - from));
@@ -626,11 +626,11 @@ void genseq_model(struct mutation *mmut, struct node *n, char *seq_old, int from
 #ifdef DEBUG
 	fprintf(stderr, "Entering %s, n=%x, n->type=%d, from=%d, to=%d\n", __func__, n, n->type, from, to);
 #endif
-	if(n->type == NODE_COAL){
+	if(iscoalnode(n)){
 		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[0]->bot, from, to);
 		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[1]->bot, from, to);
 
-	}else if(n->type == NODE_SAM){
+	}else if(issamnode(n)){
 		struct sam_node *nd;
 		struct read *rd;
 		int i, j, k;
@@ -768,7 +768,7 @@ void evolve(struct mutation *mmut, struct coal_node *n2, struct coal_node *n1, i
 
 void clean_mapped(struct node *n)
 {
-	if(n->type == NODE_COAL){
+	if(iscoalnode(n)){
 		struct coal_node *nc;
 
 		nc = AS_COAL_NODE(n);
@@ -779,14 +779,14 @@ void clean_mapped(struct node *n)
 		nc->seq = NULL;
 		nc->mapped = NULL;
 
-	}else if(n->type == NODE_SAM){
+	}else if(issamnode(n)){
 		return;
 
-	}else if(n->type == NODE_MIGR){
+	}else if(ismigrnode(n)){
 		struct node *np;
 
 		np = n;
-		while(np->type == NODE_MIGR) np = AS_MIGR_NODE(np)->out->bot;
+		while(ismigrnode(np)) np = AS_MIGR_NODE(np)->out->bot;
 		clean_mapped(np);
 	}
 }
@@ -826,7 +826,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 //		mutate(cfg->mmut[0], Pmut, seq, to - from);
 //	}
 
-	if(G->root->type == NODE_COAL){
+	if(iscoalnode(G->root)){
 		struct list_head *nl;
 		struct list stack;
 #ifdef DEBUG
@@ -864,7 +864,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 					n2 = (struct coal_node *)n->in->top;
 
 					// Find nearest coalescent node (the node right above leaf may be migration node)
-					while((struct node *)n2 != G->root && n2->type != NODE_COAL) n2 = (struct coal_node *)n2->in->top;
+					while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in->top;
 
 					while(!mapped(n2, off_lb, off_ub)){	// If the sequence of current coalescent has been generated in the region of interest, then stop tracing. Otherwise, push current node to stack and trace upward.
 						struct list_head *top;
@@ -888,7 +888,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 						n2 = (struct coal_node *)n1->in->top;
 
 						// Find next coalescent node
-						while((struct node *)n2 != G->root && n2->type != NODE_COAL) n2 = (struct coal_node *)n2->in->top;
+						while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in->top;
 					}
 
 					while(stack.front){
@@ -918,7 +918,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 			nl = nl->next;
 		}
 
-	}else if(G->root->type == NODE_SAM){	// If root is a sample node, do the following operation (theoretically, you shouldn't go here)
+	}else if(issamnode(G->root)){	// If root is a sample node, do the following operation (theoretically, you shouldn't go here)
 		struct sam_node *n;
 
 		n = (struct sam_node *)G->root;

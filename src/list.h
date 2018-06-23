@@ -64,7 +64,6 @@ static inline void __list_append__(struct list *ls, struct list_head *l)
 	*ls->rear = l;
 	l->prev = ls->rear;
 	ls->rear = &l->next;
-//	ls->n++;
 }
 
 /* Get and remove last element from NON-EMPTY list. Use with causion. */
@@ -85,8 +84,6 @@ static inline void __list_remove__(struct list *ls, struct list_head *l)
 		l->next->prev = l->prev;
 	else	// If the removed item is the last one
 		ls->rear = l->prev;
-//	ls->n--;
-//	l->prev = l->next = NULL;
 	l->next = NULL;
 	l->prev = NULL;
 }

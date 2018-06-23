@@ -21,6 +21,76 @@
 #define AS_FLOAT_NODE(n)	((struct dummy_node *)(n))
 #define AS_DUMMY_NODE(n)	((struct dummy_node *)(n))
 
+static inline int iscoalnode(struct node *nd)
+{
+	return nd->type == NODE_COAL;
+}
+
+static inline int isxovernode(struct node *nd)
+{
+	return nd->type == NODE_XOVER;
+}
+
+static inline int ismigrnode(struct node *nd)
+{
+	return nd->type == NODE_MIGR;
+}
+
+static inline int issamnode(struct node *nd)
+{
+	return nd->type == NODE_SAM;
+}
+
+static inline int isfloatnode(struct node *nd)
+{
+	return nd->type == NODE_FLOAT;
+}
+
+static inline int isdummynode(struct node *nd)
+{
+	return nd->type == NODE_DUMMY;
+}
+
+static int node_flag_gettype(struct node *nd)
+{
+	return nd->type;
+}
+
+static void node_flag_settype(struct node *nd, char type)
+{
+	nd->type = type;
+}
+
+static inline char isdeleted(struct edge *e)
+{
+	return e->deleted;
+}
+
+static inline void edge_flag_delete(struct edge *e)
+{
+	e->deleted = 1;
+}
+
+static inline void edge_flag_undelete(struct edge *e)
+{
+	e->deleted = 0;
+}
+
+static inline void edge_flag_setdeleted(struct edge *e, char flag)
+{
+	e->deleted = flag;
+}
+
+static inline int edge_flag_getitop(struct edge *e)
+{
+	return e->itop;
+}
+
+static inline void edge_flag_setitop(struct edge *e, char flag)
+{
+	e->itop = flag;
+}
+
 void free_node(struct genealogy *G, struct node *nd);
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
 void free_edge(struct genealogy *G, struct edge *e);
