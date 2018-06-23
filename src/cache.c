@@ -39,29 +39,26 @@ void cache_resize(struct cache *nc, int add)
 void *cache_alloc(struct cache *nc)
 {
 	struct list *queue;
-	int id;
+	struct list_head *l;
+	int *ptr, id;
 
 	queue = &nc->free_list;
 
-	if(queue->front == NULL){
-		/* Allocate a new node in binary indexed tree. */
-		if(nc->maxnodes >= nc->cache_size){
-			cache_resize(nc, 1000);
-		}
-		id = nc->maxnodes++;
-
-	}else{
-		struct list_head *l;
-		int *ptr;
-
+	if(queue->front){
 		/* Get a existing empty node in binary indexed tree. */
 		l = __list_pop(queue);
 		ptr = (int *)GET_OBJ(l);
 		id = *ptr;
 		__list_append(&nc->id_list, l);
-	}
+		return nc->objs[id];
 
-	return nc->objs[id];
+	}else{
+		/* Allocate a new node in binary indexed tree. */
+		if(nc->maxnodes >= nc->cache_size)
+			cache_resize(nc, 1000);
+		id = nc->maxnodes++;
+		return nc->objs[id];
+	}
 }
 
 void cache_free(struct cache *nc, void *obj)
