@@ -60,9 +60,9 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
+//		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
 //		cache_free(G->cfg->node_cache[nd->type], l);
-//		free(l);
+		free(l);
 
 	}
 //	else{
@@ -83,10 +83,10 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	ptr = cache_alloc(G->cfg->node_cache[type]);
+//	ptr = cache_alloc(G->cfg->node_cache[type]);
 //	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
 
-//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 //	memset(ptr, 0, nodesize[type]);
 
 //	if(type == NODE_SAM)
@@ -124,8 +124,8 @@ void free_edge(struct genealogy *G, struct edge *e)
 #endif
 	l = GET_LIST(e);
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
-	cache_free(G->cfg->edge_cache, l);
-//	free(l);
+//	cache_free(G->cfg->edge_cache, l);
+	free(l);
 #ifdef DEBUG
 	fprintf(stderr, "Freed edge %x (%x)\n", e, l);
 #endif
@@ -142,8 +142,8 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	l = cache_alloc(G->cfg->edge_cache);
-//	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
+//	l = cache_alloc(G->cfg->edge_cache);
+	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
 //	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
@@ -305,37 +305,37 @@ void edge_set_init(struct edge_set *set, int maxn)
 	memset(set->edges, 0, sizeof(struct edge *) * maxn);
 }
 
-void edge_set_clear(struct edge_set *set)
+static inline void edge_set_clear(struct edge_set *set)
 {
 	set->n = 0;
-	memset(set->edges, 0, sizeof(struct edge *) * set->maxn);
+//	memset(set->edges, 0, sizeof(struct edge *) * set->maxn);
 }
 
-void edge_set_destroy(struct edge_set *set)
+static inline void edge_set_destroy(struct edge_set *set)
 {
 	set->maxn = set->n = 0;
 	free(set->edges);
 }
 
-void edge_set_add(struct edge_set *set, struct edge *e)
+static inline void edge_set_add(struct edge_set *set, struct edge *e)
 {
 	e->trunk_id = set->n;
 	set->edges[set->n++] = e;
 }
 
-struct edge *edge_set_get(struct edge_set *set, int i)
+static inline struct edge *edge_set_get(struct edge_set *set, int i)
 {
 	return set->edges[i];
 }
 
-void edge_set_replace(struct edge_set *set, int i, struct edge *e)
+static inline void edge_set_replace(struct edge_set *set, int i, struct edge *e)
 {
 	set->edges[i]->trunk_id = -1;
 	e->trunk_id = i;
 	set->edges[i] = e;
 }
 
-struct edge *edge_set_remove(struct edge_set *set, int i)
+static inline struct edge *edge_set_remove(struct edge_set *set, int i)
 {
 	struct edge *e;
 
@@ -790,11 +790,11 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 	struct coal_node *nd;
 	int u;
 
-//	struct timespec beg, end;
-//	int nsec;
+	struct timespec beg, end;
+	int nsec;
 
-//	n_abs_merge++;
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	n_abs_merge++;
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	u = trunk[pop].n * dunif01();
 	e = edge_set_get(&trunk[pop], u);
@@ -811,9 +811,9 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 		nd = __coalescent(G, e, f, pop, t);
 	}
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_abs_merge += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_abs_merge += nsec;
 
 	return nd;
 }
@@ -831,11 +831,11 @@ struct coal_node *coalescent( struct genealogy *G, struct edge_set *F, int pop, 
 	struct coal_node *nd;
 	int c1, c2;
 
-//	struct timespec beg, end;
-//	int nsec;
+	struct timespec beg, end;
+	int nsec;
 
-//	n_coal++;
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	n_coal++;
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	pick2(F[pop].n, &c1, &c2);
 
@@ -849,9 +849,9 @@ struct coal_node *coalescent( struct genealogy *G, struct edge_set *F, int pop, 
 
 	nd = __coalescent(G, e1, e2, pop, t);
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_coal += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_coal += nsec;
 
 	return nd;
 }
@@ -962,11 +962,11 @@ void clear_tree(struct genealogy *G)
 	struct edge *e, *e2, *ebelow;
 	int pop, itop, i, j;
 
-//	struct timespec beg, end;
-//	int nsec;
+	struct timespec beg, end;
+	int nsec;
 
-//	n_clear_tree++;
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	n_clear_tree++;
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	trunk = G->trunk;
 	cfg = G->cfg;
@@ -1087,9 +1087,9 @@ void clear_tree(struct genealogy *G)
 	}
 	G->localMRCA = nd;
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_clear_tree += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_clear_tree += nsec;
 }
 
 /* Modify population configuration according to an event. */
@@ -1354,10 +1354,10 @@ void create_floating(struct genealogy *G, struct list *R, struct edge_set *F)
 double abs_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
-//	struct timespec beg, end;
-//	int nsec;
+	struct timespec beg, end;
+	int nsec;
 
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
@@ -1376,9 +1376,9 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 	}
 //	fprintf(stderr, "%d: abs_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_abs_time += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_abs_time += nsec;
 
 	return dt;
 }
@@ -1386,10 +1386,10 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 double coal_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
-//	struct timespec beg, end;
-//	int nsec;
+	struct timespec beg, end;
+	int nsec;
 
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
@@ -1411,9 +1411,9 @@ double coal_time(struct genealogy *G, int nF, int pop, double t)
 
 //	fprintf(stderr, "%d: coal_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_coal_time += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_coal_time += nsec;
 
 	return dt;
 }
@@ -1423,11 +1423,11 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
 	int npair;
-//	struct timespec beg, end;
-//	int nsec;
+	struct timespec beg, end;
+	int nsec;
 
-//	n_coal_time++;
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	n_coal_time++;
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 	npair = nF * (nF - 1) + 2 * nF * G->pops[pop].n;
 
 	size = G->pops[pop].size;
@@ -1445,9 +1445,9 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 
 //	fprintf(stderr, "%d: coal_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_coal_time += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_coal_time += nsec;
 
 	return dt;
 }
@@ -1625,7 +1625,7 @@ double recombination(struct genealogy *G, double x)
 		double at, mg, dmig, sublike, totalprob;
 		struct list_head *el;
 
-//	n_abs_time_xover++;
+	n_abs_time_xover++;
 
 		totalprob = G->pops[pop].n;
 //		at = ca_time(G, 1, pop, t);
@@ -1651,11 +1651,11 @@ double recombination(struct genealogy *G, double x)
 		}else if(t + at < ev->t || t + mg < ev->t){
 			struct event *evnew;
 
-//	struct timespec beg, end;
-//	int nsec;
+	struct timespec beg, end;
+	int nsec;
 
-//	n_abs_xover++;
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	n_abs_xover++;
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 			if(at < mg){		//Next event is absorption
 				struct edge *e2;	// e2: Edge where new absorption event occur, e_old: the old branch from xover node
@@ -1729,9 +1729,9 @@ double recombination(struct genealogy *G, double x)
 				}
 
 				coalesced = 1;
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_abs_xover += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_abs_xover += nsec;
 
 			}else{	// Next event is migration
 				struct migr_node *nd;
@@ -1749,7 +1749,7 @@ double recombination(struct genealogy *G, double x)
 			like += sublike;
 
 		}else{
-//ndiscard_xover++;
+ndiscard_xover++;
 			like -= totalprob * (ev->t - t);
 			t = ev->t;
 
@@ -1975,7 +1975,7 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct edge_s
 		uvpop = zpop = 0;
 		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
 			if(F[pop].n > 0){
-//n_abs_time_merge++;
+n_abs_time_merge++;
 				uv = ca_time(G, F[pop].n, pop, t);
 #ifdef DEBUG
 				fprintf(stderr, "%d: ca_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, uv, pop, F[pop].n, pop, G->pops[pop].n);
@@ -2098,7 +2098,7 @@ finish_selection:
 				insert_event(G, evnew);
 
 		}else{
-//ndiscard_merge++;
+ndiscard_merge++;
 			like -= totalprob * (ev->t - t);
 			t = ev->t;
 			evindex_s_forward(G->evidx);
@@ -2390,7 +2390,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->edge_cache);
@@ -3116,7 +3116,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 //	fprintf(cfg->treefp, "%d\t%d\t%d\t%d\n", begin.tv_sec, begin.tv_nsec, end.tv_sec, end.tv_nsec);
 
-/*fprintf(stderr, "t_abs_merge=%lu\n", t_abs_merge);
+fprintf(stderr, "t_abs_merge=%lu\n", t_abs_merge);
 fprintf(stderr, "n_abs_merge=%lu\n", n_abs_merge);
 
 fprintf(stderr, "t_abs_xover=%lu\n", t_abs_xover);
@@ -3145,7 +3145,7 @@ fprintf(stderr, "t_ts_rebuild=%lu\n", t_ts_rebuild);
 fprintf(stderr, "n_ts_resize=%lu\n", n_ts_resize);
 
 fprintf(stderr, "t_ev_tree=%lu\n", t_ev_tree);
-fprintf(stderr, "t_ev_summary=%lu\n", t_ev_summary);*/
+fprintf(stderr, "t_ev_summary=%lu\n", t_ev_summary);
 
 //	if(ub < reflen){
 //		return -Inf;
