@@ -948,6 +948,60 @@ static inline void unvisit(struct node *nd)
 	nd->flags &= ~(NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
 }
 
+static inline void e_delete_push(struct genealogy *G, int pop, struct edge *e)
+{
+	struct list *remove_list;
+
+	remove_list = &G->pops[pop].e_delete_list;
+	*remove_list->rear = GET_LIST(e);
+	remove_list->rear = (struct list_head **)*remove_list->rear;
+}
+
+void e_delete_clear(struct genealogy *G)
+{
+	struct list_head *l, *next;
+	int i;
+
+	for(i = 0; i < G->cfg->npop_all; i++){
+		*G->pops[i].e_delete_list.rear = NULL;
+		l = G->pops[i].e_delete_list.front;
+		while(l){
+			next = l->next;
+			remove_edge(G, i, (struct edge *)GET_OBJ(l));
+			l = next;
+		}
+		list_init(&G->pops[i].e_delete_list);
+	}
+}
+
+static inline void n_delete_push(struct genealogy *G, struct node *nd)
+{
+	struct list *remove_list;
+
+	remove_list = &G->n_delete_list;
+	*remove_list->rear = GET_LIST(nd);
+	remove_list->rear = (struct list_head **)*remove_list->rear;
+}
+
+void n_delete_clear(struct genealogy *G)
+{
+	struct list_head *l, *next;
+	struct list *ls;
+	struct node *nd;
+
+	ls = &G->n_delete_list;
+	*ls->rear = NULL;
+	l = ls->front;
+	while(l){
+		next = l->next;
+		nd = (struct node *)GET_OBJ(l);
+		remove_event_s_josp(G, nd->ev);
+		free_node(G, nd);
+		l = next;
+	}
+	list_init(ls);
+}
+
 /* Clear nodes and edges of finished reads. */
 void clear_tree(struct genealogy *G)
 {
@@ -993,24 +1047,26 @@ void clear_tree(struct genealogy *G)
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-					remove_edge(G, pop, e);
+//					remove_edge(G, pop, e);
+					e_delete_push(G, pop, e);
 					if(nd->ev->type == EVENT_JOIN){
 						list_remove(&((struct join_event *)nd->ev)->ndls, nd);
-						remove_event_join_decrease(G, (struct join_event *)nd->ev);
+//						remove_event_join_decrease(G, (struct join_event *)nd->ev);
 
 					}else if(nd->ev->type == EVENT_SPLT){
 						list_remove(&((struct splt_event *)nd->ev)->ndls, nd);
-						remove_event_splt_decrease(G, (struct splt_event *)nd->ev);
+//						remove_event_splt_decrease(G, (struct splt_event *)nd->ev);
 
-					}else{
-						remove_event(G, nd->ev);
+//					}else{
+//						remove_event(G, nd->ev);
 					}
 					e = nd->in;
 					pop = nd->pop;
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-					free_node(G, nd);
+//					free_node(G, nd);
+					n_delete_push(G, nd);
 					nd = e->top;
 				}
 
@@ -1020,11 +1076,15 @@ void clear_tree(struct genealogy *G)
 				}
 				itop = edge_flag_getitop(e);
 				visit(nd, itop);
-				remove_edge(G, pop, e);
+//				remove_edge(G, pop, e);
+				e_delete_push(G, pop, e);
 				e = nd->in;
 			}while(visited_lr(nd) == (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT) - 1);	// Continue if both branch of a coalescent node is removed
 		}
 	}
+
+	e_delete_clear(G);
+	n_delete_clear(G);
 
 	/* Remove coalescent nodes from remove_list. */
 	*remove_list.rear = NULL;
@@ -2274,7 +2334,7 @@ finish_selection:
 		struct node *ndum;
 		struct edge *e;
 
-		for(i = 0; i < cfg->npop; i++){
+		for(i = 0; i < cfg->npop_all; i++){
 			if(F[i].n > 0){
 				e = edge_set_remove(&F[i], 0);
 				break;
@@ -2390,7 +2450,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->edge_cache);
@@ -2504,8 +2564,11 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		G->pops[pop].maxedges = prof->nfrag * 3;
 		G->pops[pop].eptrs = malloc(sizeof(struct edge *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
+		list_init(&G->pops[pop].e_delete_list);
 	}
 	list_init(&G->n_list);
+	list_init(&G->n_delete_list);
+
 	G->evidx = evindex_create(G, G->cfg);
 	evindex_seq_on(G->evidx);
 	evindex_s_rewind(G->evidx);

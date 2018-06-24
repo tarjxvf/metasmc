@@ -130,6 +130,7 @@ struct population {
 	struct edge **eptrs;		// Array of edge pointers
 	struct list idx_queue;	// Queue of index in eptrs
 	struct list id_list;
+	struct list e_delete_list;
 };
 
 struct genealogy {
@@ -144,6 +145,7 @@ struct genealogy {
 	int nedges;		// Number of edges in local tree
 //	struct list e_list;	// List of edges in the local tree
 	struct list n_list;	// List of sample nodes
+	struct list n_delete_list;
 
 //	struct list_head *evlcurr;
 	struct node *root;
