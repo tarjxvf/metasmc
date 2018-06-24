@@ -292,8 +292,9 @@ typedef size_t map_t;
 struct node {
 	char type;	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
 	char flags;
+	short pop;
 	double t;
-	int pop;
+	int set_id;
 	struct event *ev;
 	struct edge *in;	// Edge above the node
 };
@@ -302,8 +303,9 @@ struct node {
 struct coal_node {
 	char type;	// type==NODE_COAL
 	char flags;
+	short pop;
 	double t;
-	int pop;
+	int set_id;
 	struct coal_event *ev;
 	struct edge *in;
 	struct edge *out[2];	//Edges below the node
@@ -315,8 +317,9 @@ struct coal_node {
 struct xover_node {
 	char type;	// type==NODE_XOVER
 	char flags;
+	short pop;
 	double t;
-	int pop;
+	int set_id;
 	struct event *ev;
 	struct edge *in_new;
 	struct edge *out;
@@ -327,8 +330,9 @@ struct xover_node {
 struct migr_node {
 	char type;	// type==NODE_MIGR
 	char flags;
+	short pop;
 	double t;
-	int pop;
+	int set_id;
 	struct migr_event *ev;
 	struct edge *in;
 	struct edge *out;
@@ -338,8 +342,9 @@ struct migr_node {
 struct sam_node {
 	char type;	// type==NODE_SAM
 	char flags;
+	short pop;
 	double t;
-	int pop;
+	int set_id;
 	struct event *ev;
 	struct edge *in;
 	struct frag *fg;	// pointer to corresponding fragment
@@ -349,8 +354,9 @@ struct sam_node {
 struct dummy_node {
 	char type;	// type==NODE_DUMMY of type==NODE_FLOAT
 	char flags;
+	short pop;
 	double t;
-	int pop;
+	int set_id;
 	struct event *ev;
 	struct edge *in;
 	struct edge *out;
