@@ -1050,11 +1050,11 @@ void clear_tree(struct genealogy *G)
 //					remove_edge(G, pop, e);
 					e_delete_push(G, pop, e);
 					if(nd->ev->type == EVENT_JOIN){
-						list_remove(&((struct join_event *)nd->ev)->ndls, nd);
+						__list_remove__(&((struct join_event *)nd->ev)->ndls, GET_LIST(nd));
 //						remove_event_join_decrease(G, (struct join_event *)nd->ev);
 
 					}else if(nd->ev->type == EVENT_SPLT){
-						list_remove(&((struct splt_event *)nd->ev)->ndls, nd);
+						__list_remove__(&((struct splt_event *)nd->ev)->ndls, GET_LIST(nd));
 //						remove_event_splt_decrease(G, (struct splt_event *)nd->ev);
 
 //					}else{
