@@ -84,8 +84,8 @@ static inline void __list_remove__(struct list *ls, struct list_head *l)
 		l->next->prev = l->prev;
 	else	// If the removed item is the last one
 		ls->rear = l->prev;
-	l->next = NULL;
-	l->prev = NULL;
+//	l->next = NULL;
+//	l->prev = NULL;
 }
 
 static inline struct list_head *__list_prev__(struct list_head *l)
