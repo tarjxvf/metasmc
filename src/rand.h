@@ -9,7 +9,7 @@
 
 //#include "mt19937-64/mt64.h"
 
-#define BUF_SIZE 16384
+#define BUF_SIZE 8192
 
 extern dsfmt_t dsfmt;
 //extern uint32_t int_buffer[BUF_SIZE];

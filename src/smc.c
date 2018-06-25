@@ -1118,26 +1118,26 @@ void clear_tree(struct genealogy *G)
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-//					remove_edge(G, pop, e);
-					e_delete_push(G, pop, e);
+					remove_edge(G, pop, e);
+//					e_delete_push(G, pop, e);
 					if(nd->ev->type == EVENT_JOIN){
 						__list_remove__(&((struct join_event *)nd->ev)->ndls, GET_LIST(nd));
-//						remove_event_join_decrease(G, (struct join_event *)nd->ev);
+						remove_event_join_decrease(G, (struct join_event *)nd->ev);
 
 					}else if(nd->ev->type == EVENT_SPLT){
 						__list_remove__(&((struct splt_event *)nd->ev)->ndls, GET_LIST(nd));
-//						remove_event_splt_decrease(G, (struct splt_event *)nd->ev);
+						remove_event_splt_decrease(G, (struct splt_event *)nd->ev);
 
-//					}else{
-//						remove_event(G, nd->ev);
+					}else{
+						remove_event(G, nd->ev);
 					}
 					e = nd->in;
 					pop = nd->pop;
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-//					free_node(G, nd);
-					n_delete_push(G, nd);
+					free_node(G, nd);
+//					n_delete_push(G, nd);
 					nd = e->top;
 				}
 
@@ -1147,15 +1147,15 @@ void clear_tree(struct genealogy *G)
 				}
 				itop = edge_flag_getitop(e);
 				visit(nd, itop);
-//				remove_edge(G, pop, e);
-				e_delete_push(G, pop, e);
+				remove_edge(G, pop, e);
+//				e_delete_push(G, pop, e);
 				e = nd->in;
 			}while(visited_lr(nd) == (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT) - 1);	// Continue if both branch of a coalescent node is removed
 		}
 	}
 
-	e_delete_clear(G);
-	n_delete_clear(G);
+//	e_delete_clear(G);
+//	n_delete_clear(G);
 
 	/* Remove coalescent nodes from remove_list. */
 	*remove_list.rear = NULL;
