@@ -66,8 +66,8 @@ static inline unsigned int dunif(unsigned int max)
 //		sfmt_fill_array32(&sfmt, int_buffer, BUF_SIZE);
 //	r = int_buffer[buf_cur++];
 
-//	return r % max;
 //	return dunif01() * max;
+
 	r = dsfmt_genrand_uint32(&dsfmt);
 	return r % max;
 }
