@@ -707,12 +707,12 @@ struct edge *trunk_search(struct genealogy *G, struct edge_set *trunk, int pop, 
 struct edge *choose_tedge(struct genealogy *G, int pop, double t)
 {
 	struct edge *e;
-	int nthres, n;
+	int nthres, n, u;
 	double avg1, avg2, C;
 
 	n = G->pops[pop].n;
 
-	C = 1;
+//	C = 1;
 	nthres = 0;	// Disable red-black index
 	avg1 = (double)G->pops[pop].nedges / n;		// Expected number of steps that method 1 find desired edge
 	avg2 = (double)(2 * G->pops[pop].n - 3) / 2;	// Expected number of steps that method 2 find desired edge
@@ -721,24 +721,22 @@ struct edge *choose_tedge(struct genealogy *G, int pop, double t)
 	fprintf(stderr, "%s: %d: pop->n=%d, nthres=%d, t=%.6f\n", __func__, __LINE__, n, nthres, t);
 	dump_edges(G);
 #endif
-	if(avg1 * C < avg2){
-		int u;
-
+//	if(avg1 * C < avg2){
+	if(avg1 < avg2){
 		do{
-			u = G->pops[pop].nedges * dunif01();
+			u = dunif(G->pops[pop].nedges);
 			e = G->pops[pop].eptrs[u];
-		}while(e == NULL || !(e->bot->t < t && e->top->t > t));
+		}while(!(e->bot->t < t && e->top->t > t));
+		return e;
 
 	}else{	// Choose edge using red-black index
-		int u;
-
-		u = G->pops[pop].n * dunif01();
-		e = trunk_search(G, G->trunk, pop, t, u);
+		u = dunif(G->pops[pop].n);
+		return trunk_search(G, G->trunk, pop, t, u);
 	}
 
 //if(G->cfg->debug)
 //fprintf(stderr, "absorption time=%.10f, coal_edge=(%.10f, %.10f)\n", t, e->bot->t, e->top->t);
-	return e;
+//	return e;
 }
 
 /* Absorb floating lineage f into e (from recombination). */
@@ -839,7 +837,7 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 //	n_abs_merge++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	u = trunk[pop].n * dunif01();
+	u = dunif(trunk[pop].n);
 	e = edge_set_get(&trunk[pop], u);
 	if(isdeleted(e)){	// This absorption can be ignored
 		e->bot = nf;
