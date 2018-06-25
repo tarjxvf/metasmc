@@ -106,6 +106,12 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
 void free_edge(struct genealogy *G, struct edge *e);
 struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot);
 
+struct node_set {
+	int maxn;
+	int n;
+	struct node **nodes;
+};
+
 struct edge_set {
 	int maxn;
 	int n;
