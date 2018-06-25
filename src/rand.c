@@ -11,9 +11,10 @@
 
 FILE *seedfilp;
 
-#define BUF_SIZE 100000
-double rnd_buffer[BUF_SIZE];
-int buf_cur = BUF_SIZE;
+dsfmt_t dsfmt;
+//uint32_t int_buffer[BUF_SIZE];
+double real_buffer[BUF_SIZE];
+int buf_cur = 0;
 
 /* Generating [0, 1) uniform random variable. */
 /*double dunif01()
@@ -87,7 +88,13 @@ void init_rand(unsigned int seed)
 //	seed = time(NULL);
 //	init_genrand(seed);
 //	mt_seed32new(seed);
-	init_genrand64(seed);
+
+//	init_genrand64(seed);
+
+	dsfmt_init_gen_rand(&dsfmt, seed);
+	dsfmt_fill_array_open_open(&dsfmt, real_buffer, BUF_SIZE);
+//	st_fill_array(&dsfmt, int_buffer, BUF_SIZE);
+
 //	seedfilp = fopen("rands.txt", "w+");
 }
 
