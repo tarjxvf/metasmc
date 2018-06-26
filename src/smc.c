@@ -165,22 +165,16 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 static inline void __add_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	struct population *ppop;
-	struct list *eid_queue;
-	struct list_head *l;
-	int idx, *ptr;
+	int idx;
 
 	ppop = &G->pops[pop];
 	idx = ppop->nedges++;
 	ppop->eptrs[idx] = e;
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: idx=%d, maxedges=%d, nedges=%d, e=%x\n", __func__, __LINE__, idx, ppop->maxedges, ppop->nedges, e);
-#endif
-
 	e->idx = idx;
 }
 
 /* Add an edge to a population. */
-void add_edge(struct genealogy *G, int pop, struct edge *e)
+static inline void add_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	tsindex_add(G->tr_xover, e);
 	__add_edge(G, pop, e);
@@ -189,18 +183,15 @@ void add_edge(struct genealogy *G, int pop, struct edge *e)
 static inline void __remove_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	struct population *ppop;
-	void *l;
-	int *pidx, idx;
+	int idx;
 
 	ppop = &G->pops[pop];
 	idx = e->idx;
-	e = ppop->eptrs[idx];
 	ppop->eptrs[idx] = ppop->eptrs[--(ppop->nedges)];
 	ppop->eptrs[idx]->idx = idx;
-	ppop->eptrs[ppop->nedges] = NULL;
 }
 
-void remove_edge(struct genealogy *G, int pop, struct edge *e)
+static inline void remove_edge(struct genealogy *G, int pop, struct edge *e)
 {
 	__remove_edge(G, pop, e);
 	tsindex_clear(G->tr_xover, e);
