@@ -47,11 +47,11 @@ void __bit_build(struct bit *tree, int nmemb, double *val)
 	for(i = 1; i <= nmemb; i++)
 		tree->freq[i] = tree->freq[i - 1] + val[i - 1];
 
-	for(;i < maxn; i++)
-		tree->freq[i] = tree->freq[nmemb];
+//	for(;i < maxn; i++)
+//		tree->freq[i] = tree->freq[nmemb];
 
 	/* Backward pass that calculates tree values. */
-	for(i = maxn - 1; i >= 1; i--){
+	for(i = nmemb; i >= 1; i--){
 		parent = bit_lowbit_remove(i);
 		tree->freq[i] -= tree->freq[parent];
 	}
@@ -90,7 +90,7 @@ void bit_update(struct bit *tree, int ix, double diff)
 	do{
 		tree->freq[ix] += diff;
 		ix += bit_lowbit_get(ix);
-	}while(ix < tree->maxnode);
+	}while(ix <= tree->n);
 }
 
 /* Read cumulative value */
@@ -136,7 +136,7 @@ int bit_getindex(struct bit *tree, double prob)
 	if(prob > tree->freq[0]){
 		while(mask > 0){
 			testix = index + mask;
-			if(prob >= tree->freq[testix]){
+			if(testix <= tree->n && prob >= tree->freq[testix]){
 				index = testix;
 				prob -= tree->freq[index];
 			}
@@ -160,7 +160,7 @@ int bit_getindex_new(struct bit *tree, double freq)
 	half = size >> 1;
 	while(half > 0){
 		testix = baseix + half;
-		if(freq > tree->freq[testix]){
+		if(testix <= tree->n && freq > tree->freq[testix]){
 			baseix = testix;
 			freq -= tree->freq[baseix];
 		}
@@ -172,22 +172,23 @@ int bit_getindex_new(struct bit *tree, double freq)
 
 int bit_append(struct bit *tree, double val)
 {
-	double oldval;
+	double oldsum, parent_val;
 	int n, parent;
 
 	n = tree->n;
+	oldsum = bit_total(tree);
 	n++;
 	if(n >= tree->maxnode){
-		double oldval;
-
-		oldval = bit_total(tree);
+//		oldval = bit_total(tree);
 		tree->freq = realloc(tree->freq, sizeof(double) * (tree->maxnode << 1));
 		memset(tree->freq + tree->maxnode, 0, sizeof(double) * tree->maxnode);
-		tree->freq[n] = oldval + val;
+		tree->freq[n] = oldsum + val;
 		tree->maxnode <<= 1;
 
 	}else{
-		bit_update(tree, n, val);
+		parent_val = bit_cumfreq(tree, bit_lowbit_remove(n));
+		tree->freq[n] = oldsum + val - parent_val;
+//		bit_update(tree, n, val);
 	}
 
 	tree->n = n;

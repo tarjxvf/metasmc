@@ -116,6 +116,7 @@ void tsindex_add_rebuild(struct tsindex *tr, struct edge *e)
 	if(tr->free_list.front == NULL){
 		/* Allocate a new node in binary indexed tree. */
 		id = tr->maxnodes + 1;
+		tr->maxnodes++;
 		if(tr->maxnodes >= tr->maxedges)
 			tsindex_resize(tr, tr->maxedges);
 
