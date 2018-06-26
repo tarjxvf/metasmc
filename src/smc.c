@@ -699,52 +699,7 @@ struct edge *choose_tedge(struct genealogy *G, int pop, double t)
 //	return e;
 }
 
-/* Absorb floating lineage f into e (from recombination). */
-#ifdef DEBUG
-int nabs = 0;
-#endif
-struct coal_node *__absorption_r(struct genealogy *G, struct edge *e, struct node *nf, int pop, double t)
-{
-	struct coal_event *ev;
-	struct coal_node *nd;
-	struct edge *enew, *f;
-
-	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
-
-	tsindex_update(G->tr_xover, e, -(t - e->bot->t));
-
-	/* Set up another (absorbed) branch below the new coalescent node. */
-	enew = alloc_edge(G, (struct node *)nd, e->bot);
-	nd->out[0] = enew;
-	edge_flag_setleft(enew);
-	nd->in = e;
-	e->bot = enew->top = (struct node *)nd;
-	add_edge(G, pop, enew);
-	enew->bot->in = enew;
-
-	f = alloc_edge(G, (struct node *)nd, nf);
-	nd->out[1] = nf->in = f;
-	edge_flag_setright(f);
-
-	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
-	ev->dn[pop] = -1;
-	ev->pop = pop;
-	nd->ev = ev;
-	ev->nd = nd;
-
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
-#endif
-	add_edge(G, pop, f);
-
-#ifdef DEBUG
-	fprintf(stderr, "Finishing function %s\n", __func__);
-#endif
-
-	return nd;
-}
-
-/* This must be called from merge_floating. */
+/* Absorb floating lineage n2 into e1. */
 struct coal_node *__absorption(struct genealogy *G, struct edge *e1, struct node *n2, int pop, double t)
 {
 	struct edge *e_new, *e2;
@@ -759,14 +714,12 @@ struct coal_node *__absorption(struct genealogy *G, struct edge *e1, struct node
 	edge_flag_setleft(e_new);
 	nd->in = e1;
 	e1->bot = e_new->top = (struct node *)nd;
-	add_edge(G, pop, e_new);
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node.
 
 	/* Set up another branch below the coalescent node */
 	e2 = alloc_edge(G, (struct node *)nd, n2);
 	nd->out[1] = n2->in = e2;
 	edge_flag_setright(e2);
-	add_edge(G, pop, e2);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev->dn[pop] = -1;
@@ -800,6 +753,8 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 
 	}else{
 		nd = __absorption(G, e, nf, pop, t);
+		add_edge(G, pop, nd->out[0]);
+		add_edge(G, pop, nd->out[1]);
 	}
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1769,7 +1724,12 @@ double recombination(struct genealogy *G, double x)
 
 					e_below = nxover->out;
 					e->bot = e_below->bot;
-					nd = (struct node *)__absorption_r(G, e2, nf, pop, t);
+
+					tsindex_update(G->tr_xover, e2, -(t - e2->bot->t));
+					nd = (struct node *)__absorption(G, e2, nf, pop, t);
+					add_edge(G, pop, AS_COAL_NODE(nd)->out[0]);
+					add_edge(G, pop, AS_COAL_NODE(nd)->out[1]);
+
 					nf = nd;
 					evnew = nd->ev;
 					insert_event_rb(G, evnew);
