@@ -1591,6 +1591,9 @@ double recombination(struct genealogy *G, double x)
 	struct xover_node *nxover;
 	int reflen;
 
+	if(tsindex_isrebuild(G->tr_xover))
+		tsindex_rebuild(G->tr_xover);
+
 	// Leave sequential mode and rebuild red-black tree index
 	if(rbindex_isseq(G->evidx->idx))
 		evindex_seq_off(G->evidx);
@@ -2910,8 +2913,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 		fprintf(stderr, "%s: %d: G->root=%x(%.6f), G->localMRCA=%x(%.6f)\n\n", __func__, __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
 #endif
 
-		if(tsindex_isrebuild(G->tr_xover))
-			tsindex_rebuild(G->tr_xover);
+//		if(tsindex_isrebuild(G->tr_xover))
+//			tsindex_rebuild(G->tr_xover);
 
 #ifdef DEBUG
 		fprintf(stderr, "%d: G->root=%x, G->root->t=%.6f, G->localMRCA=%x, G->localMRCA->t=%.6f\n", __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);

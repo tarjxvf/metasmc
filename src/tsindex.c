@@ -31,6 +31,32 @@ void tsindex_resize(struct tsindex *tr, int add)
 	tr->maxedges += add;
 }
 
+double tsindex_size(struct tsindex *tr)
+{
+	if(tsindex_isrebuild(tr)){
+		double *weights, total;
+		struct edge *e;
+		int i;
+
+		total = 0;
+		weights = tr->weights + 1;
+		for(i = 0; i < tr->maxnodes; i++){
+			e = tr->edges[i + 1];
+			if(e){
+				weights[i] = e->top->t - e->bot->t;
+				total += weights[i];
+
+			}else{
+				weights[i] = 0;
+			}
+		}
+		return total;
+
+	}else{
+		return bit_total(tr->index);
+	}
+}
+
 void tsindex_rebuild(struct tsindex *tr)
 {
 	double *weights;
@@ -43,7 +69,7 @@ void tsindex_rebuild(struct tsindex *tr)
 
 //	weights = malloc(sizeof(double) * tr->maxnodes);
 	weights = tr->weights + 1;
-	for(i = 0; i < tr->maxnodes; i++){
+/*	for(i = 0; i < tr->maxnodes; i++){
 		struct edge *e;
 
 		e = tr->edges[i + 1];
@@ -51,7 +77,7 @@ void tsindex_rebuild(struct tsindex *tr)
 			weights[i] = e->top->t - e->bot->t;
 		else
 			weights[i] = 0;
-	}
+	}*/
 	__bit_build(tr->index, tr->maxnodes, weights);
 //	free(weights);
 	tsindex_clearflag(tr, TSINDEX_DIRTY);

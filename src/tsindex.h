@@ -70,14 +70,7 @@ static inline void tsindex_update(struct tsindex *tr, struct edge *e, double dif
 		bit_update(tr->index, e->xtid, diff);
 }
 
-static inline double tsindex_size(struct tsindex *tr)
-{
-	if(tsindex_isrebuild(tr))
-		return -1;
-	else
-		return bit_total(tr->index);
-}
-
+double tsindex_size(struct tsindex *tr);
 void tsindex_rebuild(struct tsindex *tr);
 struct tsindex *tsindex_alloc(int nedges);
 void tsindex_reset(struct tsindex *tr);
