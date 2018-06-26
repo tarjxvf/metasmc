@@ -709,33 +709,21 @@ struct coal_node *__absorption_r(struct genealogy *G, struct edge *e, struct nod
 	struct coal_node *nd;
 	struct edge *enew, *f;
 
-#ifdef DEBUG
-//	nabs++;
-	fprintf(stderr, "Entering function %s: e=%x, nf=%x, pop=%d, t=%.6f\n", __func__, e, nf, pop, t);
-#endif
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
-	f = alloc_edge(G, (struct node *)nd, nf);
-	nf->in = f;
 
 	tsindex_update(G->tr_xover, e, -(t - e->bot->t));
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
-#endif
 
 	/* Set up another (absorbed) branch below the new coalescent node. */
 	enew = alloc_edge(G, (struct node *)nd, e->bot);
 	nd->out[0] = enew;
-	e->bot->in = enew;
 	edge_flag_setleft(enew);
 	nd->in = e;
 	e->bot = enew->top = (struct node *)nd;
 	add_edge(G, pop, enew);
+	enew->bot->in = enew;
 
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
-#endif
-
-	nd->out[1] = f;
+	f = alloc_edge(G, (struct node *)nd, nf);
+	nd->out[1] = nf->in = f;
 	edge_flag_setright(f);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
@@ -783,7 +771,6 @@ struct coal_node *__absorption(struct genealogy *G, struct edge *e1, struct node
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev->dn[pop] = -1;
 	ev->pop = pop;
-
 	nd->ev = ev;
 	ev->nd = nd;
 
