@@ -749,19 +749,23 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 		e->bot = nf;
 		nf->in = e;
 		edge_flag_undelete(e);
-		nd = NULL;
+//		nd = NULL;
+
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_abs_merge += nsec;
+		return NULL;
 
 	}else{
 		nd = __absorption(G, e, nf, pop, t);
 		add_edge(G, pop, nd->out[0]);
 		add_edge(G, pop, nd->out[1]);
+
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_abs_merge += nsec;
+		return nd;
 	}
-
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_abs_merge += nsec;
-
-	return nd;
 }
 
 /* This must be called from merge_floating. */
