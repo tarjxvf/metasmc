@@ -17,7 +17,7 @@ struct tsindex {
 	int maxnodes;	// Equals to n in binary indexed tree
 	int maxedges;
 	struct edge **edges;
-//	double *weights;
+	double *weights;
 	struct list free_list;
 	struct list id_list;
 };
