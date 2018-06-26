@@ -710,15 +710,15 @@ struct coal_node *__absorption(struct genealogy *G, struct edge *e1, struct node
 
 	// Note that edge above nd must be floating and not in local genealogy.
 	e_new = alloc_edge(G, (struct node *)nd, e1->bot);
+	e2 = alloc_edge(G, (struct node *)nd, n2);
+
+	/* Set up another branch below the coalescent node */
 	nd->out[0] = e_new;
-	edge_flag_setleft(e_new);
+	nd->out[1] = n2->in = e2;
 	nd->in = e1;
 	e1->bot = e_new->top = (struct node *)nd;
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node.
-
-	/* Set up another branch below the coalescent node */
-	e2 = alloc_edge(G, (struct node *)nd, n2);
-	nd->out[1] = n2->in = e2;
+	edge_flag_setleft(e_new);
 	edge_flag_setright(e2);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
@@ -777,23 +777,17 @@ struct coal_node *__coalescent(struct genealogy *G, struct node *n1, struct node
 
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
 
-	// Note that edge above nd must be floating and not in local genealogy.
 	e_new = alloc_edge(G, (struct node *)nd, n1);
-	nd->out[0] = n1->in = e_new;
-	edge_flag_setleft(e_new);
-	add_edge(G, pop, e_new);
-
-	/* Set up another branch below the coalescent node */
 	e2 = alloc_edge(G, (struct node *)nd, n2);
-	nd->out[1] = n2->in = e2;
-	edge_flag_setright(e2);
 
-	add_edge(G, pop, e2);
+	nd->out[0] = n1->in = e_new;
+	nd->out[1] = n2->in = e2;
+	edge_flag_setleft(e_new);
+	edge_flag_setright(e2);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev->dn[pop] = -1;
 	ev->pop = pop;
-
 	nd->ev = ev;
 	ev->nd = nd;
 
@@ -825,6 +819,8 @@ struct coal_node *coalescent( struct genealogy *G, struct node_set *F, int pop, 
 	}
 
 	nd = __coalescent(G, n1, n2, pop, t);
+	add_edge(G, pop, nd->out[0]);
+	add_edge(G, pop, nd->out[1]);
 	node_set_replace(&F[pop], n1->set_id, (struct node *)nd);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
