@@ -734,6 +734,7 @@ struct coal_node *__absorption_r(struct genealogy *G, struct edge *e, struct nod
 	/* Set up another (absorbed) branch below the new coalescent node. */
 	enew = alloc_edge(G, (struct node *)nd, e->bot);
 	nd->out[0] = enew;
+	e->bot->in = enew;
 	edge_flag_setleft(enew);
 	nd->in = e;
 	e->bot = enew->top = (struct node *)nd;
