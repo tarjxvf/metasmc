@@ -505,37 +505,6 @@ void remove_coal_node(struct genealogy *G, struct coal_node *nd, int iout, int t
 #endif
 }
 
-void insert_coal_node(struct genealogy *G, struct edge *e, struct coal_node *nd)
-{
-	struct edge *e2;
-	int pop;
-
-#ifdef DEBUG
-	fprintf(stderr, "Entering function %s, e=%x, nd=%x(%d, %.6f)\n", __func__, e, nd, nd->type, nd->t);
-#endif
-	pop = e->bot->pop;
-	e2 = alloc_edge(G, (struct node *)nd, e->bot);
-
-	nd->out[0] = e2;
-	edge_flag_setleft(e2);
-	nd->in = e;
-	e->bot = e2->top = (struct node *)nd;
-}
-
-void insert_migr_node(struct genealogy *G, struct edge *e, struct migr_node *nd)
-{
-	struct edge *e2;
-	int pop;
-
-	pop = e->bot->pop;
-	e2 = alloc_edge(G, (struct node *)nd, e->bot);
-	e->bot->in = e2;	// If node below e is XOVER, e is a new lineage from xover node, which corresponds to e->in (see definition of struct node and struct xover_node).
-
-	e->bot = e2->top = (struct node *)nd;
-	nd->in = e;
-	nd->out = e2;
-}
-
 /* Erase dangling lineage until a coalescent node is reached. */
 void erase_dangling2(struct genealogy *G, struct edge *e)
 {
@@ -761,14 +730,18 @@ struct coal_node *__absorption_r(struct genealogy *G, struct edge *e, struct nod
 #ifdef DEBUG
 	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-	insert_coal_node(G, e, nd);
 
 	/* Set up another (absorbed) branch below the new coalescent node. */
-	enew = nd->out[0];
+	enew = alloc_edge(G, (struct node *)nd, e->bot);
+	nd->out[0] = enew;
+	edge_flag_setleft(enew);
+	nd->in = e;
+	e->bot = enew->top = (struct node *)nd;
+	add_edge(G, pop, enew);
+
 #ifdef DEBUG
 	fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-	add_edge(G, pop, enew);
 
 	nd->out[1] = f;
 	edge_flag_setright(f);
@@ -801,9 +774,11 @@ struct coal_node *__absorption(struct genealogy *G, struct edge *e1, struct node
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
 
 	// Note that edge above nd must be floating and not in local genealogy.
-	insert_coal_node(G, e1, nd);
-
-	e_new = nd->out[0];
+	e_new = alloc_edge(G, (struct node *)nd, e1->bot);
+	nd->out[0] = e_new;
+	edge_flag_setleft(e_new);
+	nd->in = e1;
+	e1->bot = e_new->top = (struct node *)nd;
 	add_edge(G, pop, e_new);
 	e_new->bot->in = e_new;	// Because this function is called by merge_floating, e_new->bot cannot be XOVER node.
 
@@ -811,7 +786,6 @@ struct coal_node *__absorption(struct genealogy *G, struct edge *e1, struct node
 	e2 = alloc_edge(G, (struct node *)nd, n2);
 	nd->out[1] = n2->in = e2;
 	edge_flag_setright(e2);
-
 	add_edge(G, pop, e2);
 
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
@@ -854,12 +828,6 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 //	t_abs_merge += nsec;
 
 	return nd;
-}
-
-void pick2(int n, int *i, int *j)
-{
-	*i = dunif(n) ;
-	while( ( *j = dunif(n) ) == *i );
 }
 
 /* This must be called from merge_floating. */
@@ -907,7 +875,8 @@ struct coal_node *coalescent( struct genealogy *G, struct node_set *F, int pop, 
 // 	n_coal++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	pick2(F[pop].n, &c1, &c2);
+	c1 = dunif(F[pop].n) ;
+	while( ( c2 = dunif(F[pop].n) ) == c1 );
 
 	if(c1 > c2){
 		n1 = node_set_get(&F[pop], c2);
@@ -1182,14 +1151,14 @@ void clear_tree(struct genealogy *G)
 	}
 
 	/* Find new MRCA */
-	nd = G->root;
+/*	nd = G->root;
 	while(!iscoalnode(nd)){
 		e = AS_MIGR_NODE(nd)->out;
 		if(tsindex_isin(G->tr_xover, e))
 			tsindex_clear(G->tr_xover, e);
 		nd = e->bot;
 	}
-	G->localMRCA = nd;
+	G->localMRCA = nd;*/
 
 	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 	nl = G->n_list.front;
