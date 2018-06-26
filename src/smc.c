@@ -84,10 +84,7 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 	ptr = cache_alloc(G->cfg->node_cache[type]);
-//	memset(ptr, 0, G->cfg->node_cache[type]->obj_size);
-
 //	ptr = malloc(nodesize[type] + sizeof(struct list_head));
-//	memset(ptr, 0, nodesize[type]);
 
 //	if(type == NODE_SAM)
 	{
@@ -101,7 +98,6 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 //		nd = (struct node *)ptr;
 //	}
 
-//	nd->type = type;
 	node_flag_settype(nd, type);
 	nd->flags = 0;
 	nd->pop = pop;
@@ -123,7 +119,6 @@ void free_edge(struct genealogy *G, struct edge *e)
 	fprintf(stderr, "Entering function %s, e=%x\n", __func__, e);
 #endif
 	l = GET_LIST(e);
-//	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 	cache_free(G->cfg->edge_cache, l);
 //	free(l);
 #ifdef DEBUG
@@ -144,17 +139,12 @@ struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot)
 #endif
 	l = cache_alloc(G->cfg->edge_cache);
 //	l = malloc(sizeof(struct edge) + sizeof(struct list_head));
-//	memset(l, 0, sizeof(struct edge) + sizeof(struct list_head));
 
 	e = (struct edge *)GET_OBJ(l);
 	e->top = top;
 	e->bot = bot;
 	e->xtid = e->idx = 0;
 	edge_flag_undelete(e);
-//	e->deleted = 0;
-//	e->eid = ++G->edgeid;
-//	l->prev = l->next = NULL;
-//	l->prev = NULL;
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated edge %x, top node=%x(t=%.6f, type=%d), bot node=%x(t=%.6f, type=%d)\n", e, e->top, e->top->t, e->top->type, e->bot, e->bot->t, e->bot->type);
@@ -346,7 +336,6 @@ void edge_set_init(struct edge_set *set, int maxn)
 static inline void edge_set_clear(struct edge_set *set)
 {
 	set->n = 0;
-//	memset(set->edges, 0, sizeof(struct edge *) * set->maxn);
 }
 
 static inline void edge_set_destroy(struct edge_set *set)
@@ -1636,9 +1625,9 @@ double recombination(struct genealogy *G, double x)
 
 	/* Iterate until floating lineage is absorbed. */
 	coalesced = 0;
-	like = 0;
+//	like = 0;
 	do{
-		double at, mg, dmig, sublike, totalprob;
+		double at, mg, dmig, totalprob;
 		struct list_head *el;
 
 //	n_abs_time_xover++;
@@ -1659,7 +1648,6 @@ double recombination(struct genealogy *G, double x)
 
 		ev = evindex_s_get(G->evidx);
 		if(isinf(at) && isinf(mg) && isinf(ev->t)){
-			like = -INFINITY;
 			fprintf(stderr, "%d: Infinite time to next event\n", __LINE__);
 			exit(-1);
 
@@ -1678,7 +1666,6 @@ double recombination(struct genealogy *G, double x)
 				double tmrca_old;
 
 				tmrca_old = G->localMRCA->t;
-				sublike = -totalprob * at;
 				t += at;
 				e2 = choose_tedge(G, pop, t);
 
@@ -1758,7 +1745,6 @@ double recombination(struct genealogy *G, double x)
 #ifdef DEBUG
 				fprintf(stderr, "%d: Next event is migration\n", __LINE__);
 #endif
-				sublike = log(dmig) - totalprob * mg;
 				t += mg;
 				nd = __migration(G, nf, pop, t);
 				nf = (struct node *)nd;
@@ -1767,11 +1753,8 @@ double recombination(struct genealogy *G, double x)
 				pop = ((struct migr_event *)evnew)->spop;
 			}
 
-			like += sublike;
-
 		}else{
 //ndiscard_xover++;
-			like -= totalprob * (ev->t - t);
 			t = ev->t;
 
 			if(ev->t == G->localMRCA->t){
@@ -1802,7 +1785,7 @@ double recombination(struct genealogy *G, double x)
 //				e->bot = nxover->out->bot;
 				G->t = t;
 				evindex_s_forward(G->evidx);
-				like += merge_floating(G, trunk, F);
+				merge_floating(G, trunk, F);
 
 				{
 					struct edge *e_new, *e_below, *e_prev_in;
@@ -1891,7 +1874,7 @@ double recombination(struct genealogy *G, double x)
 		}
 	}while(!coalesced);
 
-	return like;
+	return 0;
 }
 
 /* Process coalescent event in trunk genealogy. */
@@ -1974,7 +1957,6 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct node_s
 	struct list_head *f;
 	int pop, uvpop, zpop, sumnF, i;
 	double t, uv, minuv, z, minz;
-	double like;
 
 	cfg = G->cfg;
 #ifdef DEBUG
@@ -1986,11 +1968,10 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct node_s
 		sumnF += F[pop].n;
 	}
 
-	like = 0;
 	/* If trunk genealogy is not empty, loop until all floating lineages are absorbed.
 	   Otherwise, loop until only one floating lineage remained. */
 	while((G->root != NULL && sumnF > 0) || (G->root == NULL && sumnF > 1)){
-		double totalprob, sublike, rmig;
+		double totalprob, rmig;
 
 		totalprob = rmig = 0;
 		minuv = minz = INFINITY;
@@ -2029,10 +2010,8 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct node_s
 
 		ev = evindex_s_get(G->evidx);
 		if(isinf(minuv) && isinf(minz) && isinf(ev->t)){
-			like = -INFINITY;
 			fprintf(stderr, "%d: Infinite time to next event\n", __LINE__);
 			exit(-1);
-//			return -1;
 		}
 #ifdef DEBUG
 		fprintf(stderr, "%d:", __LINE__);
@@ -2062,15 +2041,12 @@ double merge_floating(struct genealogy *G, struct edge_set *trunk, struct node_s
 					c = dunif(F[uvpop].n);
 					nf = node_set_remove(&F[uvpop], c);
 
-					sublike = -totalprob * minuv;
-
 					last = (struct node *)absorption(G, trunk, nf, uvpop, t);
 					if(last)
 						evnew = last->ev;
 
 				}else{	// Coalescent
 					struct coal_node *nd;
-					sublike = log(2) - totalprob * minuv;
 					nd = coalescent(G, F, uvpop, t);
 					last = (struct node *)nd;
 					evnew = (struct event *)nd->ev;
@@ -2112,17 +2088,13 @@ finish_selection:
 				evnew = (struct event *)nd->ev;
 				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nd);
 //				fprintf(stdout, "nmigr=%d, dpop=%d, c=%d, ev->dpop=%d, ev->spop=%d\n", nmigr, dpop, c, ev->dpop, ev->spop);
-
-				sublike = log(G->pops[zpop].mrate[zpop]) - totalprob * minz;
 			}
 
-			like += sublike;
 			if(evnew)	// evnew is NULL when the absorption event is ignored because the absorption target will be removed later
 				insert_event(G, evnew);
 
 		}else{
 //ndiscard_merge++;
-			like -= totalprob * (ev->t - t);
 			t = ev->t;
 			evindex_s_forward(G->evidx);
 
@@ -2350,8 +2322,7 @@ finish_selection:
 #ifdef DEBUG
 	fprintf(stderr, "%d: Leaving %s", __LINE__, __func__);
 #endif
-	return like;
-//	return 0;
+	return 0;
 }
 
 void destroy_tree(struct genealogy *G, struct node *nd)
@@ -2720,7 +2691,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct list R, Rold;
 	struct node_set *F;
 	struct timespec begin, end;
-	double like, rho;
+	double rho;
 	double lb, ub;
 
 	clock_gettime(CLOCK_MONOTONIC, &begin);
@@ -2777,7 +2748,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	rho = cfg->rho;
 	lb = ub = 0;
 	ilast = 0;
-	like = 0;
 	f = 0;
 	G->ev_dxvr = NULL;
 
@@ -2793,7 +2763,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		struct sam_node *nd;
 		int i, j, n0, ntrunk;
-		double sublike;
 		double x;
 //		int x;
 
@@ -2919,14 +2888,13 @@ int simulate(struct genealogy *G, struct profile *prof)
 		tsindex_setflag(G->tr_xover, TSINDEX_REBUILD);
 		evindex_seq_on(G->evidx);
 
-		sublike = merge_floating(G, G->trunk, F);
+		merge_floating(G, G->trunk, F);
 
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: G->root=%x(%.6f), G->localMRCA=%x(%.6f)\n\n", __func__, __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
 #endif
-		like += sublike;
-		if(isinf(sublike))
-			break;
+//		if(isinf(sublike))
+//			break;
 
 		clear_tree(G);
 
@@ -3018,13 +2986,12 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "\n");
 #endif
 			if(x < ub){
-//				like += log(rho) - rrho * r;
 #ifdef DEBUG
 				fprintf(stderr, "%s: %d: x=%.6f\n", __func__, __LINE__, x);
 #endif
 				u = dunif01() * treesize;
 				if(u < G->total){
-					sublike = recombination(G, x);
+					recombination(G, x);
 
 				}else{
 					double t;
@@ -3035,7 +3002,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 					fprintf(stderr, "%d: Dummy recombination occur at time %.10f, position %.10f, localMRCA->t=%.10f, root->t=%.10f\n", __LINE__, t, x, G->localMRCA->t, G->root->t);
 #endif
 
-					sublike = log(rho);
 					if(G->ev_dxvr){
 						if(G->ev_dxvr->t > t){
 							struct event *ev_dxvr;
@@ -3176,7 +3142,7 @@ fprintf(stderr, "t_ev_summary=%lu\n", t_ev_summary);*/
 //		return -Inf;
 
 //	}else{
-		return like;
+		return 0;
 //	}
 }
 
