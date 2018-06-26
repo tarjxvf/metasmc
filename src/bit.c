@@ -39,9 +39,11 @@ void __bit_build(struct bit *tree, int nmemb, double *val)
 	maxn = 1;
 	while(maxn < nmemb + 1) maxn <<= 1;
 
-	tree->freq = realloc(tree->freq, sizeof(double) * maxn);
+	if(maxn > tree->maxnode){
+		tree->freq = realloc(tree->freq, sizeof(double) * maxn);
+		tree->maxnode = maxn;
+	}
 	tree->n = nmemb;
-	tree->maxnode = maxn;
 	tree->freq[0] = 0;
 	/* Forward pass that calculate true cumulative frequency. */
 	for(i = 1; i <= nmemb; i++)

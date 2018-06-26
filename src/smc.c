@@ -2913,9 +2913,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		fprintf(stderr, "%s: %d: G->root=%x(%.6f), G->localMRCA=%x(%.6f)\n\n", __func__, __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
 #endif
 
-//		if(tsindex_isrebuild(G->tr_xover))
-//			tsindex_rebuild(G->tr_xover);
-
 #ifdef DEBUG
 		fprintf(stderr, "%d: G->root=%x, G->root->t=%.6f, G->localMRCA=%x, G->localMRCA->t=%.6f\n", __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
 
