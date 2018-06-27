@@ -45,6 +45,5 @@ AC_FUNC_STRTOD
 AC_CHECK_FUNCS([clock_gettime memset sqrt strtol])
 
 AC_CONFIG_FILES([Makefile
-                 src/Makefile
-                 src/mt19937-64/Makefile])
+                 src/Makefile])
 AC_OUTPUT

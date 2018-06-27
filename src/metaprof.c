@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "rand.h"
 #include "util.h"
 #include "global.h"
 
@@ -318,7 +319,8 @@ int main(int argc, char *argv[])
 		rdlen = fraglen;
 	sd = time(NULL);
 //	sd = 1525493755;
-	srand(sd);
+//	srand(sd);
+	init_rand(sd);
 //	fprintf(stderr, "seed=%d\n", sd);
 
 	proflen = strlen(outdir) + strlen(prefix) + 1 + 20 + 4 + 5 + 4 + 5 + 1;	// The constants stands for: '/', taxid, ".tax", chromosome id, ".chr", ".prof", '\0'
@@ -383,7 +385,8 @@ int main(int argc, char *argv[])
 	for(i = 0; i < nfrags; i++){
 		double u;
 
-		u = (double)rand() / RAND_MAX;
+		u = dunif01();
+//		u = (double)rand() / RAND_MAX;
 		for(j = 0; j < npop; j++)
 			if(weights[j] > u)
 				break;
@@ -458,7 +461,8 @@ int main(int argc, char *argv[])
 				double u;
 				int m;
 
-				u = (double)rand() / RAND_MAX;
+//				u = (double)rand() / RAND_MAX;
+				u = dunif01();
 				for(m = 0; m < nchr; m++)
 					if(wchr[m] > u)
 						break;
