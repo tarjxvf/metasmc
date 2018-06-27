@@ -46,8 +46,8 @@ void __bit_build(struct bit *tree, int nmemb, double *val)
 	tree->n = nmemb;
 	tree->freq[0] = 0;
 	/* Forward pass that calculate true cumulative frequency. */
-//	for(i = 1; i <= nmemb; i++)
-//		tree->freq[i] = tree->freq[i - 1] + val[i - 1];
+	for(i = 1; i <= nmemb; i++)
+		tree->freq[i] = tree->freq[i - 1] + val[i - 1];
 
 //	for(;i < maxn; i++)
 //		tree->freq[i] = tree->freq[nmemb];
