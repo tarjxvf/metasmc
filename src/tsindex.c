@@ -40,11 +40,12 @@ double tsindex_size(struct tsindex *tr)
 
 		total = 0;
 		weights = tr->weights + 1;
+		tr->index->freq[0] = 0;
 		for(i = 0; i < tr->maxnodes; i++){
 //			e = tr->edges[i + 1];
 //			if(e){
 //				weights[i] = e->top->t - e->bot->t;
-				total += weights[i];
+				tr->index->freq[i + 1] = (total += weights[i]);
 
 //			}else{
 //				weights[i] = 0;
