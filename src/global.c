@@ -4,6 +4,7 @@
 #include <math.h>
 #include <limits.h>
 
+#include "rand.h"
 #include "util.h"
 #include "global.h"
 #include "smc.h"
@@ -408,6 +409,8 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 
 	cfg = malloc(sizeof(struct config));
 	memset(cfg, 0, sizeof(struct config));
+
+	cfg->prof = prof;
 
 	/* Set up basic configuration */
 	cfg->npop = cfg->npop_all = npop = prof->npop;

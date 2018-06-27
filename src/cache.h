@@ -11,6 +11,7 @@ struct cache {
 	int cache_size;	// Number of elements in the cacne
 	int maxnodes;	// The index of rightmost elements + 1
 	void **objs;
+	struct list chunk_list;
 	struct list free_list;	// List of free index before maxnodes
 	struct list id_list;
 };
@@ -22,5 +23,7 @@ void cache_free(struct cache *nc, void *obj);
 void cache_clear(struct cache *nc);
 struct cache *cache_create(size_t obj_size, int cache_size);
 void cache_destroy(struct cache *nc);
+
+extern int n_resize;
 
 #endif

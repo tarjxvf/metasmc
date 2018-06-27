@@ -14,74 +14,6 @@
 #define NODE_FLOAT	4
 #define NODE_DUMMY	5
 
-struct node;
-struct edge;
-
-typedef size_t map_t;
-#define CELLSIZE 32
-#define NCELL_PER_MAP sizeof(map_t)
-
-struct node {
-	int type;	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in;	// Edge above the node
-};
-
-// node representing coalescent event
-struct coal_node {
-	int type;	// type==NODE_COAL
-	double t;
-	int pop;
-	struct coal_event *ev;
-	struct edge *in;
-	struct edge *out[2];	//Edges below the node
-	char *seq;
-	map_t *mapped;
-};
-
-// Node representing recombination event. Not used in current implementation.
-struct xover_node {
-	int type;	// type==NODE_XOVER
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in_new;
-	struct edge *out;
-	struct edge *in;
-};
-
-// Note representing migration event
-struct migr_node {
-	int type;	// type==NODE_MIGR
-	double t;
-	int pop;
-	struct migr_event *ev;
-	struct edge *in;
-	struct edge *out;
-};
-
-// Node representing sample.
-struct sam_node {
-	int type;	// type==NODE_SAM
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in;
-	struct frag *fg;	// pointer to corresponding fragment
-};
-
-// Node representing tip of dummy lineage which represents trapped ancestral material. Recombination is allowed on this type of lineage but take no effect.
-struct dummy_node {
-	int type;	// type==NODE_DUMMY of type==NODE_FLOAT
-	double t;
-	int pop;
-	struct event *ev;
-	struct edge *in;
-	struct edge *out;
-};
-
 #define AS_COAL_NODE(n)	((struct coal_node *)(n))
 #define AS_MIGR_NODE(n)	((struct migr_node *)(n))
 #define AS_XOVER_NODE(n)	((struct xover_node *)(n))
@@ -89,18 +21,95 @@ struct dummy_node {
 #define AS_FLOAT_NODE(n)	((struct dummy_node *)(n))
 #define AS_DUMMY_NODE(n)	((struct dummy_node *)(n))
 
+static inline int iscoalnode(struct node *nd)
+{
+	return nd->type == NODE_COAL;
+}
+
+static inline int isxovernode(struct node *nd)
+{
+	return nd->type == NODE_XOVER;
+}
+
+static inline int ismigrnode(struct node *nd)
+{
+	return nd->type == NODE_MIGR;
+}
+
+static inline int issamnode(struct node *nd)
+{
+	return nd->type == NODE_SAM;
+}
+
+static inline int isfloatnode(struct node *nd)
+{
+	return nd->type == NODE_FLOAT;
+}
+
+static inline int isdummynode(struct node *nd)
+{
+	return nd->type == NODE_DUMMY;
+}
+
+static int node_flag_gettype(struct node *nd)
+{
+	return nd->type;
+}
+
+static void node_flag_settype(struct node *nd, char type)
+{
+	nd->type = type;
+}
+
+static inline char isdeleted(struct edge *e)
+{
+	return e->deleted;
+}
+
+static inline void edge_flag_delete(struct edge *e)
+{
+	e->deleted = 1;
+}
+
+static inline void edge_flag_undelete(struct edge *e)
+{
+	e->deleted = 0;
+}
+
+static inline void edge_flag_setdeleted(struct edge *e, char flag)
+{
+	e->deleted = flag;
+}
+
+static inline int edge_flag_getitop(struct edge *e)
+{
+	return e->itop;
+}
+
+static inline void edge_flag_setleft(struct edge *e)
+{
+	e->itop = 0;
+}
+
+static inline void edge_flag_setright(struct edge *e)
+{
+	e->itop = 1;
+}
+
+static inline void edge_flag_setitop(struct edge *e, char flag)
+{
+	e->itop = flag;
+}
+
 void free_node(struct genealogy *G, struct node *nd);
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
 void free_edge(struct genealogy *G, struct edge *e);
 struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot);
 
-struct edge {
-	struct node *top;
-	struct node *bot;
-	int itop;
-	int eid;
-	int xtid;	// Index of edge in binary indexed tree
-	int idx;	// Index of the edge in eptr array of population
+struct node_set {
+	int maxn;
+	int n;
+	struct node **nodes;
 };
 
 struct edge_set {
@@ -127,10 +136,7 @@ struct population {
 	struct edge **eptrs;		// Array of edge pointers
 	struct list idx_queue;	// Queue of index in eptrs
 	struct list id_list;
-
-	/***** Red-black tree index of edges. The tree is ordered by times of top nodes. *****/
-//	struct rb_table *etree;
-	struct rbindex *eidx;
+	struct list e_delete_list;
 };
 
 struct genealogy {
@@ -145,6 +151,7 @@ struct genealogy {
 	int nedges;		// Number of edges in local tree
 //	struct list e_list;	// List of edges in the local tree
 	struct list n_list;	// List of sample nodes
+	struct list n_delete_list;
 
 //	struct list_head *evlcurr;
 	struct node *root;
@@ -154,8 +161,12 @@ struct genealogy {
 
 //	struct edge **pTreeEdgesToCoalesceArray;
 	struct node *localMRCA;
+	int lb;
+	int ub;
+	int x;
 
 	struct tsindex *tr_xover;
+	struct edge_set *trunk;
 };
 
 static inline void insert_event_join_increase(struct genealogy *G, struct join_event *jev)

@@ -4,11 +4,17 @@
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "mt19937-64/mt64.h"
+
+#include "rand.h"
 //#include "mtwist-1.5/mtwist.h"
 //#include "mt19937ar-nrl/mt.h"
 
 FILE *seedfilp;
+
+dsfmt_t dsfmt;
+//uint32_t int_buffer[BUF_SIZE];
+double real_buffer[BUF_SIZE];
+int buf_cur = 0;
 
 /* Generating [0, 1) uniform random variable. */
 /*double dunif01()
@@ -19,47 +25,13 @@ FILE *seedfilp;
 	return (double)r / RAND_MAX;
 }*/
 
-/* Generate uniform distribution on [0,1). */
-double dunif01()
+/*void populate_buf()
 {
-	double r;
-//	r = mt_drand();
-	r = genrand64_real3();
-
-//fprintf(stderr, "unifRV()=%.10f\n", r);
-	return r;
-
-//	return genrand_real1();
-//	return mt_drand();
-//	return genrand64_real1();
-}
-
-double dexp(double lambda)
-{
-	return -log(1 - dunif01()) / lambda;
-}
-
-/* Generating discrete uniform random variable ranging from 0 to max - 1. */
-/*int dunif(int max)
-{
-	int r;
-	r = rand();
-	fprintf(seedfilp, "%d\n", r);
-	return r % max;
+	int i;
+	for(i = 0; i < BUF_SIZE; i++)
+		rnd_buffer[i] = genrand64_real3();
+	buf_cur = 0;
 }*/
-
-unsigned int dunif(unsigned int max)
-{
-//	unsigned long long r;
-//	unsigned long int r;
-//	r = genrand_int32();
-//	r = mt_lrand();
-//	r = genrand64_int64();
-//	fprintf(seedfilp, "%d\n", r);
-//	return r % max;
-	double r = dunif01();
-	return r * max;
-}
 
 /* This function is from ms. */
 double gasdev(double m, double v)
@@ -116,7 +88,13 @@ void init_rand(unsigned int seed)
 //	seed = time(NULL);
 //	init_genrand(seed);
 //	mt_seed32new(seed);
-	init_genrand64(seed);
+
+//	init_genrand64(seed);
+
+	dsfmt_init_gen_rand(&dsfmt, seed);
+	dsfmt_fill_array_open_open(&dsfmt, real_buffer, BUF_SIZE);
+//	st_fill_array(&dsfmt, int_buffer, BUF_SIZE);
+
 //	seedfilp = fopen("rands.txt", "w+");
 }
 
