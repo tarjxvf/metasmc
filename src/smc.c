@@ -735,7 +735,7 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 	u = dunif(trunk[pop].n);
 	e = edge_set_get(&trunk[pop], u);
 	if(isdeleted(e)){	// This absorption can be ignored
-		if(tsindex_isin(G->tr_xover, e))
+//		if(tsindex_isin(G->tr_xover, e))
 			G->tr_xover->weights[e->xtid] = e->top->t - nf->t;
 		e->bot = nf;
 		nf->in = e;
@@ -748,7 +748,7 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 		return NULL;
 
 	}else{
-		if(tsindex_isin(G->tr_xover, e))
+//		if(tsindex_isin(G->tr_xover, e))
 			G->tr_xover->weights[e->xtid] -= t - e->bot->t;
 		nd = __absorption(G, e, nf, pop, t);
 		add_edge(G, pop, nd->out[0]);
