@@ -41,14 +41,14 @@ double tsindex_size(struct tsindex *tr)
 		total = 0;
 		weights = tr->weights + 1;
 		for(i = 0; i < tr->maxnodes; i++){
-			e = tr->edges[i + 1];
-			if(e){
-				weights[i] = e->top->t - e->bot->t;
+//			e = tr->edges[i + 1];
+//			if(e){
+//				weights[i] = e->top->t - e->bot->t;
 				total += weights[i];
 
-			}else{
-				weights[i] = 0;
-			}
+//			}else{
+//				weights[i] = 0;
+//			}
 		}
 		return total;
 
@@ -224,6 +224,7 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 
 	e->xtid = id;
 	tr->edges[id] = e;
+	tr->weights[id] = e->top->t - e->bot->t;
 	tr->nedges++;
 }
 
@@ -244,6 +245,7 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 	}
 
 	tr->edges[id] = NULL;
+	tr->weights[id] = 0;
 	e->xtid = 0;
 
 	/* Add freed id to the queue. */

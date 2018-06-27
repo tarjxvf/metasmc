@@ -735,6 +735,7 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 	u = dunif(trunk[pop].n);
 	e = edge_set_get(&trunk[pop], u);
 	if(isdeleted(e)){	// This absorption can be ignored
+		G->tr_xover->weights[e->xtid] = e->top->t - nf->t;
 		e->bot = nf;
 		nf->in = e;
 		edge_flag_undelete(e);
@@ -746,6 +747,7 @@ struct coal_node *absorption(struct genealogy *G, struct edge_set *trunk, struct
 		return NULL;
 
 	}else{
+		G->tr_xover->weights[e->xtid] -= t - e->bot->t;
 		nd = __absorption(G, e, nf, pop, t);
 		add_edge(G, pop, nd->out[0]);
 		add_edge(G, pop, nd->out[1]);
@@ -799,13 +801,13 @@ struct coal_node *coalescent( struct genealogy *G, struct node_set *F, int pop, 
 	c1 = dunif(F[pop].n) ;
 	while( ( c2 = dunif(F[pop].n) ) == c1 );
 
-//	if(c1 > c2){
-//		n1 = node_set_get(&F[pop], c2);
-//		n2 = node_set_remove(&F[pop], c1);
-//	}else{
+	if(c1 > c2){
+		n1 = node_set_get(&F[pop], c2);
+		n2 = node_set_remove(&F[pop], c1);
+	}else{
 		n1 = node_set_get(&F[pop], c1);
 		n2 = node_set_remove(&F[pop], c2);
-//	}
+	}
 
 	nd = __coalescent(G, n1, n2, pop, t);
 	add_edge(G, pop, nd->out[0]);
@@ -1060,6 +1062,7 @@ void clear_tree(struct genealogy *G)
 		}else{	// One edge is still in the local genealogy
 			ebelow = AS_COAL_NODE(nd)->out[1 - visited_lr(nd)];
 			e = nd->in;
+			G->tr_xover->weights[e->xtid] = e->top->t - ebelow->bot->t;
 			e->bot = ebelow->bot;
 			ebelow->bot->in = e;
 #ifdef DEBUG
@@ -1903,9 +1906,11 @@ int trunk_coal(struct genealogy *G, struct edge_set *trunk, struct coal_event *c
 
 	if(dead1 || dead2){
 		if(!dead1){
+			G->tr_xover->weights[in->xtid] += cev->t - out1->bot->t;
 			in->bot = out1->bot;
 			out1->bot->in = in;
 		}else if(!dead2){
+			G->tr_xover->weights[in->xtid] += cev->t - out2->bot->t;
 			in->bot = out2->bot;
 			out2->bot->in = in;
 		}

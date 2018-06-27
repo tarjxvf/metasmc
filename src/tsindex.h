@@ -68,6 +68,7 @@ static inline void tsindex_update(struct tsindex *tr, struct edge *e, double dif
 //		tsindex_setflag(tr, TSINDEX_DIRTY);
 //	else
 		bit_update(tr->index, e->xtid, diff);
+	tr->weights[e->xtid] += diff;
 }
 
 double tsindex_size(struct tsindex *tr);
