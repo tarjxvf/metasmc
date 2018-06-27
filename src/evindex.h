@@ -5,6 +5,9 @@
 //#include "smc.h"
 #include "global.h"
 
+extern unsigned long long t_ev_summary;
+extern unsigned long long t_ev_tree;
+
 struct genealogy;
 struct evindex {
 	struct rbindex *idx;

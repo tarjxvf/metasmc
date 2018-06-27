@@ -133,13 +133,11 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libsmc_la_LIBADD =
-am__dirstamp = $(am__leading_dot)dirstamp
 am_libsmc_la_OBJECTS = libsmc_la-smc.lo libsmc_la-util.lo \
 	libsmc_la-list.lo libsmc_la-mutation.lo libsmc_la-global.lo \
 	libsmc_la-rand.lo libsmc_la-cache.lo libsmc_la-bit.lo \
 	libsmc_la-tsindex.lo libsmc_la-rb.lo libsmc_la-rbindex.lo \
-	libsmc_la-eindex.lo libsmc_la-evindex.lo \
-	mt19937-64/libsmc_la-mt19937-64.lo
+	libsmc_la-evindex.lo libsmc_la-dSFMT.lo
 libsmc_la_OBJECTS = $(am_libsmc_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -356,8 +354,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 lib_LTLIBRARIES = libsmc.la
-include_HEADERS = util.h list.h global.h mutation.h smc.h cache.h bit.h rb.h rbindex.h tsindex.h eindex.h evindex.h
-libsmc_la_SOURCES = smc.c util.c list.c mutation.c global.c rand.c cache.c bit.c tsindex.c rb.c rbindex.c eindex.c evindex.c mt19937-64/mt19937-64.c
+include_HEADERS = util.h list.h global.h mutation.h smc.h cache.h bit.h rb.h rbindex.h tsindex.h evindex.h
+libsmc_la_SOURCES = smc.c util.c list.c mutation.c global.c rand.c cache.c bit.c tsindex.c rb.c rbindex.c evindex.c dSFMT.c
 libsmc_la_LDFLAGS = -shared -fPIC $(LAPACK_LIBS) -lrt -lm -lgfortran -llapack -llapacke
 libsmc_la_CFLAGS = $(LAPACK_CFLAGS) 
 sampler_SOURCES = sampler.c
@@ -437,14 +435,6 @@ clean-libLTLIBRARIES:
 	  echo rm -f $${locs}; \
 	  rm -f $${locs}; \
 	}
-mt19937-64/$(am__dirstamp):
-	@$(MKDIR_P) mt19937-64
-	@: > mt19937-64/$(am__dirstamp)
-mt19937-64/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) mt19937-64/$(DEPDIR)
-	@: > mt19937-64/$(DEPDIR)/$(am__dirstamp)
-mt19937-64/libsmc_la-mt19937-64.lo: mt19937-64/$(am__dirstamp) \
-	mt19937-64/$(DEPDIR)/$(am__dirstamp)
 
 libsmc.la: $(libsmc_la_OBJECTS) $(libsmc_la_DEPENDENCIES) $(EXTRA_libsmc_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libsmc_la_LINK) -rpath $(libdir) $(libsmc_la_OBJECTS) $(libsmc_la_LIBADD) $(LIBS)
@@ -512,15 +502,13 @@ sampler$(EXEEXT): $(sampler_OBJECTS) $(sampler_DEPENDENCIES) $(EXTRA_sampler_DEP
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f mt19937-64/*.$(OBJEXT)
-	-rm -f mt19937-64/*.lo
 
 distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-bit.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-cache.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-eindex.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-dSFMT.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-evindex.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-global.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsmc_la-list.Plo@am__quote@
@@ -534,7 +522,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/metaprof.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sampler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simulator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@mt19937-64/$(DEPDIR)/libsmc_la-mt19937-64.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -637,13 +624,6 @@ libsmc_la-rbindex.lo: rbindex.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -c -o libsmc_la-rbindex.lo `test -f 'rbindex.c' || echo '$(srcdir)/'`rbindex.c
 
-libsmc_la-eindex.lo: eindex.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -MT libsmc_la-eindex.lo -MD -MP -MF $(DEPDIR)/libsmc_la-eindex.Tpo -c -o libsmc_la-eindex.lo `test -f 'eindex.c' || echo '$(srcdir)/'`eindex.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libsmc_la-eindex.Tpo $(DEPDIR)/libsmc_la-eindex.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='eindex.c' object='libsmc_la-eindex.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -c -o libsmc_la-eindex.lo `test -f 'eindex.c' || echo '$(srcdir)/'`eindex.c
-
 libsmc_la-evindex.lo: evindex.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -MT libsmc_la-evindex.lo -MD -MP -MF $(DEPDIR)/libsmc_la-evindex.Tpo -c -o libsmc_la-evindex.lo `test -f 'evindex.c' || echo '$(srcdir)/'`evindex.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libsmc_la-evindex.Tpo $(DEPDIR)/libsmc_la-evindex.Plo
@@ -651,19 +631,18 @@ libsmc_la-evindex.lo: evindex.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -c -o libsmc_la-evindex.lo `test -f 'evindex.c' || echo '$(srcdir)/'`evindex.c
 
-mt19937-64/libsmc_la-mt19937-64.lo: mt19937-64/mt19937-64.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -MT mt19937-64/libsmc_la-mt19937-64.lo -MD -MP -MF mt19937-64/$(DEPDIR)/libsmc_la-mt19937-64.Tpo -c -o mt19937-64/libsmc_la-mt19937-64.lo `test -f 'mt19937-64/mt19937-64.c' || echo '$(srcdir)/'`mt19937-64/mt19937-64.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) mt19937-64/$(DEPDIR)/libsmc_la-mt19937-64.Tpo mt19937-64/$(DEPDIR)/libsmc_la-mt19937-64.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='mt19937-64/mt19937-64.c' object='mt19937-64/libsmc_la-mt19937-64.lo' libtool=yes @AMDEPBACKSLASH@
+libsmc_la-dSFMT.lo: dSFMT.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -MT libsmc_la-dSFMT.lo -MD -MP -MF $(DEPDIR)/libsmc_la-dSFMT.Tpo -c -o libsmc_la-dSFMT.lo `test -f 'dSFMT.c' || echo '$(srcdir)/'`dSFMT.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libsmc_la-dSFMT.Tpo $(DEPDIR)/libsmc_la-dSFMT.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dSFMT.c' object='libsmc_la-dSFMT.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -c -o mt19937-64/libsmc_la-mt19937-64.lo `test -f 'mt19937-64/mt19937-64.c' || echo '$(srcdir)/'`mt19937-64/mt19937-64.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsmc_la_CFLAGS) $(CFLAGS) -c -o libsmc_la-dSFMT.lo `test -f 'dSFMT.c' || echo '$(srcdir)/'`dSFMT.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
 
 clean-libtool:
 	-rm -rf .libs _libs
-	-rm -rf mt19937-64/.libs mt19937-64/_libs
 install-includeHEADERS: $(include_HEADERS)
 	@$(NORMAL_INSTALL)
 	@list='$(include_HEADERS)'; test -n "$(includedir)" || list=; \
@@ -803,8 +782,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f mt19937-64/$(DEPDIR)/$(am__dirstamp)
-	-rm -f mt19937-64/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -815,7 +792,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
 	clean-libtool mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR) mt19937-64/$(DEPDIR)
+	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -861,7 +838,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR) mt19937-64/$(DEPDIR)
+	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

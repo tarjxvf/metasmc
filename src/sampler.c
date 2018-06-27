@@ -5,6 +5,7 @@
 #include <time.h>
 #include <string.h>
 
+#include "rand.h"
 #include "global.h"
 
 void usage(char *prog)
