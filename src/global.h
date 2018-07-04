@@ -210,7 +210,7 @@ void unload_profile(struct profile *prof);
 struct mutation;
 struct config {
 	struct profile *prof;
-	unsigned int seed;
+	unsigned char seed;
 	int print_tree;	// 1 if you wish to print trees
 	int gensam;	// 1 if you wish to generate sequences
 	FILE *treefp;	// If print_tree is set to 1, this points to file object of tree output
@@ -273,11 +273,11 @@ int nucl_index(int ch);
 
 //double dunif01();
 //double dexp();
-//unsigned int dunif(unsigned int max);
+//unsigned char dunif(unsigned char max);
 //int poisso(double u);
 //void seedit( char *flag );
 //void init_rand();
-//void init_rand(unsigned int s);
+//void init_rand(unsigned char s);
 //void finish_rand();
 //void seed();
 
@@ -288,30 +288,38 @@ typedef size_t map_t;
 #define NCELL_PER_MAP sizeof(map_t)
 
 struct node {
-	char type;	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
-	char flags;
-	char itop;
-	char deleted;
-	int pop;
+	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
 	double t;
 	int set_id;
 	int xtid;
 	int idx;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char padding:2;
+		unsigned char flags;
+		unsigned short pop;
+	};
 	struct event *ev;
 	struct node *in;
 };
 
 // node representing coalescent event
 struct coal_node {
-	char type;	// type==NODE_COAL
-	char flags;
-	char itop;
-	char deleted;
-	int pop;
+	// type==NODE_COAL
 	double t;
 	int set_id;
 	int xtid;
 	int idx;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char padding:2;
+		unsigned char flags;
+		unsigned short pop;
+	};
 	struct coal_event *ev;
 	struct node *in;
 	struct node *out[2];	//Edges below the node
@@ -321,15 +329,19 @@ struct coal_node {
 
 // Node representing recombination event. Not used in current implementation.
 struct xover_node {
-	char type;	// type==NODE_XOVER
-	char flags;
-	char itop;
-	char deleted;
-	int pop;
+	// type==NODE_XOVER
 	double t;
 	int set_id;
 	int xtid;
 	int idx;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char padding:2;
+		unsigned char flags;
+		unsigned short pop;
+	};
 	struct event *ev;
 	struct node *in_new;
 	struct node *out;
@@ -338,15 +350,19 @@ struct xover_node {
 
 // Note representing migration event
 struct migr_node {
-	char type;	// type==NODE_MIGR
-	char flags;
-	char itop;
-	char deleted;
-	int pop;
+	// type==NODE_MIGR
 	double t;
 	int set_id;
 	int xtid;
 	int idx;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char padding:2;
+		unsigned char flags;
+		unsigned short pop;
+	};
 	struct migr_event *ev;
 	struct node *in;
 	struct node *out;
@@ -354,15 +370,19 @@ struct migr_node {
 
 // Node representing sample.
 struct sam_node {
-	char type;	// type==NODE_SAM
-	char flags;
-	char itop;
-	char deleted;
-	int pop;
+	// type==NODE_SAM
 	double t;
 	int set_id;
 	int xtid;
 	int idx;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char padding:2;
+		unsigned char flags;
+		unsigned short pop;
+	};
 	struct event *ev;
 	struct node *in;
 	struct frag *fg;	// pointer to corresponding fragment
@@ -370,15 +390,19 @@ struct sam_node {
 
 // Node representing tip of dummy lineage which represents trapped ancestral material. Recombination is allowed on this type of lineage but take no effect.
 struct dummy_node {
-	char type;	// type==NODE_DUMMY of type==NODE_FLOAT
-	char flags;
-	char itop;
-	char deleted;
-	int pop;
+	// type==NODE_DUMMY of type==NODE_FLOAT
 	double t;
 	int set_id;
 	int xtid;
 	int idx;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char padding:2;
+		unsigned char flags;
+		unsigned short pop;
+	};
 	struct event *ev;
 	struct node *in;
 	struct node *out;
