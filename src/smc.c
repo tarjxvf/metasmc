@@ -117,8 +117,8 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 	struct node *new;
 	char *ptr;
 
-//	ptr = cache_alloc(G->cfg->node_cache[type]);
-	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
+	ptr = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+//	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
 	new = (struct node *)GET_OBJ(ptr);
 	memcpy(new, old, nodesize[old->type]);
 
