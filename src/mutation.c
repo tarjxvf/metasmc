@@ -22,7 +22,7 @@ void (*generate_sequence)(struct reference *, struct genealogy *, int, int);
 int isdesc(struct genealogy *G, struct node *n1, struct node *n2)
 {
 	while(n1 != n2 && n2 != G->root)
-		n2 = n2->in->top;
+		n2 = n2->in;
 	return n1 == n2;
 }
 /*
@@ -49,7 +49,7 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	int segsites, pop, curr, i, j, p, r;
 	double theta, tt, t, *weights;
 	struct node **nmut;	/* List of nodes above which mutation event occur */
-	struct edge *e, **edges;
+	struct node *e, **edges;
 	char *ances, *deriv;
 	int nedges, maxedges;
 
@@ -69,15 +69,19 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	weights[0] = 0;
 //	el = G->e_list.front;
 //	while(el){
-	for(i = 0; i < G->tr_xover->maxnodes; i++){
+	for(i = 1; i < G->tr_xover->maxnodes; i++){
 		e = G->tr_xover->edges[i];
 		if(e){
 			double w;
 
+#ifdef DEBUG
+			fprintf(stderr, "i=%d, e=%x(%.6f)\n", i, e, e->t);
+#endif
+
 //			e = (struct edge *)GET_OBJ(el);
 			edges[nedges] = e;
-			pop = e->bot->pop;
-			w = (e->top->t - e->bot->t) * G->pops[pop].mmut->theta;
+			pop = e->pop;
+			w = (e->in->t - e->t) * G->pops[pop].mmut->theta;
 			weights[nedges + 1] = weights[nedges] + w;
 			nedges++;
 //			el = el->next;
@@ -121,7 +125,7 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 			// Get mutation point using binary search
 			hit = (double *)search_interval(&u, (void *)weights, nedges + 1, sizeof(double), (int (*)(void *, void *))dblcompar);
 
-			nmut[i] = edges[hit - weights]->bot;	// First node below mutation event
+			nmut[i] = edges[hit - weights];	// First node below mutation event
 
 			/* Generate derived allele. */
 			a = dunif(3);
@@ -199,7 +203,7 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 	struct config *cfg;
 	int segsites, *pos, pop, curr, i, j, p, r;
 	double theta, tt, t;
-	struct edge *e;
+	struct node *e;
 	char *ances;
 
 #ifdef DEBUG
@@ -288,15 +292,15 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 					rd = &n->fg->rd[r];
 					if(rd->start <= p && p < rd->end){
 						/* Generate derived allele at random. */
-						if(isdesc(G, e->bot, (struct node *)n)){
+						if(isdesc(G, e, (struct node *)n)){
 #ifdef DEBUG
-							fprintf(stderr, "%x is descendent of %x\n", n, e->bot);
+							fprintf(stderr, "%x is descendent of %x\n", n, e);
 #endif
 							rd->seq[p - rd->start] = deriv;
 
 						}else{
 #ifdef DEBUG
-							fprintf(stderr, "%x is not descendent of %x\n", n, e->bot);
+							fprintf(stderr, "%x is not descendent of %x\n", n, e);
 #endif
 							rd->seq[p - rd->start] = anc;
 						}
@@ -607,7 +611,7 @@ void __genseq(struct mutation *mmut, struct node *n, char *seq_old, struct node 
 	double dt;
 
 	while(ismigrnode(n2))
-		n2 = ((struct migr_node *)n2)->out->bot;
+		n2 = ((struct migr_node *)n2)->out;
 
 	seq = malloc(sizeof(char) * (to - from));
 	memcpy(seq, seq_old, sizeof(char) * (to - from));
@@ -627,8 +631,8 @@ void genseq_model(struct mutation *mmut, struct node *n, char *seq_old, int from
 	fprintf(stderr, "Entering %s, n=%x, n->type=%d, from=%d, to=%d\n", __func__, n, n->type, from, to);
 #endif
 	if(iscoalnode(n)){
-		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[0]->bot, from, to);
-		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[1]->bot, from, to);
+		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[0], from, to);
+		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[1], from, to);
 
 	}else if(issamnode(n)){
 		struct sam_node *nd;
@@ -772,8 +776,8 @@ void clean_mapped(struct node *n)
 		struct coal_node *nc;
 
 		nc = AS_COAL_NODE(n);
-		clean_mapped(nc->out[0]->bot);
-		clean_mapped(nc->out[1]->bot);
+		clean_mapped(nc->out[0]);
+		clean_mapped(nc->out[1]);
 		free(nc->seq);
 		free(nc->mapped);
 		nc->seq = NULL;
@@ -786,7 +790,7 @@ void clean_mapped(struct node *n)
 		struct node *np;
 
 		np = n;
-		while(ismigrnode(np)) np = AS_MIGR_NODE(np)->out->bot;
+		while(ismigrnode(np)) np = AS_MIGR_NODE(np)->out;
 		clean_mapped(np);
 	}
 }
@@ -861,10 +865,10 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 					off_lb = lb - from;
 					off_ub = ub - from;
 					n1 = (struct node *)n;
-					n2 = (struct coal_node *)n->in->top;
+					n2 = (struct coal_node *)n->in;
 
 					// Find nearest coalescent node (the node right above leaf may be migration node)
-					while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in->top;
+					while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in;
 
 					while(!mapped(n2, off_lb, off_ub)){	// If the sequence of current coalescent has been generated in the region of interest, then stop tracing. Otherwise, push current node to stack and trace upward.
 						struct list_head *top;
@@ -885,10 +889,10 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 						*((struct coal_node **)GET_OBJ(top)) = n2;
 						list_add(&stack, GET_OBJ(top));
 						n1 = (struct node *)n2;
-						n2 = (struct coal_node *)n1->in->top;
+						n2 = (struct coal_node *)n1->in;
 
 						// Find next coalescent node
-						while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in->top;
+						while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in;
 					}
 
 					while(stack.front){

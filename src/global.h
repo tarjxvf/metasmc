@@ -240,7 +240,6 @@ struct config {
 	/*** Caches of frequently-used objects ***/
 	struct cache *node_cache[6];
 	struct cache *event_cache[13];
-	struct cache *edge_cache;
 	struct cache *frag_cache;
 
 	int maxfrag;
@@ -283,7 +282,6 @@ int nucl_index(int ch);
 //void seed();
 
 struct node;
-struct edge;
 
 typedef size_t map_t;
 #define CELLSIZE 32
@@ -292,23 +290,31 @@ typedef size_t map_t;
 struct node {
 	char type;	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
 	char flags;
-	short pop;
+	char itop;
+	char deleted;
+	int pop;
 	double t;
 	int set_id;
+	int xtid;
+	int idx;
 	struct event *ev;
-	struct edge *in;	// Edge above the node
+	struct node *in;
 };
 
 // node representing coalescent event
 struct coal_node {
 	char type;	// type==NODE_COAL
 	char flags;
-	short pop;
+	char itop;
+	char deleted;
+	int pop;
 	double t;
 	int set_id;
+	int xtid;
+	int idx;
 	struct coal_event *ev;
-	struct edge *in;
-	struct edge *out[2];	//Edges below the node
+	struct node *in;
+	struct node *out[2];	//Edges below the node
 	char *seq;
 	map_t *mapped;
 };
@@ -317,36 +323,48 @@ struct coal_node {
 struct xover_node {
 	char type;	// type==NODE_XOVER
 	char flags;
-	short pop;
+	char itop;
+	char deleted;
+	int pop;
 	double t;
 	int set_id;
+	int xtid;
+	int idx;
 	struct event *ev;
-	struct edge *in_new;
-	struct edge *out;
-	struct edge *in;
+	struct node *in_new;
+	struct node *out;
+	struct node *in;
 };
 
 // Note representing migration event
 struct migr_node {
 	char type;	// type==NODE_MIGR
 	char flags;
-	short pop;
+	char itop;
+	char deleted;
+	int pop;
 	double t;
 	int set_id;
+	int xtid;
+	int idx;
 	struct migr_event *ev;
-	struct edge *in;
-	struct edge *out;
+	struct node *in;
+	struct node *out;
 };
 
 // Node representing sample.
 struct sam_node {
 	char type;	// type==NODE_SAM
 	char flags;
-	short pop;
+	char itop;
+	char deleted;
+	int pop;
 	double t;
 	int set_id;
+	int xtid;
+	int idx;
 	struct event *ev;
-	struct edge *in;
+	struct node *in;
 	struct frag *fg;	// pointer to corresponding fragment
 };
 
@@ -354,27 +372,19 @@ struct sam_node {
 struct dummy_node {
 	char type;	// type==NODE_DUMMY of type==NODE_FLOAT
 	char flags;
-	short pop;
+	char itop;
+	char deleted;
+	int pop;
 	double t;
 	int set_id;
+	int xtid;
+	int idx;
 	struct event *ev;
-	struct edge *in;
-	struct edge *out;
+	struct node *in;
+	struct node *out;
 };
 
 #define NODE_FLAG_VISITED_LEFT 0x1
 #define NODE_FLAG_VISITED_RIGHT 0x2
-
-struct edge {
-	struct node *top;
-	struct node *bot;
-	char itop;
-	char deleted;
-//	int eid;
-	int xtid;	// Index of edge in binary indexed tree
-	int idx;	// Index of the edge in eptr array of population
-	int trunk_id;	// Index in trunk genealogy (used by merge_floating)
-//	int ub;
-};
 
 #endif
