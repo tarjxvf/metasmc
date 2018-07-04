@@ -60,9 +60,9 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-//		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
+		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
 //		cache_free(G->cfg->node_cache[nd->type], l);
-		free(l);
+//		free(l);
 
 	}
 //	else{
@@ -83,8 +83,8 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	ptr = cache_alloc(G->cfg->node_cache[type]);
-	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+	ptr = cache_alloc(G->cfg->node_cache[type]);
+//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 
 //	if(type == NODE_SAM)
 	{
@@ -2386,7 +2386,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-		destroy_tree(G, G->root);
+//		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);

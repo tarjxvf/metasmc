@@ -51,7 +51,7 @@ static inline int isdummynode(struct node *nd)
 	return nd->type == NODE_DUMMY;
 }
 
-static int edge_flag_gettype(struct node *nd)
+static int node_flag_gettype(struct node *nd)
 {
 	return nd->type;
 }
