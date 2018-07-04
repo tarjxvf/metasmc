@@ -67,7 +67,7 @@ void tsindex_rebuild(struct tsindex *tr)
 	struct timespec beg, end;
 	int nsec;
 
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 //	weights = malloc(sizeof(double) * tr->maxnodes);
 	weights = tr->weights + 1;
@@ -85,9 +85,9 @@ void tsindex_rebuild(struct tsindex *tr)
 	tsindex_clearflag(tr, TSINDEX_DIRTY);
 	tsindex_clearflag(tr, TSINDEX_REBUILD);
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_ts_rebuild += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_ts_rebuild += nsec;
 }
 
 struct tsindex *tsindex_alloc(int maxedges)

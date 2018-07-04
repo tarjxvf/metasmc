@@ -100,7 +100,7 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 
 	edge_flag_settype(nd, type);
 	edge_flag_undelete(nd);
-	nd->flags = 0;
+	nd->visited = 0;
 	nd->itop = 0;
 	nd->pop = pop;
 	nd->t = t;
@@ -861,24 +861,24 @@ struct migr_node *__migration(struct genealogy *G, struct node *nf, int dpop, do
 
 static inline int isvisited(struct node *nd)
 {
-	return nd->flags & (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
+	return nd->visited & (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
 }
 
 static inline int visited_lr(struct node *nd)
 {
 	int lr;
-	lr = nd->flags & (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
+	lr = nd->visited & (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
 	return lr - 1;
 }
 
 static inline void visit(struct node *nd, char lr)
 {
-	nd->flags |= (lr + 1);
+	nd->visited |= (lr + 1);
 }
 
 static inline void unvisit(struct node *nd)
 {
-	nd->flags &= ~(NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
+	nd->visited &= ~(NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT);
 }
 
 /* Clear nodes and edges of finished reads. */
@@ -1302,8 +1302,8 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
 //	struct timespec beg, end;
-///	int nsec;
-//
+//	int nsec;
+
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	size = G->pops[pop].size;
