@@ -739,9 +739,9 @@ struct coal_node *absorption(struct genealogy *G, struct node_set *trunk, struct
 		return NULL;
 
 	}else{
-//		if(tsindex_isin(G->tr_xover, e))
-			G->tr_xover->weights[e->xtid] -= t - e->t;
 		nd = __absorption(G, e, nf, pop, t);
+//		if(tsindex_isin(G->tr_xover, e))
+			G->tr_xover->weights[nd->xtid] = nd->in->t - nd->t;
 		node_set_replace(&trunk[pop], e->set_id, (struct node *)nd);
 
 //		clock_gettime(CLOCK_MONOTONIC, &end);
