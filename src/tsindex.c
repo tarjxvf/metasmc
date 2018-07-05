@@ -185,6 +185,18 @@ void tsindex_clear_rebuild(struct tsindex *tr, struct node *e)
 	tr->nedges--;
 }
 
+void tsindex_replace(struct tsindex *tr, int id, struct node *e)
+{
+	double wold, wnew;
+
+	wold = tr->weights[id];
+	tr->weights[id] = wnew = e->in->t - e->t;
+	tr->edges[id] = e;
+	if(!tsindex_isrebuild(tr))
+		bit_update(tr->index, id, wnew - wold);
+
+}
+
 void tsindex_add(struct tsindex *tr, struct node *e)
 {
 	struct list_head *l;

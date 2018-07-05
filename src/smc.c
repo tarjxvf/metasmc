@@ -1602,15 +1602,10 @@ double recombination(struct genealogy *G, double x)
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: A loop occurs!!!\n", __func__, __LINE__);
 #endif
-					e_below = e_below_xover;
-					tbot_old = e_below->t;
-					tbot_new = nf->t;
-
 //					// e_old->top is the new coalescent node which has to be removed. In this case, e2 must be in local genealogy, so tsindex must be updateda
 					if(nf != (struct node *)nxover){
 						insert_coal_node(G, e2, nf);
-						tsindex_update(G->tr_xover, nf, tbot_old - tbot_new);
-
+						tsindex_replace(G->tr_xover, e2->xtid, nf);
 						remove_xover_node(G, nxover, e2);
 						free_node(G, (struct node *)nxover);
 

@@ -75,6 +75,7 @@ double tsindex_size(struct tsindex *tr);
 void tsindex_rebuild(struct tsindex *tr);
 struct tsindex *tsindex_alloc(int nedges);
 void tsindex_reset(struct tsindex *tr);
+void tsindex_replace(struct tsindex *tr, int id, struct node *e);
 void tsindex_add(struct tsindex *tr, struct node *e);
 void tsindex_update(struct tsindex *tr, struct node *e, double diff);
 void tsindex_clear(struct tsindex *tr, struct node *e);
