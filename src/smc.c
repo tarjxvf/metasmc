@@ -391,6 +391,7 @@ static inline struct node *insert_xover_node(struct genealogy *G, struct node *e
 
 //	nxover = (struct xover_node *)alloc_node(G, NODE_XOVER, pop, t);
 	nxover = copy_node(G, e);
+	nxover->itop = 0;
 	nxover->in = NULL;
 	nxover->xtid = 0;
 	nxover->idx = -1;
@@ -400,12 +401,12 @@ static inline struct node *insert_xover_node(struct genealogy *G, struct node *e
 
 static inline void remove_xover_node(struct genealogy *G, struct node *nxover, struct node *ebelow)
 {
-	if(iscoalnode(nxover->in)){
-		AS_COAL_NODE(nxover->in)->out[nxover->itop] = ebelow;
+//	if(iscoalnode(nxover->in)){
+		nxover->in->out[nxover->itop] = ebelow;
 
-	}else{
-		AS_MIGR_NODE(nxover->in)->out = ebelow;
-	}
+//	}else{
+//		AS_MIGR_NODE(nxover->in)->out = ebelow;
+//	}
 
 	ebelow->in = nxover->in;
 	ebelow->itop = nxover->itop;
@@ -417,11 +418,11 @@ static inline void remove_xover_node(struct genealogy *G, struct node *nxover, s
 
 static inline void insert_coal_node(struct genealogy *G, struct node *e, struct node *nd)
 {
-	if(iscoalnode(e->in)){
-		AS_COAL_NODE(e->in)->out[e->itop] = (struct node *)nd;
-	}else{
-		AS_MIGR_NODE(e->in)->out = (struct node *)nd;
-	}
+//	if(iscoalnode(e->in)){
+		e->in->out[e->itop] = (struct node *)nd;
+//	}else{
+//		AS_MIGR_NODE(e->in)->out = (struct node *)nd;
+//	}
 	nd->in = e->in;
 	nd->itop = e->itop;
 	nd->xtid = e->xtid;
@@ -435,12 +436,12 @@ static inline void __remove_coal_node(struct genealogy *G, struct coal_node *nd,
 	__remove_edge(G, nd->pop, ebelow);
 	tsindex_clear(G->tr_xover, ebelow);
 
-	if(iscoalnode(nd->in)){
-		AS_COAL_NODE(nd->in)->out[nd->itop] = ebelow;
+//	if(iscoalnode(nd->in)){
+		nd->in->out[nd->itop] = ebelow;
 
-	}else{
-		AS_MIGR_NODE(nd->in)->out = ebelow;
-	}
+//	}else{
+//		AS_MIGR_NODE(nd->in)->out = ebelow;
+//	}
 	ebelow->in = nd->in;
 	ebelow->itop = nd->itop;
 	ebelow->idx = nd->idx;
@@ -956,7 +957,10 @@ void clear_tree(struct genealogy *G)
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-					remove_edge(G, pop, e);
+					__remove_edge(G, e->pop, e);
+					tsindex_clear(G->tr_xover, e);
+					if(!isvisited(e))
+						free_node(G, e);
 					if(nd->ev->type == EVENT_JOIN){
 						__list_remove__(&((struct join_event *)nd->ev)->ndls, GET_LIST(nd));
 						remove_event_join_decrease(G, (struct join_event *)nd->ev);

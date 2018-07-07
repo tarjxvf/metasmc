@@ -302,6 +302,7 @@ struct node {
 	};
 	struct event *ev;
 	struct node *in;
+	struct node *out[2];
 };
 
 // node representing coalescent event
