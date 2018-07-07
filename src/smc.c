@@ -120,7 +120,11 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 //	ptr = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
 	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
 	new = (struct node *)GET_OBJ(ptr);
-	memcpy(new, old, nodesize[old->type]);
+	new->t = old->t;
+	new->pop = old->pop;
+	new->type = old->type;
+
+//	memcpy(new, old, nodesize[old->type]);
 
 #ifdef DEBUG
 	fprintf(stderr, "%s:%d:Allocated node %x at time %.6f with type %d in subpopulation %d\n\n", __func__, __LINE__, new, new->t, new->type, new->pop);
