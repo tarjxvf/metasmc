@@ -192,6 +192,7 @@ void tsindex_replace(struct tsindex *tr, int id, struct node *e)
 	wold = tr->weights[id];
 	tr->weights[id] = wnew = e->in->t - e->t;
 	tr->edges[id] = e;
+	e->xtid = id;
 	if(!tsindex_isrebuild(tr))
 		bit_update(tr->index, id, wnew - wold);
 

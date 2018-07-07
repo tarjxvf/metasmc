@@ -216,17 +216,17 @@ void bit_print(struct bit *tree)
 
 	fprintf(stderr, "%s: %d\n", __func__, __LINE__);
 	fprintf(stderr, "Tree values=");
-	for(i = 0; i < tree->maxnode; i++)
+	for(i = 1; i <= tree->n; i++)
 		fprintf(stderr, "%.6f, ", tree->freq[i]);
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "Cumulative frequencies=");
-	for(i = 0; i < tree->maxnode; i++)
+	for(i = 1; i <= tree->n; i++)
 		fprintf(stderr, "%.6f, ", bit_cumfreq(tree, i));
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "Individual value=");
-	for(i = 0; i < tree->maxnode; i++)
+	for(i = 1; i <= tree->n; i++)
 		fprintf(stderr, "%.6f, ", bit_getvalue(tree, i));
 	fprintf(stderr, "\n");
 }
