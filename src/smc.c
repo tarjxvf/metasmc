@@ -393,7 +393,6 @@ static inline struct node *insert_xover_node(struct genealogy *G, struct node *e
 {
 	struct node *nxover;
 
-//	nxover = (struct xover_node *)alloc_node(G, NODE_XOVER, pop, t);
 	nxover = copy_node(G, e);
 	nxover->itop = 0;
 	nxover->in = NULL;
@@ -523,7 +522,7 @@ void erase_dangling2(struct genealogy *G, struct node *e)
 		while(ismigrnode(ntop)){
 			struct node *ebelow2;
 			ebelow2 = AS_MIGR_NODE(ntop)->out;
-			tsindex_clear(G->tr_xover, ebelow2);
+//			tsindex_clear(G->tr_xover, ebelow2);
 
 			ntop = ebelow2;
 		}
@@ -533,7 +532,7 @@ void erase_dangling2(struct genealogy *G, struct node *e)
 //		fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f)", __func__, __LINE__, e, e->top->t, e->bot->t);
 //#endif
 		// The edge above removed coalescent node is not in local genealogy, so we do not need to update tsindex. */
-		remove_coal_node(G, (struct coal_node *)nd, itop, 0);
+		remove_coal_node(G, (struct coal_node *)nd, itop, 1);
 	}
 
 #ifdef DEBUG
@@ -551,14 +550,19 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 	struct event *ev;
 	struct coal_node *cnd;
 	struct migr_node *mnd;
+	struct node *e;
 	int i, c;
+
+	e = G->root->out[0];
+	if(e->t < t)
+		return e;
 
 	for(i = 0; i < G->cfg->npop_all; i++)
 		node_set_clear(&G->trunk[i]);
-	node_set_add(&G->trunk[G->localMRCA->pop], G->localMRCA);
+	node_set_add(&G->trunk[e->pop], e);
 
-	evl = GET_LIST(G->localMRCA->ev);
-	ev = G->localMRCA->ev;
+	evl = GET_LIST(e->ev);
+	ev = e->ev;
 	c = 0;
 	while(ev->t > t){
 		if(ev->type == EVENT_COAL){
@@ -1035,8 +1039,8 @@ void clear_tree(struct genealogy *G)
 	nd = G->root;
 	while(!iscoalnode(nd)){
 		e = AS_MIGR_NODE(nd)->out;
-		if(tsindex_isin(G->tr_xover, e))
-			tsindex_clear(G->tr_xover, e);
+//		if(tsindex_isin(G->tr_xover, e))
+//			tsindex_clear(G->tr_xover, e);
 		nd = e;
 	}
 	G->localMRCA = nd;
@@ -1417,15 +1421,13 @@ void erase_dummy_path_rb(struct genealogy *G, struct node *edum)
 //	ndum->in = NULL;
 	while(erm->in){
 		nrm = erm->in;
-		__remove_edge(G, erm->pop, erm);
-
 		if(erm->ev->type == EVENT_JOIN)
 			list_remove(&((struct join_event *)erm->ev)->ndls, erm);
 		else if(erm->ev->type == EVENT_SPLT)
 			list_remove(&((struct splt_event *)erm->ev)->ndls, erm);
 
 		remove_event_josp(G, (struct event *)erm->ev);
-		free_node(G, erm);
+		remove_edge(G, erm->pop, erm);
 		erm = nrm;
 	}
 
@@ -1457,15 +1459,13 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 //	ndum->in = NULL;
 	while(erm->in){
 		nrm = erm->in;
-		__remove_edge(G, erm->pop, erm);
-
 		if(erm->ev->type == EVENT_JOIN)
 			list_remove(&((struct join_event *)erm->ev)->ndls, erm);
 		else if(erm->ev->type == EVENT_SPLT)
 			list_remove(&((struct splt_event *)erm->ev)->ndls, erm);
 
 		remove_event_josp(G, (struct event *)erm->ev);
-		free_node(G, erm);
+		remove_edge(G, erm->pop, erm);
 		erm = nrm;
 	}
 
@@ -1499,7 +1499,7 @@ double recombination(struct genealogy *G, double x)
 	struct list_head *l;
 	struct event *ev;
 	struct node *e;	// e: edge where recombination event occur
-	struct node *nf;
+	struct node *nf, *last;
 	double t, like, tdiff_below;
 
 	struct node *e_below_xover;	// For simulating behavior of macs
@@ -1516,6 +1516,35 @@ double recombination(struct genealogy *G, double x)
 	cfg = G->cfg;
 	/* Choose recombination point at random. */
 	ev = rnd_select_point(G, &e, &pop, &t);
+
+	if(t > G->localMRCA->t){
+		/* Deal with dummy recombination event. */
+#ifdef DEBUG
+		fprintf(stderr, "%s: %d: Dummy recombination occur at time %.10f, position %.10f, localMRCA->t=%.10f, root->t=%.10f\n", __func__, __LINE__, t, x, G->localMRCA->t, G->root->t);
+#endif
+
+		if(G->ev_dxvr){
+			if(G->ev_dxvr->t > t){
+				struct event *ev_dxvr;
+
+				ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
+				remove_event(G, G->ev_dxvr);
+
+				/* Change on 2018/05/31: Find first event after time of new event. The old version crashes in the presence of migration. */
+				evindex_s_seek(G->evidx, ev_dxvr->t);
+				/* End of change. */
+				insert_event(G, ev_dxvr);
+				G->ev_dxvr = ev_dxvr;
+			}
+
+		}else{
+			G->ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
+			evindex_s_seek(G->evidx, G->ev_dxvr->t);
+			insert_event(G, G->ev_dxvr);
+		}
+
+		return 0;
+	}
 
 #ifdef DEBUG
 	fprintf(stderr, "Recombination on %x, t=%.6f, pop=%d, range=[%x(%d, %.6f), %x(%d, %.6f)]\n", e, t, pop, e, e->type, e->t, e->in, e->in->type, e->in->t);
@@ -1613,7 +1642,7 @@ double recombination(struct genealogy *G, double x)
 					e_below = e_below_xover;
 
 					tsindex_update(G->tr_xover, e2, -(t - e2->t));
-					nd = (struct node *)__absorption(G, e2, nf, pop, t);
+					last = nd = (struct node *)__absorption(G, e2, nf, pop, t);
 
 					nf = nd;
 					evnew = nd->ev;
@@ -1646,9 +1675,16 @@ double recombination(struct genealogy *G, double x)
 //ndiscard_xover++;
 			t = ev->t;
 
-			if(ev->t == G->localMRCA->t){
+			if(ev->type == EVENT_COAL){
+				G->pops[((struct coal_event *)ev)->pop].n--;
+
+			}else if(ev->type == EVENT_MIGR){
+				G->pops[((struct migr_event *)ev)->dpop].n--;
+				G->pops[((struct migr_event *)ev)->spop].n++;
+
+			}else if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR){
 				struct node_set *F;
-				struct edge *edum;
+				struct node *edum;
 				struct node *ndum, *n;
 				double troot_old;
 				struct node_set *trunk;
@@ -1664,16 +1700,32 @@ double recombination(struct genealogy *G, double x)
 					node_set_init(&F[i], 2);
 //					G->pops[G->localMRCA->pop].n = 0;
 				}
+				// Move edges in dummy edge list to in-tree edge list until t (Note that edges in dummy edge list are ordered by time)
+				edum = G->localMRCA;
+				ndum = edum->in;
+				while(ndum && ndum->t < ev->t){
+					edum = ndum;
+					ndum = edum->in;
+				}
 
-				node_set_add(&trunk[G->localMRCA->pop], G->localMRCA);
-				G->pops[G->localMRCA->pop].n = 1;
+				// Remove remaining edges in dummy edge list
+				__remove_edge(G, edum->pop, edum);
+				tsindex_clear(G->tr_xover, edum);
+				if(ev->type == EVENT_DXVR){
+					/* Remove dangling edges above dummy recombination event from red-black tree. */
+					erase_dummy_path(G, edum);
+
+				}else{
+					free_node(G, ndum);
+				}
+				G->pops[edum->pop].n = 0;
+				node_set_add(&F[edum->pop], edum);
 				node_set_add(&F[nf->pop], nf);
 
-//				G->root = G->localMRCA = NULL;	// localMRCA is cancelled because new local MRCA must be above current root
+				G->root = G->localMRCA = NULL;
+				remove_event(G, ev);
 
-//				e->bot = nxover->out->bot;
 				G->t = t;
-				evindex_s_forward(G->evidx);
 				merge_floating(G, trunk, F);
 
 				{
@@ -1687,7 +1739,6 @@ double recombination(struct genealogy *G, double x)
 					remove_xover_node(G, nxover, e_below);
 
 					free_node(G, nxover);
-//					free_node(G, e_below);
 				}
 
 				for(i = 0; i < cfg->npop_all; i++){
@@ -1697,13 +1748,6 @@ double recombination(struct genealogy *G, double x)
 				free(F);
 				free(trunk);
 				coalesced = 1;
-
-			}else if(ev->type == EVENT_COAL){
-				G->pops[((struct coal_event *)ev)->pop].n--;
-
-			}else if(ev->type == EVENT_MIGR){
-				G->pops[((struct migr_event *)ev)->dpop].n--;
-				G->pops[((struct migr_event *)ev)->spop].n++;
 
 			}else{
 				update_demography(G, ev);
@@ -1761,6 +1805,9 @@ double recombination(struct genealogy *G, double x)
 
 		}
 	}while(!coalesced);
+
+	if(t > G->localMRCA->t)
+		G->localMRCA = last;
 
 	return 0;
 }
@@ -2138,8 +2185,6 @@ finish_selection:
 #ifdef DEBUG
 						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-						if(!tsindex_isin(G->tr_xover, edum))
-							tsindex_add(G->tr_xover, edum);
 						edum = ndum;
 						ndum = edum->in;
 					}
@@ -2148,17 +2193,18 @@ finish_selection:
 						node_set_clear(&trunk[i]);
 
 					// Remove remaining edges in dummy edge list
+					__remove_edge(G, edum->pop, edum);
+					tsindex_clear(G->tr_xover, edum);
 					if(ev->type == EVENT_DXVR){
 						/* Remove dangling edges above dummy recombination event from red-black tree. */
 						erase_dummy_path(G, edum);
 
 					}else{
-						G->pops[G->root->pop].n = 0;
 						free_node(G, ndum);
 					}
-					__remove_edge(G, edum->pop, edum);
+
+					G->pops[edum->pop].n = 0;
 					node_set_add(&F[edum->pop], edum);
-//					free_edge(G, edum);
 
 					G->root = G->localMRCA = NULL;
 					remove_event(G, ev);
@@ -2193,7 +2239,7 @@ finish_selection:
 		e->in->t = e->t;
 		e->in->pop = e->pop;
 		e->in->in = NULL;
-		__add_edge(G, e->pop, e);
+		add_edge(G, e->pop, e);
 //		if(G->troot > e->top->t){
 //			e->top->t = G->troot; // Change on 2018/05/23: This leads to missing of migration by population join/split.
 
@@ -2212,18 +2258,6 @@ finish_selection:
 		e->in->ev = evnew;
 
 	}else if(t > G->localMRCA->t){
-		struct node *edum;
-		struct node *ndum;
-
-		edum = G->localMRCA;
-		ndum = edum->in;
-		while(ndum && ndum->t < t){
-			if(!tsindex_isin(G->tr_xover, edum))
-				tsindex_add(G->tr_xover, edum);
-			edum = ndum;
-			ndum = edum->in;
-		}
-
 		G->localMRCA = last;
 	}
 
@@ -2846,7 +2880,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 			int inext, to;
 
 			G->total = L(G);
-			treesize = G->total + G->root->t - G->localMRCA->t;
+			treesize = G->total;
+//			treesize = G->total + G->root->t - G->localMRCA->t;
 			rrho = rho * treesize;
 			if(rrho > 0){
 				r = dexp(rrho);
@@ -2892,39 +2927,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 				fprintf(stderr, "%s: %d: x=%.6f\n", __func__, __LINE__, x);
 #endif
-				u = dunif01() * treesize;
-				if(u < G->total){
-					recombination(G, x);
-
-				}else{
-					double t;
-
-					t = u - G->total + G->localMRCA->t;
-
-#ifdef DEBUG
-					fprintf(stderr, "%d: Dummy recombination occur at time %.10f, position %.10f, localMRCA->t=%.10f, root->t=%.10f\n", __LINE__, t, x, G->localMRCA->t, G->root->t);
-#endif
-
-					if(G->ev_dxvr){
-						if(G->ev_dxvr->t > t){
-							struct event *ev_dxvr;
-
-							ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
-							remove_event(G, G->ev_dxvr);
-
-							/* Change on 2018/05/31: Find first event after time of new event. The old version crashes in the presence of migration. */
-							evindex_s_seek(G->evidx, ev_dxvr->t);
-							/* End of change. */
-							insert_event(G, ev_dxvr);
-							G->ev_dxvr = ev_dxvr;
-						}
-
-					}else{
-						G->ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
-						evindex_s_seek(G->evidx, G->ev_dxvr->t);
-						insert_event(G, G->ev_dxvr);
-					}
-				}
+				recombination(G, x);
 			}
 
 #ifdef DEBUG

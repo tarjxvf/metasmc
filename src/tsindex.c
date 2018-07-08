@@ -255,7 +255,8 @@ void tsindex_clear(struct tsindex *tr, struct node *e)
 	fprintf(stderr, "%s: %d: id=%d\n", __func__, __LINE__, id);
 #endif
 	if(!tsindex_isrebuild(tr)){
-		diff = tr->edges[id]->in->t - tr->edges[id]->t;
+		diff = tr->weights[id];
+//		diff = tr->edges[id]->in->t - tr->edges[id]->t;
 		bit_update(tr->index, id, -diff);
 	}
 
