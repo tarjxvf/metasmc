@@ -98,14 +98,11 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 //		nd = (struct node *)ptr;
 //	}
 
-	edge_flag_settype(nd, type);
-	edge_flag_undelete(nd);
-	nd->visited = 0;
-	nd->itop = 0;
+	*((unsigned char *)&nd->idx + sizeof(int)) = type;
 	nd->pop = pop;
 	nd->t = t;
 	nd->xtid = nd->idx = 0;
-//	nd->in = NULL;
+
 #ifdef DEBUG
 	fprintf(stderr, "%s:%d:Allocated node %x at time %.6f with type %d in subpopulation %d\n\n", __func__, __LINE__, nd, nd->t, nd->type, nd->pop);
 #endif
@@ -280,7 +277,6 @@ void node_set_init(struct node_set *set, int maxn)
 static inline void node_set_clear(struct node_set *set)
 {
 	set->n = 0;
-//	memset(set->nodes, 0, sizeof(struct node *) * set->maxn);
 }
 
 static inline void node_set_destroy(struct node_set *set)
@@ -440,7 +436,6 @@ static inline void __remove_coal_node(struct genealogy *G, struct coal_node *nd,
 	ebelow->in = nd->in;
 	ebelow->itop = nd->itop;
 	remove_edge(G, nd->pop, (struct node *)nd);
-//	free_node(G, (struct node *)nd);
 }
 
 static inline void remove_coal_node(struct genealogy *G, struct coal_node *nd, int iout)
