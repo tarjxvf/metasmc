@@ -1828,11 +1828,15 @@ static inline void trunk_migr(struct genealogy *G, struct node_set *trunk, struc
 double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_set *F)
 {
 	struct config *cfg;
-	struct event *ev, *evnew;
-	struct node *last, *nf;
-	struct list_head *f;
-	int pop, uvpop, zpop, sumnF, i;
+	int pop, uvpop, zpop, sumnF, i, c, nfrom;
 	double t, uv, minuv, z, minz, rmig, totalprob;
+	double pabs, rate1, rate2, tdiff, sum, x, inc, u;
+	struct node *last, *nf, *nd, *edum, *ndum, *e;
+	struct event *ev, *evnew;
+	struct migr_node *nm;
+	struct join_event *jev;
+	struct splt_event *sev;
+	struct list_head *f, *l, *next;
 
 	cfg = G->cfg;
 #ifdef DEBUG
@@ -1897,11 +1901,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 #endif
 
 		if(t + minuv < ev->t || t + minz < ev->t){
-			double pabs, rate1, rate2, tdiff, sum, x, inc;
-			struct node *e, *nd;
-			struct migr_node *nm;
-			int c, i;
-
 			evnew = NULL;
 			if(minuv < minz){	// Coalescent or Absorption
 				// Calculate probability of absorption event
@@ -1969,21 +1968,16 @@ finish_selection:
 					trunk_coal(G, trunk, (struct coal_event *)ev);
 
 				}else{
-					struct node *in, *enew;
-					double troot_old;
-					int pop, ret;
-
-					in = (struct node *)((struct coal_event *)ev)->nd;
 					pop = G->localMRCA->pop;
-					enew = trunk_coal(G, trunk, (struct coal_event *)ev);
-					if(isdeleted(enew)){
+					e = trunk_coal(G, trunk, (struct coal_event *)ev);
+					if(isdeleted(e)){
 #ifdef DEBUG
 						fprintf(stderr, "Both branch of old MRCA is removed!!!\n");
 #endif
 						G->pops[pop].n--;
 						G->troot = G->root->t;
-						node_set_remove(&trunk[pop], enew->set_id);
-						erase_dummy_path(G, enew);
+						node_set_remove(&trunk[pop], e->set_id);
+						erase_dummy_path(G, e);
 						if(G->ev_dxvr)
 							remove_event(G, G->ev_dxvr);
 						G->localMRCA = G->root = NULL;
@@ -1992,7 +1986,7 @@ finish_selection:
 #ifdef DEBUG
 						fprintf(stderr, "A branch of old MRCA is removed!!!\n");
 #endif
-						G->localMRCA = enew;	// Move down MRCA
+						G->localMRCA = e;	// Move down MRCA
 					}
 				}
 
@@ -2005,69 +1999,52 @@ finish_selection:
 				update_demography(G, ev);
 
 				if(ev->type == EVENT_JOIN){
-					struct join_event *jev;
-					struct migr_node *nd;
-					struct node *nm;
-					struct list_head *l, *next;
-					struct node *e;
-					int i;
-
 					jev = (struct join_event *)ev;
 					/* Move edges of trunk genealogy. */
 					l = jev->ndls.front;
 					while(l){
 						next = l->next;
-						nd = (struct migr_node *)GET_OBJ(l);
-						__trunk_migr(G, trunk, jev->popj, jev->popi, ev, nd);
+						nm = (struct migr_node *)GET_OBJ(l);
+						__trunk_migr(G, trunk, jev->popj, jev->popi, ev, nm);
 						l = next;
 					}
 
 					/* Move all new lineages in population j to population i. */
 					for(i = 0; i < F[jev->popj].n; i++){
-						nm = node_set_get(&F[jev->popj], i);
+						nd = node_set_get(&F[jev->popj], i);
 #ifdef DEBUG
 						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-						nd = (struct migr_node *)do_migrate(G, nm, jev->popj, jev->popi, t);
-						node_set_add(&F[jev->popi], (struct node *)nd);
-						nd->ev = (struct migr_event *)ev;
-						list_append(&jev->ndls, nd);
+						nm = (struct migr_node *)do_migrate(G, nd, jev->popj, jev->popi, t);
+						node_set_add(&F[jev->popi], (struct node *)nm);
+						nm->ev = (struct migr_event *)ev;
+						list_append(&jev->ndls, nm);
 						insert_event_join(G, ev);
 					}
 
 					node_set_clear(&F[jev->popj]);
 
 				}else if(ev->type == EVENT_SPLT){
-					struct splt_event *sev;
-					struct migr_node *nd;
-					struct node *nm;
-					struct list_head *l, *next;
-					struct node *e;
-					int i, nfrom;
-
 					sev = (struct splt_event *)ev;
 					/* Move edges of trunk genealogy. */
 					l = sev->ndls.front;
 					while(l){
 						next = l->next;
-						nd = (struct migr_node *)GET_OBJ(l);
-						__trunk_migr(G, trunk, sev->pop, sev->newpop, ev, nd);
+						nm = (struct migr_node *)GET_OBJ(l);
+						__trunk_migr(G, trunk, sev->pop, sev->newpop, ev, nm);
 						l = next;
 					}
 
 					/* Move new lineages in population old population to new population with probability sev->prop. */
 					i = 0;
 					while(i < F[sev->pop].n){
-						struct node *e2;
-						double u;
-
 						u = dunif01();
 						if(u >= sev->prop){
-							nm = node_set_remove(&F[sev->pop], i);
-							nd = (struct migr_node *)do_migrate(G, nm, sev->pop, sev->newpop, t);
-							node_set_add(&F[sev->newpop], (struct node *)nd);
-							nd->ev = (struct migr_event *)ev;
-							list_append(&sev->ndls, nd);
+							nd = node_set_remove(&F[sev->pop], i);
+							nm = (struct migr_node *)do_migrate(G, nd, sev->pop, sev->newpop, t);
+							node_set_add(&F[sev->newpop], (struct node *)nm);
+							nm->ev = (struct migr_event *)ev;
+							list_append(&sev->ndls, nm);
 							insert_event_splt(G, ev);
 
 						}else{
@@ -2076,9 +2053,6 @@ finish_selection:
 					}
 
 				}else if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR){
-					struct node *edum;
-					struct node *ndum, *n;
-
 #ifdef DEBUG
 					if(ev->type == EVENT_DUMY){
 						fprintf(stderr, "%s: %d: DUMY event is found at time %.6f\n", __func__, __LINE__, ev->t);
@@ -2126,23 +2100,18 @@ finish_selection:
 	}
 
 	if(G->localMRCA == NULL){	// In this case, last event must be coalescent between two floating lineages
-		struct node *ndum, *nd;
-		struct node *e;
-
 		for(i = 0; i < cfg->npop_all; i++){
 			if(F[i].n > 0){
 				nd = node_set_remove(&F[i], 0);
 				ndum = alloc_node(G, NODE_DUMMY, nd->pop, nd->t);
 				ndum->in = NULL;
 				AS_DUMMY_NODE(ndum)->out = nd;
-//				AS_DUMMY_NODE(ndum)->out = e = alloc_edge(G, ndum, nd);
 				nd->in = ndum;
 				e = nd;
 				break;
 			}
 			if(trunk[i].n > 0){
 				e = node_set_remove(&trunk[i], 0);
-				nd = e;
 				break;
 			}
 		}
@@ -2288,13 +2257,7 @@ void clear_genealogy(struct genealogy *G)
 		while(eq->front){
 			l = __list_pop(eq);
 			__list_append(&G->pops[pop].id_list, l);
-//			free(l);
 		}
-//		list_init(&G->pops[pop].idx_queue);
-/*		for(i = 0; i < G->pops[pop].nedges; i++){
-			if(G->pops[pop].eptrs[i])
-				free_edge(G, G->pops[pop].eptrs[i]);
-		}*/
 		memset(G->pops[pop].eptrs, 0, sizeof(struct node *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
 		G->pops[pop].nsam = G->pops[pop].n = 0;
@@ -2344,8 +2307,6 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 
 		list_init(&G->pops[pop].idx_queue);
 		list_init(&G->pops[pop].id_list);
-//		G->pops[pop].eptrs = NULL;
-//		G->pops[pop].maxedges = G->pops[pop].nedges = 0;
 		G->pops[pop].maxedges = prof->nfrag * 3;
 		G->pops[pop].eptrs = malloc(sizeof(struct node *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
@@ -2404,8 +2365,6 @@ void destroy_genealogy(struct genealogy *G)
 #ifdef DEBUG
 		fprintf(stderr, "root=%x\n", G->root);
 #endif
-//		free_node(G, G->root->in->top);
-//		free_edge(G, G->root->in);
 		destroy_tree(G, G->root);
 	}
 
@@ -2482,7 +2441,6 @@ void print_tree(FILE *out_fp, struct node *nd)
 
 		n2 = AS_COAL_NODE(nd)->out[1];
 		while(ismigrnode(n2))
-//		while(n2->type == NODE_MIGR)
 			n2 = AS_MIGR_NODE(n2)->out;
 		print_tree(out_fp, n2);
 		fprintf(out_fp, ":%.10f", nd->t - n2->t);
@@ -2506,7 +2464,6 @@ void print_tree(FILE *out_fp, struct node *nd)
 //		fprintf(out_fp, "):%.6f", nd->t);
 #endif
 	}else if(isdummynode(nd)){
-//	}else if(nd->type == NODE_DUMMY){
 		struct node *n2;
 
 #ifdef DEBUG
@@ -2632,12 +2589,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 //		for(i = 0; i < MAXFRAG && f < nfrag && fgset[f].start < ub; i++, f++){
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
 			l = cache_alloc(cfg->frag_cache);
-//			l = malloc(sizeof(struct list_head) + sizeof(struct frag *));
 
 			*((struct frag **)GET_OBJ(l)) = fg = &fgset[f];
 			list_append(&R, GET_OBJ(l));
 			nR++;
-//			list_add(&R, GET_OBJ(l));
 
 			if((double)fg->end / reflen > ub)
 				ub = (double)fg->end / reflen;
@@ -2666,7 +2621,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		create_floating(G, &R, F);
 
-//		n0 = G->n_list.n + R.n;
 		n0 = G->nsam + nR;
 		for(i = 0; i < npop_all; i++)
 			node_set_init(&G->trunk[i], (n0 + 1));
