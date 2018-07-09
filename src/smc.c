@@ -48,6 +48,7 @@ size_t nodesize[] = {sizeof(struct coal_node), sizeof(struct migr_node), sizeof(
 
 void free_node(struct genealogy *G, struct node *nd)
 {
+	struct list_head *l;
 	struct config *cfg;
 
 	cfg = G->cfg;
@@ -55,48 +56,24 @@ void free_node(struct genealogy *G, struct node *nd)
 	fprintf(stderr, "Entering function %s, nd=%x(%.6f)\n", __func__, nd, nd->t);
 #endif
 
-//	if(nd->type == NODE_SAM)
-	{
-		struct list_head *l;
-
-		l = GET_LIST(nd);
-//		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
-//		cache_free(G->cfg->node_cache[nd->type], l);
-		free(l);
-
-	}
-//	else{
-//		cache_free(G->cfg->node_cache[nd->type], nd);
-//	}
-#ifdef DEBUG
-	fprintf(stderr, "Freed node %x\n\n", nd);
-#endif
+	l = GET_LIST(nd);
+//	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
+	free(l);
 }
 
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 {
+	struct list_head *l;
 	struct config *cfg;
 	struct node *nd;
 	char *ptr;
 
 	cfg = G->cfg;
-#ifdef DEBUG
-	fprintf(stderr, "Entering function %s\n", __func__);
-#endif
 //	ptr = cache_alloc(G->cfg->node_cache[type]);
 	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 
-//	if(type == NODE_SAM)
-	{
-		struct list_head *l;
-
-		l = (struct list_head *)ptr;
-		nd = (struct node *)GET_OBJ(l);
-
-	}
-//	else{
-//		nd = (struct node *)ptr;
-//	}
+	l = (struct list_head *)ptr;
+	nd = (struct node *)GET_OBJ(l);
 
 	*((unsigned char *)&nd->idx + sizeof(int)) = type;
 	nd->pop = pop;
@@ -120,8 +97,6 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 	new->t = old->t;
 	new->pop = old->pop;
 	new->type = old->type;
-
-//	memcpy(new, old, nodesize[old->type]);
 
 #ifdef DEBUG
 	fprintf(stderr, "%s:%d:Allocated node %x at time %.6f with type %d in subpopulation %d\n\n", __func__, __LINE__, new, new->t, new->type, new->pop);
@@ -428,9 +403,8 @@ static inline void remove_coal_node(struct genealogy *G, struct coal_node *nd, i
 {
 	struct node *e;
 
-	remove_event(G, (struct event *)nd->ev);
 	e = nd->out[1 - iout];
-
+	remove_event(G, (struct event *)nd->ev);
 	/* Extend edges above the coalescent node to be removed. */
 	tsindex_update(G->tr_xover, (struct node *)e, nd->in->t - nd->t);
 	__remove_coal_node(G, nd, e);
@@ -440,11 +414,9 @@ static inline void remove_coal_node(struct genealogy *G, struct coal_node *nd, i
 void erase_dangling2(struct genealogy *G, struct node *e)
 {
 	struct config *cfg;
-	struct migr_node *nm;
-	struct coal_node *nd;
-	struct node *ntop, *nnext;
-	struct node *ebelow, *eabove;
+	struct node *ntop, *nd, *ebelow;
 	int pop, itop;
+	struct migr_node *nm;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering %s\n", __func__);
@@ -465,15 +437,11 @@ void erase_dangling2(struct genealogy *G, struct node *e)
 
 		e = ntop;
 		itop = edge_flag_getitop(e);
-		pop = ntop->pop;
-		nnext = e->in;
-		remove_edge(G, pop, e);
-
-		ntop = nnext;
+		ntop = e->in;
+		remove_edge(G, e->pop, e);
 	}
 
-	nd = (struct coal_node *)ntop;
-	eabove = ntop;
+	nd = ntop;
 	ebelow = AS_COAL_NODE(ntop)->out[1 - itop];
 
 	/* If the erased lineage is below localMRCA, then move down localMRCA. */
@@ -482,18 +450,10 @@ void erase_dangling2(struct genealogy *G, struct node *e)
 		remove_coal_node(G, (struct coal_node *)nd, itop);
 
 	}else{
-		struct coal_node *mrca;
-		struct migr_node *nm;
-		struct node *nbot, *ntop, *ebelow2;
-
-		mrca = (struct coal_node *)G->localMRCA; // In this case, root must be coalescent node */
-
 		/* Move downward along another branch to find new root. */
 		ntop = ebelow;
-		while(ismigrnode(ntop)){
-			ebelow2 = AS_MIGR_NODE(ntop)->out;
-			ntop = ebelow2;
-		}
+		while(ismigrnode(ntop))
+			ntop = AS_MIGR_NODE(ntop)->out;
 		G->localMRCA = ntop;
 
 		// The edge above removed coalescent node is not in local genealogy, so we do not need to update tsindex. */
