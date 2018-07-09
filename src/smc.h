@@ -56,66 +56,58 @@ static int node_flag_gettype(struct node *nd)
 	return nd->type;
 }
 
-static void node_flag_settype(struct node *nd, char type)
+static void edge_flag_settype(struct node *nd, char type)
 {
 	nd->type = type;
 }
 
-static inline char isdeleted(struct edge *e)
+static inline char isdeleted(struct node *e)
 {
 	return e->deleted;
 }
 
-static inline void edge_flag_delete(struct edge *e)
+static inline void edge_flag_delete(struct node *e)
 {
 	e->deleted = 1;
 }
 
-static inline void edge_flag_undelete(struct edge *e)
+static inline void edge_flag_undelete(struct node *e)
 {
 	e->deleted = 0;
 }
 
-static inline void edge_flag_setdeleted(struct edge *e, char flag)
+static inline void edge_flag_setdeleted(struct node *e, char flag)
 {
 	e->deleted = flag;
 }
 
-static inline int edge_flag_getitop(struct edge *e)
+static inline int edge_flag_getitop(struct node *e)
 {
 	return e->itop;
 }
 
-static inline void edge_flag_setleft(struct edge *e)
+static inline void edge_flag_setleft(struct node *e)
 {
 	e->itop = 0;
 }
 
-static inline void edge_flag_setright(struct edge *e)
+static inline void edge_flag_setright(struct node *e)
 {
 	e->itop = 1;
 }
 
-static inline void edge_flag_setitop(struct edge *e, char flag)
+static inline void edge_flag_setitop(struct node *e, char flag)
 {
 	e->itop = flag;
 }
 
 void free_node(struct genealogy *G, struct node *nd);
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
-void free_edge(struct genealogy *G, struct edge *e);
-struct edge *alloc_edge(struct genealogy *G, struct node *top, struct node *bot);
 
 struct node_set {
 	int maxn;
 	int n;
 	struct node **nodes;
-};
-
-struct edge_set {
-	int maxn;
-	int n;
-	struct edge **edges;
 };
 
 struct population {
@@ -133,7 +125,7 @@ struct population {
 	/***** MaCS-like data structures. *****/
 	int nedges;
 	int maxedges;
-	struct edge **eptrs;		// Array of edge pointers
+	struct node **eptrs;		// Array of node pointers
 	struct list idx_queue;	// Queue of index in eptrs
 	struct list id_list;
 	struct list e_delete_list;
@@ -148,8 +140,8 @@ struct genealogy {
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
 	int edgeid;
 
-	int nedges;		// Number of edges in local tree
-//	struct list e_list;	// List of edges in the local tree
+	int nnodes;		// Number of nodes in local tree
+//	struct list e_list;	// List of nodes in the local tree
 	struct list n_list;	// List of sample nodes
 	struct list n_delete_list;
 
@@ -159,14 +151,14 @@ struct genealogy {
 	double t;
 	double total;		// Total length of the local tree
 
-//	struct edge **pTreeEdgesToCoalesceArray;
+//	struct node **pTreeEdgesToCoalesceArray;
 	struct node *localMRCA;
 	int lb;
 	int ub;
 	int x;
 
 	struct tsindex *tr_xover;
-	struct edge_set *trunk;
+	struct node_set *trunk;
 };
 
 static inline void insert_event_join_increase(struct genealogy *G, struct join_event *jev)
@@ -297,6 +289,6 @@ struct genealogy *alloc_genealogy(struct config *, struct profile *);
 void destroy_genealogy(struct genealogy *);
 void clear_genealogy(struct genealogy *);
 
-struct event *rnd_select_point(struct genealogy *G, struct edge **eo, int *popo, double *to);
+struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo, double *to);
 
 #endif

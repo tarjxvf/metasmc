@@ -35,7 +35,7 @@ double tsindex_size(struct tsindex *tr)
 {
 	if(tsindex_isrebuild(tr)){
 		double *weights, total;
-		struct edge *e;
+		struct node *e;
 		int i;
 
 		total = 0;
@@ -67,7 +67,7 @@ void tsindex_rebuild(struct tsindex *tr)
 	struct timespec beg, end;
 	int nsec;
 
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
+	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 //	weights = malloc(sizeof(double) * tr->maxnodes);
 	weights = tr->weights + 1;
@@ -85,9 +85,9 @@ void tsindex_rebuild(struct tsindex *tr)
 	tsindex_clearflag(tr, TSINDEX_DIRTY);
 	tsindex_clearflag(tr, TSINDEX_REBUILD);
 
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_ts_rebuild += nsec;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+	t_ts_rebuild += nsec;
 }
 
 struct tsindex *tsindex_alloc(int maxedges)
@@ -102,7 +102,7 @@ struct tsindex *tsindex_alloc(int maxedges)
 //	tr->maxedges = 0;
 	tr->maxedges = 1;
 	tr->maxnodes = tr->nedges = 0;
-	tr->edges = malloc(sizeof(struct edge *));
+	tr->edges = malloc(sizeof(struct node *));
 	tr->edges[0] = NULL;
 	tr->weights = malloc(sizeof(double));
 	tr->weights[0] = 0;
@@ -140,7 +140,7 @@ void tsindex_reset(struct tsindex *tr)
 }
 
 // Do not update the tree.
-void tsindex_add_rebuild(struct tsindex *tr, struct edge *e)
+void tsindex_add_rebuild(struct tsindex *tr, struct node *e)
 {
 	struct list_head *l;
 	int id, *ptr, i;
@@ -168,7 +168,7 @@ void tsindex_add_rebuild(struct tsindex *tr, struct edge *e)
 }
 
 /* Clear a node without updating the tree. */
-void tsindex_clear_rebuild(struct tsindex *tr, struct edge *e)
+void tsindex_clear_rebuild(struct tsindex *tr, struct node *e)
 {
 	struct list_head *l;
 	int *pidx, id;
@@ -185,7 +185,20 @@ void tsindex_clear_rebuild(struct tsindex *tr, struct edge *e)
 	tr->nedges--;
 }
 
-void tsindex_add(struct tsindex *tr, struct edge *e)
+void tsindex_replace(struct tsindex *tr, int id, struct node *e)
+{
+	double wold, wnew;
+
+	wold = tr->weights[id];
+	tr->weights[id] = wnew = e->in->t - e->t;
+	tr->edges[id] = e;
+	e->xtid = id;
+	if(!tsindex_isrebuild(tr))
+		bit_update(tr->index, id, wnew - wold);
+
+}
+
+void tsindex_add(struct tsindex *tr, struct node *e)
 {
 	struct list_head *l;
 	double diff;
@@ -193,10 +206,10 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 
 
 #ifdef DEBUG
-	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->top->t, e->bot->t, e->xtid);
+	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->in->t, e->t, e->xtid);
 #endif
 
-	diff = e->top->t - e->bot->t;
+	diff = e->in->t - e->t;
 
 	if(tr->free_list.front == NULL){
 		/* Allocate a new node in binary indexed tree. */
@@ -226,12 +239,12 @@ void tsindex_add(struct tsindex *tr, struct edge *e)
 
 	e->xtid = id;
 	tr->edges[id] = e;
-	tr->weights[id] = e->top->t - e->bot->t;
+	tr->weights[id] = e->in->t - e->t;
 	tr->nedges++;
 }
 
 /* Clear a node in binary indexed tree. */
-void tsindex_clear(struct tsindex *tr, struct edge *e)
+void tsindex_clear(struct tsindex *tr, struct node *e)
 {
 	struct list_head *l;
 	int *pidx, id;
@@ -242,7 +255,8 @@ void tsindex_clear(struct tsindex *tr, struct edge *e)
 	fprintf(stderr, "%s: %d: id=%d\n", __func__, __LINE__, id);
 #endif
 	if(!tsindex_isrebuild(tr)){
-		diff = tr->edges[id]->top->t - tr->edges[id]->bot->t;
+		diff = tr->weights[id];
+//		diff = tr->edges[id]->in->t - tr->edges[id]->t;
 		bit_update(tr->index, id, -diff);
 	}
 
@@ -281,17 +295,22 @@ void tsindex_free(struct tsindex *tr)
 void tsindex_dump(struct tsindex *tr)
 {
 	struct list_head *l;
-	struct edge *e;
+	struct node *e;
 	int i;
 
 	fprintf(stderr, "tr->flags=%d, tr->nedges=%d, tr->maxnodes=%d, tr->maxedges=%d, G->tr_xoveredges=", tr->flags, tr->nedges, tr->maxnodes, tr->maxedges);
 	for(i = 1; i <= tr->maxnodes; i++){
 		e = tr->edges[i];
 		if(e)
-			fprintf(stderr, "%x(%.10f, %.10f, xtid=%d), ", e, e->bot->t, e->top->t, e->xtid);
+			fprintf(stderr, "%x(%.10f, %.10f, xtid=%d), ", e, e->t, e->in->t, e->xtid);
 		else
 			fprintf(stderr, "NULL, ");
 	}
+	fprintf(stderr, "\n");
+
+	fprintf(stderr, "weights=");
+	for(i = 1; i <= tr->maxnodes; i++)
+		fprintf(stderr, "%.10f, ", tr->weights[i]);
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "free_list=");

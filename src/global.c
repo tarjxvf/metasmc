@@ -474,7 +474,6 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	cfg->event_cache[EVENT_DXVR] = cache_create(sizeof(struct list_head) + sizeof(struct dxvr_event) + sizeof(int) * 2 * npop_all, 10);
 	cfg->event_cache[EVENT_SAMP] = cache_create(sizeof(struct list_head) + sizeof(struct samp_event) + sizeof(int) * 2 * npop_all, 10);*/
 
-//	cfg->edge_cache = cache_create(sizeof(struct list_head) + sizeof(struct edge), maxfrag * 4);
 //	cfg->frag_cache = cache_create(sizeof(struct list_head) + sizeof(struct frag *), maxfrag);
 
 	/* Set up empty event list (contains only one dummy event) */
@@ -574,7 +573,6 @@ void destroy_config(struct config *cfg)
 	cache_destroy(cfg->node_cache[NODE_XOVER]);
 	cache_destroy(cfg->node_cache[NODE_SAM]);
 
-	cache_destroy(cfg->edge_cache);
 	cache_destroy(cfg->frag_cache);*/
 
 //	cache_destroy(cfg->event_cache[EVENT_COAL]);
