@@ -1434,23 +1434,13 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 			evnew = NULL;
 			if(minuv < minz){	// Coalescent or Absorption
 				// Calculate probability of absorption event
-//				tdiff = ev->t - t;
-//				rate1 = 2 * G->pops[uvpop].n * F[uvpop].n;
-//				rate2 = F[uvpop].n * (F[uvpop].n - 1);
-//				pabs = rate1 / (rate1 + rate2);
-				pabs = 0;
-
 				t += minuv;
 				sumnF--;
-				if(dunif01() < pabs){	//Absorption
-					/* You should never be here. */
-
-				}else{	// Coalescent
-					last = nd = (struct node *)coalescent(G, F, uvpop, t);
-					add_edge_r(G, uvpop, nd->out[0]);
-					add_edge_r(G, uvpop, nd->out[1]);
-					evnew = nd->ev;
-				}
+				dunif01();
+				last = nd = (struct node *)coalescent(G, F, uvpop, t);
+				add_edge_r(G, uvpop, nd->out[0]);
+				add_edge_r(G, uvpop, nd->out[1]);
+				evnew = nd->ev;
 
 			}else{	// Migration
 				t += minz;
