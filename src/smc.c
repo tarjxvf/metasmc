@@ -1970,7 +1970,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				// Calculate probability of absorption event
 				rate1 = 2 * G->pops[uvpop].n;
 				rate2 = F[uvpop].n - 1;
-//				pabs = rate1 / (rate1 + rate2);
 
 				t += minuv;
 				sumnF--;
@@ -2134,9 +2133,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 					edum = G->localMRCA;
 					ndum = edum->in;
 					while(ndum && ndum->t < ev->t){
-#ifdef DEBUG
-						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
-#endif
 						edum = ndum;
 						ndum = edum->in;
 					}
@@ -2187,12 +2183,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 		e->in->pop = e->pop;
 		e->in->in = NULL;
 		add_edge_m(G, e->pop, e);
-//		if(G->troot > e->top->t){
-//			e->top->t = G->troot; // Change on 2018/05/23: This leads to missing of migration by population join/split.
-
-//		}else{
-			G->troot = e->in->t;
-//		}
+		G->troot = e->in->t;
 
 		G->root = e->in;
 		G->localMRCA = e;
@@ -2223,8 +2214,6 @@ void destroy_tree(struct genealogy *G, struct node *nd)
 		remove_event(G, (struct event *)n->ev);
 		destroy_tree(G, n->out[0]);
 		destroy_tree(G, n->out[1]);
-//		free_edge(G, n->out[0]);
-//		free_edge(G, n->out[1]);
 
 	}else if(ismigrnode(nd)){
 		struct migr_node *n;
@@ -2232,7 +2221,6 @@ void destroy_tree(struct genealogy *G, struct node *nd)
 		n = (struct migr_node *)nd;
 		remove_event_josp(G, (struct event *)n->ev);
 		destroy_tree(G, n->out);
-//		free_edge(G, n->out);
 
 	}else if(isfloatnode(nd) || isdummynode(nd)){
 		struct dummy_node *n;
@@ -2240,7 +2228,6 @@ void destroy_tree(struct genealogy *G, struct node *nd)
 		n = (struct dummy_node *)nd;
 		remove_event(G, (struct event *)n->ev);
 		destroy_tree(G, n->out);
-//		free_edge(G, n->out);
 	}
 
 	free_node(G, nd);
@@ -2493,17 +2480,6 @@ void print_tree(FILE *out_fp, struct node *nd)
 		print_tree(out_fp, n2);
 		fprintf(out_fp, ":%.10f", nd->t - n2->t);
 
-		/* For debugging 
-		n1 = nd;
-		n2 = AS_COAL_NODE(nd)->out[0]->bot;
-		fprintf(out_fp, ":");
-		while(n2->type == NODE_MIGR){
-			fprintf(out_fp, "%.10f;", n1->t - n2->t);
-			n1 = n2;
-			n2 = AS_MIGR_NODE(n2)->out->bot;
-		}
-		fprintf(out_fp, "%.10f", n1->t - n2->t);*/
-
 		fprintf(out_fp, ",");
 
 		n2 = AS_COAL_NODE(nd)->out[1];
@@ -2512,23 +2488,10 @@ void print_tree(FILE *out_fp, struct node *nd)
 		print_tree(out_fp, n2);
 		fprintf(out_fp, ":%.10f", nd->t - n2->t);
 
-		/* For debugging
-		n1 = nd;
-		n2 = AS_COAL_NODE(nd)->out[1]->bot;
-		fprintf(out_fp, ":");
-		while(n2->type == NODE_MIGR){
-			fprintf(out_fp, "%.10f;", n1->t - n2->t);
-			n1 = n2;
-			n2 = AS_MIGR_NODE(n2)->out->bot;
-		}
-		fprintf(out_fp, "%.10f", n1->t - n2->t);*/
-
 #ifdef DEBUG
 		fprintf(out_fp, ")%x:%.6f", nd, nd->t);
 #else
 		fprintf(out_fp, ")");
-//		fprintf(out_fp, ")_%d", nd->in->id);
-//		fprintf(out_fp, "):%.6f", nd->t);
 #endif
 	}else if(isdummynode(nd)){
 		struct node *n2;
@@ -2568,15 +2531,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 
-//	cnt_rec = 0;
 	nfrag = prof->nfrag;
 	fgset = prof->fgset;
 
-//	ref = load_reference(prof->reffile);
-/*	if(ref == NULL){
-		fprintf(stderr, "Error opening reference file.");
-		return -1;
-	}*/
 	ref = prof->ref;
 	reflen = prof->ref->chrlen[prof->chrnum];
 	reload_reference(ref, prof->chrnum);
@@ -2609,14 +2566,12 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 	dump_events(G);
 #endif
-//	npop_all = cfg->npop + cfg->nsplt;
 	npop_all = cfg->npop_all;
 
 	seed();
 	F = malloc(sizeof(struct node_set) * npop_all);
 	G->trunk = malloc(sizeof(struct node_set) * npop_all);
 
-//	rho = cfg->rho * reflen;
 	rho = cfg->rho;
 	lb = ub = 0;
 	ilast = 0;
@@ -2627,7 +2582,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	list_init(&R);
 	list_init(&Rold);
 	G->nsam = 0;
-//	Rrear = &Rold;
 	do{
 		struct list_head *fgl, *nl, *next;
 	
@@ -2636,7 +2590,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		struct sam_node *nd;
 		int i, j, n0, ntrunk;
 		double x;
-//		int x;
 
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: Tree before merge_floating:", __func__, __LINE__);
@@ -2653,7 +2606,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			ub = (double)fgset[f].end / reflen;
 		}
 
-//		for(i = 0; i < MAXFRAG && f < nfrag && fgset[f].start < ub; i++, f++){
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
 			l = cache_alloc(cfg->frag_cache);
 
@@ -2813,9 +2765,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			rrho = rho * treesize;
 			if(rrho > 0){
 				r = dexp(rrho);
-//				r = -log(dunif01()) / rrho;
-//				r = (int)(-log(dunif01()) / rrho);
-//				r = MAX(r, 1);
 
 			}else{
 				r = (ub - x);	/* No recombination. */
@@ -2888,8 +2837,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "Fragment %d, nread=%d\n", fg->id, fg->nread);
 #endif
 			if(fg->end <= lb * reflen && fg->trunk == 0){
-//			if(fg->end <= lb * reflen){
-
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fg->id);
 #endif
@@ -2972,23 +2919,6 @@ fprintf(stderr, "n_ts_resize=%lu\n", n_ts_resize);
 fprintf(stderr, "t_ev_tree=%lu\n", t_ev_tree);
 fprintf(stderr, "t_ev_summary=%lu\n", t_ev_summary);*/
 
-//	if(ub < reflen){
-//		return -Inf;
-
-//	}else{
-		return 0;
-//	}
+	return 0;
 }
-
-/*SEXP tree_simulator(SEXP outfile, SEXP nfgp, SEXP profilep, SEXP rhop, SEXP nrepp)
-{
-	char *file;
-	int i;
-
-	file = (char *)CHAR(STRING_ELT(outfile, 0));
-	for(i = 0; i < nrep; i++){
-	}
-
-	return R_NilValue;
-}*/
 
