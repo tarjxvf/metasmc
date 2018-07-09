@@ -562,23 +562,23 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 struct node *choose_tedge(struct genealogy *G, int pop, double t)
 {
 	struct node *e, **eptrs;
-	int nthres, n, nall, u;
-	double avg1, avg2;
+	int n, nall, u;
+//	double avg1, avg2;
 
 	n = G->pops[pop].n;
 	nall = G->pops[pop].nedges;
 	eptrs = G->pops[pop].eptrs;
 
-	nthres = 0;	// Disable red-black index
-	avg1 = (double)nall / n;		// Expected number of steps that method 1 find desired edge
-	avg2 = (double)(2 * n - 3) / 2;	// Expected number of steps that method 2 find desired edge
+//	nthres = 0;	// Disable red-black index
+//	avg1 = (double)nall / n;		// Expected number of steps that method 1 find desired edge
+//	avg2 = (double)(2 * n - 3) / 2;	// Expected number of steps that method 2 find desired edge
 
 #ifdef DEBUG
 	fprintf(stderr, "%s: %d: pop->n=%d, nthres=%d, t=%.6f\n", __func__, __LINE__, n, nthres, t);
 	dump_edges(G);
 #endif
 //	if(avg1 * C < avg2){
-	if(avg1 < avg2){
+	if(2 * nall < (2 * n - 3) * n){
 		do{
 			u = dunif(nall);
 			e = eptrs[u];
@@ -1218,11 +1218,9 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 //	ulast = u;
 	if(alpha == 0){
 		dt = dexp(2 * nF * G->pops[pop].n / size);
-//		r = -size * log(u) / (2 * nF * G->pops[pop].n);
 
 	}else{
 		u = dunif01();
-//		rate = 2 * nF * G->pops[pop].n / (size * exp(alpha * tlast));
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / (2 * nF * G->pops[pop].n);
 		dt = log(r) / alpha;
 	}
@@ -1231,41 +1229,6 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_abs_time += nsec;
-
-	return dt;
-}
-
-double coal_time(struct genealogy *G, int nF, int pop, double t)
-{
-	double size, alpha, tlast, r, u, dt;
-//	struct timespec beg, end;
-//	int nsec;
-
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
-
-	size = G->pops[pop].size;
-	alpha = G->pops[pop].grate;
-	tlast = G->pops[pop].tlast;
-
-//	u = dunif01();
-	if(alpha == 0){
-//		rate = nF * (nF - 1) / size;
-		dt = dexp(nF * (nF - 1) / size);
-//		return -size * log(u) / (nF * (nF - 1));
-
-	}else{
-		u = dunif01();
-//		rate = nF * (nF - 1) / (size * exp(alpha * tlast));
-		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / (nF * (nF - 1));
-		dt = log(r) / alpha;
-//		return 1 - size * exp(alpha * tlast) * log(u) / (nF * (nF - 1));
-	}
-
-//	fprintf(stderr, "%d: coal_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
-
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_coal_time += nsec;
 
 	return dt;
 }
@@ -1280,7 +1243,7 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 
 //	n_coal_time++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
-	npair = nF * (nF - 1) + 2 * nF * G->pops[pop].n;
+	npair = nF * ((nF - 1) + 2 * G->pops[pop].n);
 
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
