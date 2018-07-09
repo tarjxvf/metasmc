@@ -60,9 +60,9 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
+//		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
 //		cache_free(G->cfg->node_cache[nd->type], l);
-//		free(l);
+		free(l);
 
 	}
 //	else{
@@ -83,8 +83,8 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	ptr = cache_alloc(G->cfg->node_cache[type]);
-//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+//	ptr = cache_alloc(G->cfg->node_cache[type]);
+	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 
 //	if(type == NODE_SAM)
 	{
@@ -114,8 +114,8 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 	struct node *new;
 	char *ptr;
 
-	ptr = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-//	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
+//	ptr = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
 	new = (struct node *)GET_OBJ(ptr);
 	new->t = old->t;
 	new->pop = old->pop;
@@ -1103,7 +1103,7 @@ void update_demography(struct genealogy *G, struct event *ev)
 }
 
 /* Calculate total branch length */
-double L(struct genealogy *G)
+static inline double L(struct genealogy *G)
 {
 	double total;
 
@@ -1535,6 +1535,8 @@ double recombination(struct genealogy *G, double x)
 			exit(-1);
 
 		}else if(t + at < ev->t || t + mg < ev->t){
+			struct node *e2, *e_below, *nd;	// e2: Edge where new absorption event occur, e_old: the old branch from xover node
+			struct migr_node *nm;
 			struct event *evnew;
 
 //	struct timespec beg, end;
@@ -1544,12 +1546,8 @@ double recombination(struct genealogy *G, double x)
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 			if(at < mg){		//Next event is absorption
-				struct node *e2;	// e2: Edge where new absorption event occur, e_old: the old branch from xover node
-				struct migr_node *n;
-				double tmrca_old;
-
-				tmrca_old = G->localMRCA->t;
 				t += at;
+				coalesced = 1;
 				e2 = choose_tedge(G, pop, t);
 
 #ifdef DEBUG
@@ -1557,29 +1555,23 @@ double recombination(struct genealogy *G, double x)
 #endif
 
 				if(e2 == e){	// Floating lineage is absorbed to the same lineage (loop in ARG)
-					struct node *e_old, *e_below, *e_new;
-					double tbot_old, tbot_new;
-
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: A loop occurs!!!\n", __func__, __LINE__);
 #endif
 //					// e_old->top is the new coalescent node which has to be removed. In this case, e2 must be in local genealogy, so tsindex must be updateda
-					if(nf != (struct node *)nxover){
+					if(nf == (struct node *)nxover){
+						free_node(G, (struct node *)nxover);
+
+					}else{
 						insert_coal_node(G, e2, nf);
 						tsindex_replace(G->tr_xover, e2->xtid, nf);
 						nf->idx = e2->idx;
 						G->pops[e2->pop].eptrs[nf->idx] = nf;
 						remove_xover_node(G, nxover, e2);
 						free_node(G, (struct node *)nxover);
-
-					}else{
-						free_node(G, (struct node *)nxover);
 					}
 
 				}else{
-					struct node *e_new, *e_below;
-					struct node *nd;
-
 					e_below = e_below_xover;
 
 					tsindex_update(G->tr_xover, e2, -(e2->in->t - t));
@@ -1596,20 +1588,18 @@ double recombination(struct genealogy *G, double x)
 					free_node(G, nxover);
 				}
 
-				coalesced = 1;
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_abs_xover += nsec;
 
 			}else{	// Next event is migration
-				struct migr_node *nd;
 #ifdef DEBUG
 				fprintf(stderr, "%d: Next event is migration\n", __LINE__);
 #endif
 				t += mg;
-				nd = __migration(G, nf, pop, t);
-				nf = (struct node *)nd;
-				evnew = (struct event *)nd->ev;
+				nm = __migration(G, nf, pop, t);
+				nf = (struct node *)nm;
+				evnew = (struct event *)nm->ev;
 				insert_event_rb(G, evnew);
 				pop = ((struct migr_event *)evnew)->spop;
 			}
@@ -1842,7 +1832,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 	struct node *last, *nf;
 	struct list_head *f;
 	int pop, uvpop, zpop, sumnF, i;
-	double t, uv, minuv, z, minz;
+	double t, uv, minuv, z, minz, rmig, totalprob;
 
 	cfg = G->cfg;
 #ifdef DEBUG
@@ -1857,8 +1847,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 	/* If trunk genealogy is not empty, loop until all floating lineages are absorbed.
 	   Otherwise, loop until only one floating lineage remained. */
 	while((G->root != NULL && sumnF > 0) || (G->root == NULL && sumnF > 1)){
-		double totalprob, rmig;
-
 		totalprob = rmig = 0;
 		minuv = minz = INFINITY;
 		uvpop = zpop = 0;
@@ -1909,13 +1897,13 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 #endif
 
 		if(t + minuv < ev->t || t + minz < ev->t){
-			struct node *e;
+			double pabs, rate1, rate2, tdiff, sum, x, inc;
+			struct node *e, *nd;
+			struct migr_node *nm;
 			int c, i;
 
 			evnew = NULL;
 			if(minuv < minz){	// Coalescent or Absorption
-				double pabs, C, rate1, rate2, tdiff;
-
 				// Calculate probability of absorption event
 				tdiff = ev->t - t;
 				rate1 = 2 * G->pops[uvpop].n * F[uvpop].n;
@@ -1923,6 +1911,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				pabs = rate1 / (rate1 + rate2);
 
 				t += minuv;
+				sumnF--;
 				if(dunif01() < pabs){	//Absorption
 					c = dunif(F[uvpop].n);
 					nf = node_set_remove(&F[uvpop], c);
@@ -1932,23 +1921,13 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 						evnew = last->ev;
 
 				}else{	// Coalescent
-					struct coal_node *nd;
-					nd = coalescent(G, F, uvpop, t);
-					last = (struct node *)nd;
-					evnew = (struct event *)nd->ev;
+					last = nd = (struct node *)coalescent(G, F, uvpop, t);
+					evnew = nd->ev;
 				}
-				sumnF--;
 
 			}else{	// Migration
-				struct migr_node *nd;
-				struct node *nm;
-				struct edge *em;
-				double sum, x, inc;
-				int c;
-
 				t += minz;
 				x = rmig * dunif01();
-
 				sum = 0;
 				for(zpop = 0; zpop < cfg->npop_all; zpop++){
 					inc = G->pops[zpop].mrate[zpop] * F[zpop].n;
@@ -1957,22 +1936,21 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 					else
 						sum += inc;
 				}
-
 				c = (int)((x - sum) / G->pops[zpop].mrate[zpop]);
 
 finish_selection:
 
 				// Find the lineage to be migrated
-				nm = node_set_remove(&F[zpop], c);
+				nd = node_set_remove(&F[zpop], c);
 
 				/* Perform migration */
 #ifdef DEBUG
 				fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-				nd = __migration(G, nm, zpop, t);
-				last = (struct node *)nd;
-				evnew = (struct event *)nd->ev;
-				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nd);
+				nm = __migration(G, nd, zpop, t);
+				last = (struct node *)nm;
+				evnew = (struct event *)nm->ev;
+				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nm);
 //				fprintf(stdout, "nmigr=%d, dpop=%d, c=%d, ev->dpop=%d, ev->spop=%d\n", nmigr, dpop, c, ev->dpop, ev->spop);
 			}
 
@@ -2261,7 +2239,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
