@@ -1339,7 +1339,7 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 	struct config *cfg;
 	int pop, uvpop, zpop, sumnF, i, c, nfrom;
 	double t, uv, minuv, z, minz, rmig, totalprob;
-	double pabs, rate1, rate2, tdiff, sum, x, inc, u;
+	double pabs, rate1, rate2, sum, x, inc, u;
 	struct node *last, *nf, *nd, *edum, *ndum, *e;
 	struct event *ev, *evnew;
 	struct migr_node *nm;
@@ -1892,9 +1892,9 @@ static inline void trunk_migr(struct genealogy *G, struct node_set *trunk, struc
 double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_set *F)
 {
 	struct config *cfg;
-	int pop, uvpop, zpop, sumnF, i, c, nfrom;
+	int pop, uvpop, zpop, sumnF, i, c, nfrom, rate1, rate2;
 	double t, uv, minuv, z, minz, rmig, totalprob;
-	double pabs, rate1, rate2, tdiff, sum, x, inc, u;
+	double pabs, sum, x, inc, u;
 	struct node *last, *nf, *nd, *edum, *ndum, *e;
 	struct event *ev, *evnew;
 	struct migr_node *nm;
@@ -1968,17 +1968,15 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 			evnew = NULL;
 			if(minuv < minz){	// Coalescent or Absorption
 				// Calculate probability of absorption event
-				tdiff = ev->t - t;
-				rate1 = 2 * G->pops[uvpop].n * F[uvpop].n;
-				rate2 = F[uvpop].n * (F[uvpop].n - 1);
-				pabs = rate1 / (rate1 + rate2);
+				rate1 = 2 * G->pops[uvpop].n;
+				rate2 = F[uvpop].n - 1;
+//				pabs = rate1 / (rate1 + rate2);
 
 				t += minuv;
 				sumnF--;
-				if(dunif01() < pabs){	//Absorption
+				if(dunif01() * (rate1 + rate2) < rate1){	//Absorption
 					c = dunif(F[uvpop].n);
 					nf = node_set_remove(&F[uvpop], c);
-
 					last = (struct node *)absorption(G, trunk, nf, uvpop, t);
 					if(last)
 						evnew = last->ev;
