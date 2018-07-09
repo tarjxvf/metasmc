@@ -868,7 +868,7 @@ void clear_tree(struct genealogy *G)
 				fprintf(stderr, "%s: %d: e=%x(%.6f), nd=%x(%.6f)\n", __func__, __LINE__, e, e->t, nd, nd->t);
 #endif
 				while(ismigrnode(nd)){
-					struct node *next;
+					struct node *nnext;
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
@@ -888,12 +888,10 @@ void clear_tree(struct genealogy *G)
 						remove_event(G, nd->ev);
 					}
 					e = nd;
-					pop = nd->pop;
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
-					next = e->in;
-					nd = next;
+					nd = e->in;
 				}
 
 				if(!isvisited(nd)){
@@ -949,10 +947,8 @@ void clear_tree(struct genealogy *G)
 
 	/* Find new MRCA */
 	nd = G->root;
-	while(!iscoalnode(nd)){
-		e = AS_MIGR_NODE(nd)->out;
-		nd = e;
-	}
+	while(!iscoalnode(nd))
+		nd = AS_MIGR_NODE(nd)->out;
 	G->localMRCA = nd;
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1114,11 +1110,10 @@ void reset_populations(struct genealogy *G)
  * The event next to the new event time will be returned. */
 struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo, double *to)
 {
-	struct list_head *l;
+	double g, t, running;
 	struct event *ev;
 	struct node *e;
-	int i, n, c;
-	double g, t, running, tsplt, len;
+	int i, c;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
@@ -1126,27 +1121,17 @@ struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo,
 
 	/* Generate a point on the genealogy. */
 	g = G->total * dunif01();
-//fprintf(stderr, "%d: g=%.10f, G->total=%.10f", __LINE__, g, G->total);
 
 #ifdef DEBUG
 	fprintf(stderr, "g=%.6f\n", g);
 #endif
 	/* Change on 2018/05/13: Search a a random point on current local genealogy by searching binary indexed tree. */
-	e = tsindex_search(G->tr_xover, g, &running);
-
-output:
-	*eo = e;
+	*eo = e = tsindex_search(G->tr_xover, g, &running);
 	*popo = e->pop;
-	*to = tsplt = t = e->t + g - running;
-//if(G->cfg->debug)
-//fprintf(stderr,"recombination time=%.10f, g=%.10f, select=(%.10f, %.10f)\n", tsplt, g, e->bot->t, e->top->t);
+	*to = t = e->t + g - running;
 
-	/* Traverse event list until *too. */
 	reset_populations(G);
 
-#ifdef DEBUG
-	fprintf(stderr, "g=%.6f\n", g);
-#endif
 	for(i = 0; i < G->cfg->ndevents; i++){
 		ev = G->cfg->devents[i];
 		if(ev->t > t)
@@ -1212,16 +1197,14 @@ void create_floating(struct genealogy *G, struct list *R, struct node_set *F)
 double abs_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
+
 //	struct timespec beg, end;
 //	int nsec;
-
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
 	tlast = G->pops[pop].tlast;
-//	u = dunif01();
-//	ulast = u;
 	if(alpha == 0){
 		dt = dexp(2 * nF * G->pops[pop].n / size);
 
@@ -1230,7 +1213,6 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / (2 * nF * G->pops[pop].n);
 		dt = log(r) / alpha;
 	}
-//	fprintf(stderr, "%d: abs_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1244,13 +1226,13 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 {
 	double size, alpha, tlast, r, u, dt;
 	int npair;
+
 //	struct timespec beg, end;
 //	int nsec;
-
 //	n_coal_time++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
-	npair = nF * ((nF - 1) + 2 * G->pops[pop].n);
 
+	npair = nF * ((nF - 1) + 2 * G->pops[pop].n);
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
 
@@ -1263,8 +1245,6 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / npair;
 		dt = log(r) / alpha;
 	}
-
-//	fprintf(stderr, "%d: coal_time=%.10f, rate=%.10f, nF=%d, G->pops[%d].n=%d\n", __LINE__, dt, rate, nF, pop, G->pops[pop].n);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1322,7 +1302,6 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 	erm = ndum;
 	nrm = ndum;
 	poprm = ndum->pop;
-//	ndum->in = NULL;
 	while(erm->in){
 		nrm = erm->in;
 		if(erm->ev->type == EVENT_JOIN)
@@ -1469,7 +1448,6 @@ finish_selection:
 				last = (struct node *)nm;
 				evnew = (struct event *)nm->ev;
 				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nm);
-//				fprintf(stdout, "nmigr=%d, dpop=%d, c=%d, ev->dpop=%d, ev->spop=%d\n", nmigr, dpop, c, ev->dpop, ev->spop);
 			}
 
 			if(evnew)	// evnew is NULL when the absorption event is ignored because the absorption target will be removed later
@@ -1645,9 +1623,9 @@ double recombination(struct genealogy *G, double x)
 			exit(-1);
 
 		}else if(t + at < ev->t || t + mg < ev->t){
+
 //	struct timespec beg, end;
 //	int nsec;
-
 //	n_abs_xover++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
@@ -1757,12 +1735,9 @@ double recombination(struct genealogy *G, double x)
 				G->t = t;
 				merge_floating_r(G, trunk, F);
 
-				{
-					erase_dangling2(G, e);
-					remove_xover_node(G, nxover, e);
-
-					free_node(G, nxover);
-				}
+				erase_dangling2(G, e);
+				remove_xover_node(G, nxover, e);
+				free_node(G, nxover);
 
 				for(i = 0; i < cfg->npop_all; i++){
 					node_set_destroy(&trunk[i]);
@@ -2028,8 +2003,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				}
 				c = (int)((x - sum) / G->pops[zpop].mrate[zpop]);
 
-finish_selection:
-
 				// Find the lineage to be migrated
 				nd = node_set_remove(&F[zpop], c);
 
@@ -2043,7 +2016,6 @@ finish_selection:
 				last = (struct node *)nm;
 				evnew = (struct event *)nm->ev;
 				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nm);
-//				fprintf(stdout, "nmigr=%d, dpop=%d, c=%d, ev->dpop=%d, ev->spop=%d\n", nmigr, dpop, c, ev->dpop, ev->spop);
 			}
 
 			if(evnew)	// evnew is NULL when the absorption event is ignored because the absorption target will be removed later
