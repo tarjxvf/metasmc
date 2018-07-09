@@ -724,8 +724,6 @@ struct coal_node *coalescent( struct genealogy *G, struct node_set *F, int pop, 
 	}
 
 	nd = __coalescent(G, n1, n2, pop, t);
-	add_edge_m(G, pop, nd->out[0]);
-	add_edge_m(G, pop, nd->out[1]);
 	node_set_replace(&F[pop], n1->set_id, (struct node *)nd);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
@@ -755,7 +753,6 @@ struct migr_node *do_migrate(struct genealogy *G, struct node *nf, int dpop, int
 	nd->out = nf;
 	nf->in = (struct node *)nd;
 	nf->itop = 0;
-	add_edge_m(G, nf->pop, nf);
 
 	return nd;
 }
@@ -1504,6 +1501,7 @@ double recombination(struct genealogy *G, double x)
 #endif
 				t += mg;
 				nm = __migration(G, nf, pop, t);
+				add_edge_r(G, nf->pop, nf);
 				nf = (struct node *)nm;
 				evnew = (struct event *)nm->ev;
 				insert_event_rb(G, evnew);
@@ -1584,6 +1582,8 @@ double recombination(struct genealogy *G, double x)
 						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
 						nm = (struct migr_node *)do_migrate(G, nf, jev->popj, jev->popi, t);
+						add_edge_r(G, nf->pop, nf);
+
 						nf = (struct node *)nm;
 						nm->ev = (struct migr_event *)ev;
 						list_append(&jev->ndls, nm);
@@ -1599,6 +1599,8 @@ double recombination(struct genealogy *G, double x)
 						if(u >= sev->prop){
 							/* Move the floating lineage to new population */
 							nm = (struct migr_node *)do_migrate(G, nf, sev->pop, sev->newpop, t);
+							add_edge_r(G, nf->pop, nf);
+
 							nf = (struct node *)nm;
 							nm->ev = (struct migr_event *)ev;
 							list_append(&sev->ndls, nm);
@@ -1807,6 +1809,8 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 
 				}else{	// Coalescent
 					last = nd = (struct node *)coalescent(G, F, uvpop, t);
+					add_edge_m(G, uvpop, nd->out[0]);
+					add_edge_m(G, uvpop, nd->out[1]);
 					evnew = nd->ev;
 				}
 
@@ -1833,6 +1837,8 @@ finish_selection:
 				fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
 				nm = __migration(G, nd, zpop, t);
+				add_edge_m(G, nd->pop, nd);
+
 				last = (struct node *)nm;
 				evnew = (struct event *)nm->ev;
 				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nm);
@@ -1902,6 +1908,8 @@ finish_selection:
 						fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
 						nm = (struct migr_node *)do_migrate(G, nd, jev->popj, jev->popi, t);
+						add_edge_m(G, nd->pop, nd);
+
 						node_set_add(&F[jev->popi], (struct node *)nm);
 						nm->ev = (struct migr_event *)ev;
 						list_append(&jev->ndls, nm);
@@ -1928,6 +1936,8 @@ finish_selection:
 						if(u >= sev->prop){
 							nd = node_set_remove(&F[sev->pop], i);
 							nm = (struct migr_node *)do_migrate(G, nd, sev->pop, sev->newpop, t);
+							add_edge_m(G, nd->pop, nd);
+
 							node_set_add(&F[sev->newpop], (struct node *)nm);
 							nm->ev = (struct migr_event *)ev;
 							list_append(&sev->ndls, nm);
