@@ -60,9 +60,9 @@ void free_node(struct genealogy *G, struct node *nd)
 		struct list_head *l;
 
 		l = GET_LIST(nd);
-//		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
+		cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
 //		cache_free(G->cfg->node_cache[nd->type], l);
-		free(l);
+//		free(l);
 
 	}
 //	else{
@@ -83,8 +83,8 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	ptr = cache_alloc(G->cfg->node_cache[type]);
-	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+	ptr = cache_alloc(G->cfg->node_cache[type]);
+//	ptr = malloc(nodesize[type] + sizeof(struct list_head));
 
 //	if(type == NODE_SAM)
 	{
@@ -114,8 +114,8 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 	struct node *new;
 	char *ptr;
 
-//	ptr = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
+	ptr = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+//	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
 	new = (struct node *)GET_OBJ(ptr);
 	new->t = old->t;
 	new->pop = old->pop;
@@ -141,13 +141,6 @@ static inline void __add_edge__(struct genealogy *G, int pop, struct node *e)
 }
 
 /* Add an edge to a population. */
-static inline void add_edge_r(struct genealogy *G, int pop, struct node *e)
-{
-	tsindex_add(G->tr_xover, e);
-	__add_edge__(G, pop, e);
-}
-
-/* Add an edge to a population. */
 static inline void add_edge(struct genealogy *G, int pop, struct node *e)
 {
 	tsindex_add(G->tr_xover, e);
@@ -163,13 +156,6 @@ static inline void __remove_edge__(struct genealogy *G, int pop, struct node *e)
 	idx = e->idx;
 	ppop->eptrs[idx] = ppop->eptrs[--(ppop->nedges)];
 	ppop->eptrs[idx]->idx = idx;
-}
-
-static inline void remove_edge_r(struct genealogy *G, int pop, struct node *e)
-{
-	__remove_edge__(G, pop, e);
-	tsindex_clear(G->tr_xover, e);
-	free_node(G, e);
 }
 
 static inline void remove_edge(struct genealogy *G, int pop, struct node *e)
@@ -615,16 +601,17 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 //struct edge *choose_tedge(struct genealogy *G, struct population *pop, double t)
 struct node *choose_tedge(struct genealogy *G, int pop, double t)
 {
-	struct node *e;
-	int nthres, n, u;
-	double avg1, avg2, C;
+	struct node *e, **eptrs;
+	int nthres, n, nall, u;
+	double avg1, avg2;
 
 	n = G->pops[pop].n;
+	nall = G->pops[pop].nedges;
+	eptrs = G->pops[pop].eptrs;
 
-//	C = 1;
 	nthres = 0;	// Disable red-black index
-	avg1 = (double)G->pops[pop].nedges / n;		// Expected number of steps that method 1 find desired edge
-	avg2 = (double)(2 * G->pops[pop].n - 3) / 2;	// Expected number of steps that method 2 find desired edge
+	avg1 = (double)nall / n;		// Expected number of steps that method 1 find desired edge
+	avg2 = (double)(2 * n - 3) / 2;	// Expected number of steps that method 2 find desired edge
 
 #ifdef DEBUG
 	fprintf(stderr, "%s: %d: pop->n=%d, nthres=%d, t=%.6f\n", __func__, __LINE__, n, nthres, t);
@@ -633,19 +620,15 @@ struct node *choose_tedge(struct genealogy *G, int pop, double t)
 //	if(avg1 * C < avg2){
 	if(avg1 < avg2){
 		do{
-			u = dunif(G->pops[pop].nedges);
-			e = G->pops[pop].eptrs[u];
+			u = dunif(nall);
+			e = eptrs[u];
 		}while(!(e->t < t && e->in->t > t));
 		return e;
 
 	}else{	// Choose edge using red-black index
-		u = dunif(G->pops[pop].n);
+		u = dunif(n);
 		return trunk_search(G, G->trunk, pop, t, u);
 	}
-
-//if(G->cfg->debug)
-//fprintf(stderr, "absorption time=%.10f, coal_edge=(%.10f, %.10f)\n", t, e->bot->t, e->top->t);
-//	return e;
 }
 
 /* Absorb floating lineage n2 into e1. */
@@ -2278,7 +2261,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-		destroy_tree(G, G->root);
+//		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
