@@ -116,6 +116,13 @@ static inline void __add_edge__(struct genealogy *G, int pop, struct node *e)
 }
 
 /* Add an edge to a population. */
+static inline void add_edge_r(struct genealogy *G, int pop, struct node *e)
+{
+	tsindex_add(G->tr_xover, e);
+	__add_edge__(G, pop, e);
+}
+
+/* Add an edge to a population. */
 static inline void add_edge_m(struct genealogy *G, int pop, struct node *e)
 {
 	tsindex_add(G->tr_xover, e);
@@ -131,6 +138,13 @@ static inline void __remove_edge__(struct genealogy *G, int pop, struct node *e)
 	idx = e->idx;
 	ppop->eptrs[idx] = ppop->eptrs[--(ppop->nedges)];
 	ppop->eptrs[idx]->idx = idx;
+}
+
+static inline void remove_edge_r(struct genealogy *G, int pop, struct node *e)
+{
+	__remove_edge__(G, pop, e);
+	tsindex_clear(G->tr_xover, e);
+	free_node(G, e);
 }
 
 static inline void remove_edge_m(struct genealogy *G, int pop, struct node *e)
@@ -396,7 +410,6 @@ static inline void __remove_coal_node(struct genealogy *G, struct coal_node *nd,
 	nd->in->out[nd->itop] = ebelow;
 	ebelow->in = nd->in;
 	ebelow->itop = nd->itop;
-	remove_edge_m(G, nd->pop, (struct node *)nd);
 }
 
 static inline void remove_coal_node(struct genealogy *G, struct coal_node *nd, int iout)
@@ -408,6 +421,7 @@ static inline void remove_coal_node(struct genealogy *G, struct coal_node *nd, i
 	/* Extend edges above the coalescent node to be removed. */
 	tsindex_update(G->tr_xover, (struct node *)e, nd->in->t - nd->t);
 	__remove_coal_node(G, nd, e);
+	remove_edge_r(G, nd->pop, (struct node *)nd);
 }
 
 /* Erase dangling lineage until a coalescent node is reached. */
@@ -438,7 +452,7 @@ void erase_dangling2(struct genealogy *G, struct node *e)
 		e = ntop;
 		itop = edge_flag_getitop(e);
 		ntop = e->in;
-		remove_edge_m(G, e->pop, e);
+		remove_edge_r(G, e->pop, e);
 	}
 
 	nd = ntop;
@@ -913,6 +927,7 @@ void clear_tree(struct genealogy *G)
 		}else{	// One edge is still in the local genealogy
 			ebelow = AS_COAL_NODE(nd)->out[1 - visited_lr(nd)];
 			__remove_coal_node(G, (struct coal_node *)nd, ebelow);
+			remove_edge_m(G, nd->pop, (struct node *)nd);
 			G->tr_xover->weights[ebelow->xtid] = ebelow->in->t - ebelow->t;
 		}
 
@@ -1283,7 +1298,7 @@ void erase_dummy_path_rb(struct genealogy *G, struct node *edum)
 			list_remove(&((struct splt_event *)erm->ev)->ndls, erm);
 
 		remove_event_josp(G, (struct event *)erm->ev);
-		remove_edge_m(G, erm->pop, erm);
+		remove_edge_r(G, erm->pop, erm);
 		erm = nrm;
 	}
 
@@ -1421,7 +1436,6 @@ double recombination(struct genealogy *G, double x)
 		if(dmig > 0){
 			totalprob += dmig;
 			mg = dexp(dmig);
-//			mg = -log(dunif01()) / dmig;
 
 		}else{
 			mg = INFINITY;
@@ -1468,8 +1482,8 @@ double recombination(struct genealogy *G, double x)
 				}else{
 					tsindex_update(G->tr_xover, e2, -(e2->in->t - t));
 					last = nd = (struct node *)__absorption(G, e2, nf, pop, t);
-					add_edge_m(G, pop, (struct node *)nd);
-					add_edge_m(G, pop, nd->out[1]);
+					add_edge_r(G, pop, (struct node *)nd);
+					add_edge_r(G, pop, nd->out[1]);
 
 					nf = nd;
 					evnew = nd->ev;
@@ -1529,7 +1543,7 @@ double recombination(struct genealogy *G, double x)
 				tsindex_clear(G->tr_xover, edum);
 				if(ev->type == EVENT_DXVR){
 					/* Remove dangling edges above dummy recombination event from red-black tree. */
-					erase_dummy_path(G, edum);
+					erase_dummy_path_rb(G, edum);
 
 				}else{
 					free_node(G, ndum);
@@ -1632,7 +1646,7 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			node_set_remove(&trunk[cev->nd->pop], out2->set_id);
 			__remove_coal_node(G, in, out1);
 			G->tr_xover->weights[out1->xtid] = out1->in->t - out1->t;
-
+			remove_edge_m(G, in->pop, (struct node *)in);
 			remove_edge_m(G, out2->pop, out2);
 
 			return out1;
@@ -1641,9 +1655,9 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			node_set_remove(&trunk[cev->nd->pop], out2->set_id);
 			node_set_replace(&trunk[cev->nd->pop], out1->set_id, out2);
 
-			remove_edge_m(G, out1->pop, out1);
-
 			__remove_coal_node(G, in, out2);
+			remove_edge_m(G, out1->pop, out1);
+			remove_edge_m(G, in->pop, (struct node *)in);
 			G->tr_xover->weights[out2->xtid] = out2->in->t - out2->t;
 
 			return out2;
