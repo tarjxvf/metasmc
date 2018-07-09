@@ -125,7 +125,7 @@ static inline void add_edge_r(struct genealogy *G, int pop, struct node *e)
 /* Add an edge to a population. */
 static inline void add_edge_m(struct genealogy *G, int pop, struct node *e)
 {
-	tsindex_add(G->tr_xover, e);
+	tsindex_add_r(G->tr_xover, e);
 	__add_edge__(G, pop, e);
 }
 
@@ -150,7 +150,7 @@ static inline void remove_edge_r(struct genealogy *G, int pop, struct node *e)
 static inline void remove_edge_m(struct genealogy *G, int pop, struct node *e)
 {
 	__remove_edge__(G, pop, e);
-	tsindex_clear(G->tr_xover, e);
+	tsindex_clear_r(G->tr_xover, e);
 	free_node(G, e);
 }
 
@@ -873,7 +873,7 @@ void clear_tree(struct genealogy *G)
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
 					__remove_edge__(G, e->pop, e);
-					tsindex_clear(G->tr_xover, e);
+					tsindex_clear_r(G->tr_xover, e);
 					if(!isvisited(e))
 						free_node(G, e);
 					if(nd->ev->type == EVENT_JOIN){
@@ -903,7 +903,7 @@ void clear_tree(struct genealogy *G)
 				itop = edge_flag_getitop(e);
 				visit(nd, itop);
 				__remove_edge__(G, e->pop, e);
-				tsindex_clear(G->tr_xover, e);
+				tsindex_clear_r(G->tr_xover, e);
 				if(!isvisited(e))
 					free_node(G, e);
 				e = nd;
