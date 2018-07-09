@@ -1355,6 +1355,217 @@ void erase_dummy_path(struct genealogy *G, struct node *edum)
 		erase_dummy_path_rb(G, edum);
 }
 
+double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node_set *F)
+{
+	struct config *cfg;
+	int pop, uvpop, zpop, sumnF, i, c, nfrom;
+	double t, uv, minuv, z, minz, rmig, totalprob;
+	double pabs, rate1, rate2, tdiff, sum, x, inc, u;
+	struct node *last, *nf, *nd, *edum, *ndum, *e;
+	struct event *ev, *evnew;
+	struct migr_node *nm;
+	struct join_event *jev;
+	struct splt_event *sev;
+	struct list_head *f, *l, *next;
+
+	cfg = G->cfg;
+#ifdef DEBUG
+	fprintf(stderr, "Entering function %s\n", __func__);
+#endif
+	t = G->t;
+	sumnF = 0;
+	for(pop = 0; pop < cfg->npop_all; pop++){
+		sumnF += F[pop].n;
+	}
+
+	/* If trunk genealogy is not empty, loop until all floating lineages are absorbed.
+	   Otherwise, loop until only one floating lineage remained. */
+	while((G->root != NULL && sumnF > 0) || (G->root == NULL && sumnF > 1)){
+		totalprob = rmig = 0;
+		minuv = minz = INFINITY;
+		uvpop = zpop = 0;
+		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
+			if(F[pop].n > 0){
+//n_abs_time_merge++;
+				uv = ca_time(G, F[pop].n, pop, t);
+#ifdef DEBUG
+				fprintf(stderr, "%d: ca_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, uv, pop, F[pop].n, pop, G->pops[pop].n);
+#endif
+				totalprob += F[pop].n * G->pops[pop].n + F[pop].n * (F[pop].n - 1);
+
+			}else{
+				uv = INFINITY;
+			}
+
+			if(uv < minuv){
+				minuv = uv;
+				uvpop = pop;
+			}
+		}
+
+		rmig = 0;
+		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
+			rmig += G->pops[pop].mrate[pop] * F[pop].n;
+		}
+
+		if(rmig > 0){
+			minz = dexp(rmig);
+			totalprob += rmig;
+
+		}else{
+			minz = INFINITY;
+		}
+
+		ev = evindex_s_get(G->evidx);
+		if(isinf(minuv) && isinf(minz) && isinf(ev->t)){
+			fprintf(stderr, "%d: Infinite time to next event\n", __LINE__);
+			exit(-1);
+		}
+#ifdef DEBUG
+		fprintf(stderr, "%d:", __LINE__);
+		for(i = 0; i < cfg->npop + cfg->nsplt; i++)
+			fprintf(stderr, ",G->pops[%d].n=%d", i, G->pops[i].n);
+		fprintf(stderr, "\n");
+
+		fprintf(stderr, "%d: Next event: ev=%x, type=%d, t=%6f\n", __LINE__, ev, ev->type, ev->t);
+#endif
+
+		if(t + minuv < ev->t || t + minz < ev->t){
+			evnew = NULL;
+			if(minuv < minz){	// Coalescent or Absorption
+				// Calculate probability of absorption event
+//				tdiff = ev->t - t;
+//				rate1 = 2 * G->pops[uvpop].n * F[uvpop].n;
+//				rate2 = F[uvpop].n * (F[uvpop].n - 1);
+//				pabs = rate1 / (rate1 + rate2);
+				pabs = 0;
+
+				t += minuv;
+				sumnF--;
+				if(dunif01() < pabs){	//Absorption
+					/* You should never be here. */
+
+				}else{	// Coalescent
+					last = nd = (struct node *)coalescent(G, F, uvpop, t);
+					add_edge_r(G, uvpop, nd->out[0]);
+					add_edge_r(G, uvpop, nd->out[1]);
+					evnew = nd->ev;
+				}
+
+			}else{	// Migration
+				t += minz;
+				x = rmig * dunif01();
+				sum = 0;
+				for(zpop = 0; zpop < cfg->npop_all; zpop++){
+					inc = G->pops[zpop].mrate[zpop] * F[zpop].n;
+					if(x < sum + inc)
+						break;
+					else
+						sum += inc;
+				}
+				c = (int)((x - sum) / G->pops[zpop].mrate[zpop]);
+
+finish_selection:
+				// Find the lineage to be migrated
+				nd = node_set_remove(&F[zpop], c);
+
+				/* Perform migration */
+#ifdef DEBUG
+				fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
+				nm = __migration(G, nd, zpop, t);
+				add_edge_r(G, nd->pop, nd);
+
+				last = (struct node *)nm;
+				evnew = (struct event *)nm->ev;
+				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nm);
+//				fprintf(stdout, "nmigr=%d, dpop=%d, c=%d, ev->dpop=%d, ev->spop=%d\n", nmigr, dpop, c, ev->dpop, ev->spop);
+			}
+
+			if(evnew)	// evnew is NULL when the absorption event is ignored because the absorption target will be removed later
+				insert_event(G, evnew);
+
+		}else{
+//ndiscard_merge++;
+			t = ev->t;
+			evindex_s_forward(G->evidx);
+			update_demography(G, ev);
+			if(ev->type == EVENT_JOIN){
+				jev = (struct join_event *)ev;
+				/* Move all new lineages in population j to population i. */
+				for(i = 0; i < F[jev->popj].n; i++){
+					nd = node_set_get(&F[jev->popj], i);
+#ifdef DEBUG
+					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
+#endif
+					nm = (struct migr_node *)do_migrate(G, nd, jev->popj, jev->popi, t);
+					add_edge_r(G, nd->pop, nd);
+
+					node_set_add(&F[jev->popi], (struct node *)nm);
+					nm->ev = (struct migr_event *)ev;
+					list_append(&jev->ndls, nm);
+					insert_event_join(G, ev);
+				}
+
+				node_set_clear(&F[jev->popj]);
+
+			}else if(ev->type == EVENT_SPLT){
+				sev = (struct splt_event *)ev;
+				/* Move new lineages in population old population to new population with probability sev->prop. */
+				i = 0;
+				while(i < F[sev->pop].n){
+					u = dunif01();
+					if(u >= sev->prop){
+						nd = node_set_remove(&F[sev->pop], i);
+						nm = (struct migr_node *)do_migrate(G, nd, sev->pop, sev->newpop, t);
+						add_edge_r(G, nd->pop, nd);
+
+						node_set_add(&F[sev->newpop], (struct node *)nm);
+						nm->ev = (struct migr_event *)ev;
+						list_append(&sev->ndls, nm);
+						insert_event_splt(G, ev);
+
+					}else{
+						i++;
+					}
+				}
+			}
+		}
+	}
+
+	for(i = 0; i < cfg->npop_all; i++){
+		if(F[i].n > 0){
+			nd = node_set_remove(&F[i], 0);
+			ndum = alloc_node(G, NODE_DUMMY, nd->pop, nd->t);
+			ndum->in = NULL;
+			AS_DUMMY_NODE(ndum)->out = nd;
+			nd->in = ndum;
+			e = nd;
+			break;
+		}
+	}
+	edge_flag_settype(e->in, NODE_DUMMY);
+	e->in->t = e->t;
+	e->in->pop = e->pop;
+	e->in->in = NULL;
+	add_edge_r(G, e->pop, e);
+	G->troot = e->in->t;
+
+	G->root = e->in;
+	G->localMRCA = e;
+
+	evnew = alloc_event(G->cfg, EVENT_DUMY, e->in->t);
+	while((evindex_s_get(G->evidx))->t < evnew->t)
+		evindex_s_forward(G->evidx);
+	insert_event(G, evnew);
+	e->in->ev = evnew;
+
+#ifdef DEBUG
+	fprintf(stderr, "%d: Leaving %s", __LINE__, __func__);
+#endif
+	return 0;
+}
+
 /* Generate recombination point and modify genealogy */
 double recombination(struct genealogy *G, double x)
 {
@@ -1554,7 +1765,7 @@ double recombination(struct genealogy *G, double x)
 				remove_event(G, ev);
 
 				G->t = t;
-				merge_floating(G, trunk, F);
+				merge_floating_r(G, trunk, F);
 
 				{
 					erase_dangling2(G, e);
