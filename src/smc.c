@@ -2552,6 +2552,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			nd->fg = fg;
 			fg->nd = nd;
 			node_set_add(&F[fg->pop], (struct node *)nd);
+			list_append(&G->n_list, nd);
 
 			if((double)fg->end / reflen > ub)
 				ub = (double)fg->end / reflen;
@@ -2582,22 +2583,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		fprintf(stderr, "\n");
 		fprintf(stderr, "%d: lb=%.6f, ub=%.6f\n", __LINE__, lb, ub);
 #endif
-
-		/* Add sample nodes to each subpopulation */
-		for(i = 0; i < cfg->npop; i++){
-			int j;
-			for(j = 0; j < F[i].n; j++){
-				struct sam_node *nd;
-				struct edge *e;
-
-				nd = (struct sam_node *)node_set_get(&F[i], j);
-#ifdef DEBUG
-				fprintf(stderr, "Sample node %x, frag id=%d, nread=%d, start=%d, end=%d\n", nd, nd->fg->id, nd->fg->nread, nd->fg->start, nd->fg->end);
-				fprintf(stderr, "Adding sample node %x to population %d\n", nd, i);
-#endif
-				list_append(&G->n_list, nd);
-			}
-		}
 
 		/* Remove reads in temporary list to main list. */
 		list_concat(&Rold, &R);
