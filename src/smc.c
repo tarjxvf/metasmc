@@ -636,7 +636,6 @@ struct coal_node *absorption(struct genealogy *G, struct node_set *trunk, struct
 
 //	struct timespec beg, end;
 //	int nsec;
-
 //	n_abs_merge++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
@@ -706,7 +705,6 @@ struct coal_node *coalescent( struct genealogy *G, struct node_set *F, int pop, 
 
 //	struct timespec beg, end;
 //	int nsec;
-
 // 	n_coal++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
@@ -825,24 +823,23 @@ static inline void unvisit(struct node *nd)
 void clear_tree(struct genealogy *G)
 {
 	struct config *cfg;
-	struct list remove_list;	// Coalescent nodes to be removed
 	struct list_head *nl, *next, *l;
 	struct node_set *trunk;
 	struct event *ev0;
 	struct sam_node *snd;
 	struct migr_node *nm;
-	struct node *nd;
+	struct node *nd, **remove_list;
 	struct node *e, *e2, *ebelow;
-	int pop, itop, i, j;
+	int pop, itop, i, j, nca, nsam;
 
 //	struct timespec beg, end;
 //	int nsec;
-
 //	n_clear_tree++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	trunk = G->trunk;
 	cfg = G->cfg;
+	nsam = 0;
 	for(i = 0; i < cfg->npop_all; i++){
 		j = 0;
 		while(j < trunk[i].n){
@@ -852,9 +849,12 @@ void clear_tree(struct genealogy *G)
 			else
 				j++;
 		}
+		nsam += trunk[i].n;
 	}
 
-	list_init(&remove_list);
+//	list_init(&remove_list);
+	remove_list = malloc(sizeof(struct node *) * nsam);
+	nca = 0;
 	for(i = 0; i < cfg->npop_all; i++){
 		j = 0;
 		for(j = 0; j < trunk[i].n; j++){
@@ -891,10 +891,8 @@ void clear_tree(struct genealogy *G)
 					nd = e->in;
 				}
 
-				if(!isvisited(nd)){
-					*remove_list.rear = GET_LIST(nd);
-					remove_list.rear = (struct list_head **)*remove_list.rear;
-				}
+				if(!isvisited(nd))
+					remove_list[nca++] = nd;
 				itop = edge_flag_getitop(e);
 				visit(nd, itop);
 				__remove_edge__(G, e->pop, e);
@@ -907,11 +905,8 @@ void clear_tree(struct genealogy *G)
 	}
 
 	/* Remove coalescent nodes from remove_list. */
-	*remove_list.rear = NULL;
-	l = remove_list.front;
-	while(l){
-		next = l->next;
-		nd = (struct node *)GET_OBJ(l);
+	for(i = 0; i < nca; i++){
+		nd = remove_list[i];
 		remove_event(G, nd->ev);
 		if(visited_lr(nd) == (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT) - 1){	// Both edges are removed
 			free_node(G, nd);
@@ -922,8 +917,6 @@ void clear_tree(struct genealogy *G)
 			remove_edge_m(G, nd->pop, (struct node *)nd);
 			G->tr_xover->weights[ebelow->xtid] = ebelow->in->t - ebelow->t;
 		}
-
-		l = next;
 	}
 
 	/* Find new MRCA */
@@ -931,6 +924,8 @@ void clear_tree(struct genealogy *G)
 	while(!iscoalnode(nd))
 		nd = AS_MIGR_NODE(nd)->out;
 	G->localMRCA = nd;
+
+	free(remove_list);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
