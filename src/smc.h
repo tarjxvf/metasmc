@@ -141,7 +141,6 @@ struct genealogy {
 	int edgeid;
 
 	int nnodes;		// Number of nodes in local tree
-	struct list *r_list;
 	struct list n_delete_list;
 
 //	struct list_head *evlcurr;
@@ -158,6 +157,11 @@ struct genealogy {
 
 	struct tsindex *tr_xover;
 	struct node_set *trunk;
+
+	int maxR;
+	int nR[2];
+	int *R[2];
+	int curridx;
 };
 
 static inline void insert_event_join_increase(struct genealogy *G, struct join_event *jev)

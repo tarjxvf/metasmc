@@ -2299,6 +2299,9 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		G->pops[pop].nedges = 0;
 		list_init(&G->pops[pop].e_delete_list);
 	}
+	G->maxR = 4 * cfg->maxfrag;
+	G->R[0] = malloc(sizeof(int) * G->maxR);
+	G->R[1] = malloc(sizeof(int) * G->maxR);
 
 	G->evidx = evindex_create(G, G->cfg);
 	evindex_seq_on(G->evidx);
@@ -2384,6 +2387,9 @@ void destroy_genealogy(struct genealogy *G)
 	cache_destroy(G->cfg->event_cache[EVENT_COAL]);
 	cache_destroy(G->cfg->event_cache[EVENT_MIGR]);
 
+	free(G->R[0]);
+	free(G->R[1]);
+
 	free(G);
 #ifdef DEBUG
 	fprintf(stderr, "Finishing function %s\n\n", __func__);
@@ -2454,8 +2460,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct list_head *l, *tmp, *fgl;
 	struct frag *fgset, *fg;
 	int f, pop, npop_all, ilast, i, j;
-	int nfrag, reflen, nR, nRold;
-	struct list R, Rold;
+	int nfrag, reflen, nR, nRold, *R, *Rold, maxR;
 	struct node_set *F;
 	struct timespec begin, end;
 	double rho;
@@ -2512,10 +2517,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 	f = 0;
 	G->ev_dxvr = NULL;
 
-	nR = nRold = 0;
-	list_init(&R);
-	list_init(&Rold);
-	G->r_list = &Rold;
+	G->nR[0] = G->nR[1] = 0;
+	G->curridx = 0;
+	R = G->R[0];
+	Rold = G->R[1];
 	do{
 		struct list_head *fgl, *nl, *next, *rl;
 		struct sam_node *nd;
@@ -2538,12 +2543,20 @@ int simulate(struct genealogy *G, struct profile *prof)
 			ub = (double)fgset[f].end / reflen;
 		}
 
+		nR = G->nR[G->curridx];
+		if(nR + cfg->maxfrag >= G->maxR){
+			G->maxR += cfg->maxfrag;
+			G->R[0] = realloc(G->R[0], sizeof(int) * G->maxR);
+			G->R[1] = realloc(G->R[1], sizeof(int) * G->maxR);
+		}
+
+		Rold = G->R[1 - G->curridx];
+		R = G->R[G->curridx];
+
 		ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
-			l = cache_alloc(cfg->frag_cache);
-
-			*((struct frag **)GET_OBJ(l)) = fg = &fgset[f];
-			list_append(&R, GET_OBJ(l));
+			fg = &fgset[f];
+			R[nR++] = f;
 
 			nd = (struct sam_node *)alloc_node(G, NODE_SAM, fg->pop, 0);
 			nd->fg = fg;
@@ -2553,11 +2566,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 			if((double)fg->end / reflen > ub)
 				ub = (double)fg->end / reflen;
 		}
+		G->nR[G->curridx] = nR;
 
-		for(i = 0; i < cfg->npop_all; i++){
-			nR += F[i].n;
+		for(i = 0; i < cfg->npop_all; i++)
 			ev0->dn[i] += F[i].n;
-		}
 
 		if(f < nfrag){
 			ub = (double)fgset[f].start / reflen;
@@ -2569,29 +2581,21 @@ int simulate(struct genealogy *G, struct profile *prof)
 		G->ub = ub * reflen;
 
 #ifdef DEBUG
-		l = R.front;
 		fprintf(stderr, "%d: New reads: R", __LINE__);
-		while(l){
-			fg =  *((struct frag **)GET_OBJ(l));
+		for(i = 0; i < nR; i++){
+			fg = &fgset[R[i]];
 			fprintf(stderr, "->(next=%x, prev=%x, id=%d, start=%d, end=%d)", l->next, l->prev, fg->id, fg->start, fg->end);
-			l = l->next;
 		}
 		fprintf(stderr, "\n");
 		fprintf(stderr, "%d: lb=%.6f, ub=%.6f\n", __LINE__, lb, ub);
 #endif
 
 		/* Remove reads in temporary list to main list. */
-		list_concat(&Rold, &R);
-		nRold += nR;
-		list_init(&R);
-		nR = 0;
 #ifdef DEBUG
-		l = Rold.front;
 		fprintf(stderr, "%d: Rold", __LINE__);
-		while(l){
-			fg = *((struct frag **)GET_OBJ(l));
+		for(i = 0; i < nR; i++){
+			fg = &fgset[R[i]];
 			fprintf(stderr, "->(%d, start=%d, end=%d)", fg->id, fg->start, fg->end);
-			l = l->next;
 		}
 		fprintf(stderr, "\n");
 #endif
@@ -2718,13 +2722,12 @@ int simulate(struct genealogy *G, struct profile *prof)
 		}
 
 		for(i = 0; i < npop_all; i++)
-			node_set_init(&G->trunk[i], (nRold + 1));
+			node_set_init(&G->trunk[i], (nR + 1));
 
 		/* Output finished fragments. */
-		fgl = Rold.front;
-		while(fgl){
-			tmp = fgl->next;
-			fg = *((struct frag **)GET_OBJ(fgl));
+		nRold = 0;
+		for(i = 0; i < nR; i++){
+			fg = &fgset[R[i]];
 			if((double)fg->end / reflen > ub)
 				ub = (double)fg->end / reflen;
 #ifdef DEBUG
@@ -2737,32 +2740,29 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 				ev0->dn[fg->pop]--;
 				edge_flag_delete((struct node *)nd);
-				__list_remove(&Rold, fgl);
-				cache_free(cfg->frag_cache, (void *)fgl);
+
+			}else{
+				Rold[nRold++] = R[i];
 			}
+
 			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
-			fgl = tmp;
 		}
+		G->nR[1 - G->curridx] = nRold;
+		G->curridx = 1 - G->curridx;
 	}while(lb < 1);
 	
 	for(i = 0; i < npop_all; i++)
 		node_set_destroy(&G->trunk[i]);
 	
 	/* Clear read list. */
-	fgl = Rold.front;
-	while(fgl){
-		struct list_head *tmp;
-		tmp = fgl->next;
-		fg = *((struct frag **)GET_OBJ(fgl));
+	R = G->R[G->curridx];
+	nR = G->nR[G->curridx];
+	for(i = 0; i < nR; i++){
+		fg = &fgset[R[i]];
 		for(j = 0; j < fg->nread; j++){
 			free(fg->rd[j].seq);
 			fg->rd[j].seq = NULL;
 		}
-		__list_remove(&Rold, fgl);
-		nRold--;
-		cache_free(cfg->frag_cache, (void *)fgl);
-
-		fgl = tmp;
 	}
 	free(F);
 	free(G->trunk);
