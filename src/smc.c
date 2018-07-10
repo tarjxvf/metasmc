@@ -237,8 +237,6 @@ void dump_events(struct genealogy *G)
 		ev = evindex_next(&l);
 	}
 	fprintf(stderr, "\n");
-//	print_event_tree(G->evidx, "");
-//	fprintf(stderr, "\n");
 }
 
 void node_set_init(struct node_set *set, int maxn)
@@ -285,7 +283,7 @@ static inline struct node *node_set_remove(struct node_set *set, int i)
 	e = set->nodes[i];
 	set->nodes[i] = set->nodes[--(set->n)];
 	set->nodes[i]->set_id = i;
-	set->nodes[set->n] = NULL;
+//	set->nodes[set->n] = NULL;
 
 	return e;
 }
@@ -868,7 +866,6 @@ void clear_tree(struct genealogy *G)
 				fprintf(stderr, "%s: %d: e=%x(%.6f), nd=%x(%.6f)\n", __func__, __LINE__, e, e->t, nd, nd->t);
 #endif
 				while(ismigrnode(nd)){
-					struct node *nnext;
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
 #endif
