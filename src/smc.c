@@ -2454,9 +2454,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 {
 	struct config *cfg;
 	struct reference *ref;
-	struct list_head *l;
-	struct frag *fgset;
-	int f, pop, npop_all, ilast, i;
+	struct list_head *l, *tmp, *fgl;
+	struct frag *fgset, *fg;
+	int f, pop, npop_all, ilast, i, j;
 	int nfrag, reflen, nR, nRold;
 	struct list R, Rold;
 	struct node_set *F;
@@ -2520,7 +2520,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	list_init(&Rold);
 	do{
 		struct list_head *fgl, *nl, *next, *rl;
-		struct frag *fg, *r;
 		struct sam_node *nd;
 		int i, j, n0, ntrunk;
 		struct event *ev0;
@@ -2748,7 +2747,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		/* Output finished fragments. */
 		fgl = Rold.front;
 		while(fgl){
-			struct list_head *tmp;
 			tmp = fgl->next;
 			fg = *((struct frag **)GET_OBJ(fgl));
 			if((double)fg->end / reflen > ub)
@@ -2775,11 +2773,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	for(i = 0; i < npop_all; i++)
 		node_set_destroy(&G->trunk[i]);
 	
-	{
-	struct list_head *fgl;
-	struct frag *fg;
-	int j;
-
 	/* Clear read list. */
 	fgl = Rold.front;
 	while(fgl){
@@ -2795,7 +2788,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		cache_free(cfg->frag_cache, (void *)fgl);
 
 		fgl = tmp;
-	}
 	}
 	free(F);
 	free(G->trunk);
