@@ -154,6 +154,8 @@ struct read{
 	char *qual;
 };
 
+struct sam_node;
+
 /* Fragment of paired-end reads. */
 struct frag{
 	int id;
@@ -166,6 +168,7 @@ struct frag{
 	int nread;
 	struct read *rd;
 	int trunk;
+	struct sam_node *nd;
 };
 
 struct reference {
