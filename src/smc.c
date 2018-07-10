@@ -926,22 +926,6 @@ void clear_tree(struct genealogy *G)
 		l = next;
 	}
 
-	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
-	nl = G->n_list.front;
-	G->nsam = 0;
-	for(i = 0; i < cfg->npop_all; i++){
-		G->pops[i].nsam = 0;
-		ev0->dn[i] = 0;
-	}
-
-	while(nl){
-		snd = (struct sam_node *)GET_OBJ(nl);
-		G->nsam++;
-		G->pops[snd->pop].nsam++;
-		ev0->dn[snd->pop]++;
-		nl = nl->next;
-	}
-
 	/* Find new MRCA */
 	nd = G->root;
 	while(!iscoalnode(nd))
@@ -1143,52 +1127,6 @@ struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo,
 		G->pops[i].n = G->evidx->dn[i];
 
 	return ev;
-}
-
-void create_floating(struct genealogy *G, struct list *R, struct node_set *F)
-{
-	struct list_head *rl, *l;
-	struct profile *prof;
-	struct event *ev0;
-	int i, j, reflen;
-	struct sam_node *n1;
-	struct dummy_node *n2;
-	struct frag *r;
-	struct node *e;
-
-#ifdef DEBUG
-	fprintf(stderr, "Entering function %s\n", __func__);
-#endif
-
-	prof = G->cfg->prof;
-	reflen = prof->ref->chrlen[prof->chrnum];
-	ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
-	rl = R->front;
-	while(rl){
-		r = *((struct frag **)GET_OBJ(rl));
-		n1 = (struct sam_node *)alloc_node(G, NODE_SAM, r->pop, 0);
-		n1->fg = r;
-
-		if(r->end <= G->lb && r->trunk == 0)
-			edge_flag_delete((struct node *)n1);
-
-		node_set_add(&F[r->pop], (struct node *)n1);
-		ev0->dn[r->pop]++;
-
-		rl = rl->next;
-	}
-
-#ifdef DEBUG
-	for(i = 0; i < G->cfg->npop; i++){
-		fprintf(stderr, "Subpopulation %d:", i);
-		for(j = 0; j < F[i].n; j++){
-			n1 = (struct sam_node *)node_set_get(&F[i], j);
-			fprintf(stderr, "->%x[sam_node=%x, fg=%x]", n1, n1->fg);
-		}
-		fprintf(stderr, "\n");
-	}
-	fprintf(stderr, "Finishing function %s\n\n", __func__);
-#endif
 }
 
 double abs_time(struct genealogy *G, int nF, int pop, double t)
@@ -2568,6 +2506,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 	seed();
 	F = malloc(sizeof(struct node_set) * npop_all);
 	G->trunk = malloc(sizeof(struct node_set) * npop_all);
+	for(i = 0; i < npop_all; i++)
+		node_set_init(&G->trunk[i], (cfg->maxfrag + 1));
 
 	rho = cfg->rho;
 	lb = ub = 0;
@@ -2578,14 +2518,12 @@ int simulate(struct genealogy *G, struct profile *prof)
 	nR = nRold = 0;
 	list_init(&R);
 	list_init(&Rold);
-	G->nsam = 0;
 	do{
-		struct list_head *fgl, *nl, *next;
-	
-		struct frag *fg;
-
+		struct list_head *fgl, *nl, *next, *rl;
+		struct frag *fg, *r;
 		struct sam_node *nd;
 		int i, j, n0, ntrunk;
+		struct event *ev0;
 		double x;
 
 #ifdef DEBUG
@@ -2603,15 +2541,25 @@ int simulate(struct genealogy *G, struct profile *prof)
 			ub = (double)fgset[f].end / reflen;
 		}
 
+		ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
 			l = cache_alloc(cfg->frag_cache);
 
 			*((struct frag **)GET_OBJ(l)) = fg = &fgset[f];
 			list_append(&R, GET_OBJ(l));
-			nR++;
+
+			nd = (struct sam_node *)alloc_node(G, NODE_SAM, fg->pop, 0);
+			nd->fg = fg;
+			fg->nd = nd;
+			node_set_add(&F[fg->pop], (struct node *)nd);
 
 			if((double)fg->end / reflen > ub)
 				ub = (double)fg->end / reflen;
+		}
+
+		for(i = 0; i < cfg->npop_all; i++){
+			nR += F[i].n;
+			ev0->dn[i] += F[i].n;
 		}
 
 		if(f < nfrag){
@@ -2634,24 +2582,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		fprintf(stderr, "\n");
 		fprintf(stderr, "%d: lb=%.6f, ub=%.6f\n", __LINE__, lb, ub);
 #endif
-
-		create_floating(G, &R, F);
-
-		n0 = G->nsam + nR;
-		for(i = 0; i < npop_all; i++)
-			node_set_init(&G->trunk[i], (n0 + 1));
-		nl = G->n_list.front;
-		while(nl){
-			struct sam_node *nd;
-			next = nl->next;
-			nd = ((struct sam_node *)GET_OBJ(nl));
-			if(nd->fg->end <= G->lb && nd->fg->trunk == 0){
-				edge_flag_delete((struct node *)nd);
-				__list_remove(&G->n_list, nl);
-			}
-			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
-			nl = next;
-		}
 
 		/* Add sample nodes to each subpopulation */
 		for(i = 0; i < cfg->npop; i++){
@@ -2683,7 +2613,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			l = l->next;
 		}
 		fprintf(stderr, "\n");
-		fprintf(stderr, "G->nsam=%d\n", G->nsam);
 
 		l = G->n_list.front;
 		fprintf(stderr, "%d: Sample list", __LINE__);
@@ -2698,7 +2627,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		reset_populations(G);
 		for(pop = 0; pop < cfg->npop; pop++){
 			G->pops[pop].nsam += F[pop].n;
-			G->nsam += F[pop].n;
 		}
 		G->t = 0;
 
@@ -2715,6 +2643,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 		fprintf(stderr, "%s: %d: G->root=%x(%.6f), G->localMRCA=%x(%.6f)\n\n", __func__, __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
 #endif
 		clear_tree(G);
+
+		for(i = 0; i < cfg->npop_all; i++)
+			G->pops[i].nsam = ev0->dn[i];
 
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: Tree after clear_tree:", __func__, __LINE__);
@@ -2740,7 +2671,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			l = l->next;
 		}
 		fprintf(stderr, "\n");
-		fprintf(stderr, "G->nsam=%d\n", G->nsam);
 
 		fprintf(stderr, "\n");
 
@@ -2822,6 +2752,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 		fprintf(stderr, "\n");
 #endif
 
+		for(i = 0; i < npop_all; i++){
+			node_set_destroy(&G->trunk[i]);
+			node_set_destroy(&F[i]);
+		}
+
+		for(i = 0; i < npop_all; i++)
+			node_set_init(&G->trunk[i], (nRold + 1));
+
 		/* Output finished fragments. */
 		fgl = Rold.front;
 		while(fgl){
@@ -2833,23 +2771,25 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 			fprintf(stderr, "Fragment %d, nread=%d\n", fg->id, fg->nread);
 #endif
+			nd = fg->nd;
 			if(fg->end <= lb * reflen && fg->trunk == 0){
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fg->id);
 #endif
+				ev0->dn[fg->pop]--;
+				edge_flag_delete((struct node *)nd);
+				list_remove(&G->n_list, nd);
 				__list_remove(&Rold, fgl);
 				cache_free(cfg->frag_cache, (void *)fgl);
 			}
+			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
 			fgl = tmp;
 		}
-
-		for(i = 0; i < npop_all; i++){
-			node_set_destroy(&G->trunk[i]);
-			node_set_destroy(&F[i]);
-		}
-
 	}while(lb < 1);
-		
+	
+	for(i = 0; i < npop_all; i++)
+		node_set_destroy(&G->trunk[i]);
+	
 	{
 	struct list_head *fgl;
 	struct frag *fg;
