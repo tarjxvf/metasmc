@@ -141,8 +141,7 @@ struct genealogy {
 	int edgeid;
 
 	int nnodes;		// Number of nodes in local tree
-//	struct list e_list;	// List of nodes in the local tree
-	struct list n_list;	// List of sample nodes
+	struct list *r_list;
 	struct list n_delete_list;
 
 //	struct list_head *evlcurr;

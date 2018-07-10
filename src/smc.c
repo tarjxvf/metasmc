@@ -2237,8 +2237,6 @@ void clear_genealogy(struct genealogy *G)
 			free(l);
 	}
 
-	list_init(&G->n_list);
-
 	tsindex_reset(G->tr_xover);
 
 	for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
@@ -2301,7 +2299,6 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		G->pops[pop].nedges = 0;
 		list_init(&G->pops[pop].e_delete_list);
 	}
-	list_init(&G->n_list);
 
 	G->evidx = evindex_create(G, G->cfg);
 	evindex_seq_on(G->evidx);
@@ -2518,6 +2515,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	nR = nRold = 0;
 	list_init(&R);
 	list_init(&Rold);
+	G->r_list = &Rold;
 	do{
 		struct list_head *fgl, *nl, *next, *rl;
 		struct sam_node *nd;
@@ -2551,7 +2549,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			nd->fg = fg;
 			fg->nd = nd;
 			node_set_add(&F[fg->pop], (struct node *)nd);
-			list_append(&G->n_list, nd);
 
 			if((double)fg->end / reflen > ub)
 				ub = (double)fg->end / reflen;
@@ -2597,15 +2594,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			l = l->next;
 		}
 		fprintf(stderr, "\n");
-
-		l = G->n_list.front;
-		fprintf(stderr, "%d: Sample list", __LINE__);
-		while(l){
-			struct sam_node *sn = (struct sam_node *)GET_OBJ(l);
-			fprintf(stderr, "->%x[node=%x]", l, sn);
-			l = l->next;
-		}
-		fprintf(stderr, "\n\n");
 #endif
 
 		reset_populations(G);
@@ -2645,18 +2633,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 #ifdef DEBUG
 		fprintf(stderr, "%d: G->root=%x, G->root->t=%.6f, G->localMRCA=%x, G->localMRCA->t=%.6f\n", __LINE__, G->root, G->root->t, G->localMRCA, G->localMRCA->t);
-
-		/* Print sample list. */
-		l = G->n_list.front;
-		fprintf(stderr, "%d: Sample list", __LINE__);
-		while(l){
-			struct sam_node *sn = (struct sam_node *)GET_OBJ(l);
-			fprintf(stderr, "->%x[node=%x]", l, sn);
-			l = l->next;
-		}
-		fprintf(stderr, "\n");
-
-		fprintf(stderr, "\n");
 
 		/* Print event list. */
 		dump_events(G);
@@ -2761,7 +2737,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 				ev0->dn[fg->pop]--;
 				edge_flag_delete((struct node *)nd);
-				list_remove(&G->n_list, nd);
 				__list_remove(&Rold, fgl);
 				cache_free(cfg->frag_cache, (void *)fgl);
 			}
