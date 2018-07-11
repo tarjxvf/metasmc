@@ -2551,14 +2551,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 		Rold = G->R[1 - G->curridx];
 		R = G->R[G->curridx];
 
-		ub_i = ub * reflen;
+//		ub_i = ub * reflen;
 		ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
 			R[nR++] = f;
 			node_set_add(&F[fgi[f].pop], (struct node *)nds[f]);
 
-			if(fgend[f] > ub_i)
-				ub_i = fgend[f];
+//			if(fgend[f] > ub_i)
+//				ub_i = fgend[f];
 		}
 		G->nR[G->curridx] = nR;
 
