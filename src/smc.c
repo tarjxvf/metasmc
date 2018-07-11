@@ -2749,14 +2749,17 @@ int simulate(struct genealogy *G, struct profile *prof)
 	/* Clear read list. */
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
-	for(i = 0; i < nR; i++){
-		fg = &fgset[R[i]];
-		rd = rdset[R[i]];
-		for(j = 0; j < fg->nread; j++){
-			free(rd[j].seq);
-			rd[j].seq = NULL;
+/*	if(rdset){
+		for(i = 0; i < nR; i++){
+			fg = &fgset[R[i]];
+			rd = rdset[R[i]];
+			for(j = 0; j < fg->nread; j++){
+				free(rd[j].seq);
+				rd[j].seq = NULL;
+			}
 		}
-	}
+	}*/
+
 	free(F);
 	free(G->trunk);
 

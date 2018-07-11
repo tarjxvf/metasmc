@@ -203,7 +203,7 @@ struct profile {
 int fgcompar(const void *a, const void *b);
 void print_profile(struct profile *prof, FILE *outfp);
 struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrags, int fraglen, int paired, int rdlen, int *ntrunks);
-struct profile *load_profile(FILE *filp);
+struct profile *load_profile(FILE *filp, int genseq);
 void unload_profile(struct profile *prof);
 
 struct mutation;

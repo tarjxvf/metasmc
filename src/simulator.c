@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 	if(filp == NULL)
 		filp = stdin;
 
-	prof = load_profile(filp);
+	prof = load_profile(filp, 1);
 	npop = prof->npop;
 	nfrag = prof->nfrag;
 
