@@ -146,6 +146,7 @@ struct read{
 struct sam_node;
 
 struct fginfo{
+	int end;
 	unsigned int pop:8;
 	unsigned int nread:8;
 	unsigned int trunk:1;
@@ -181,7 +182,7 @@ struct profile {
 	int nfrag;
 
 	int *fgstart;
-	int *fgend;
+//	int *fgend;
 	int *fgid;
 	struct fginfo *info;
 	struct sam_node **nds;
@@ -240,7 +241,7 @@ void dump_config(struct config *cfg);
 int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut);
 
 //void print_fragment(FILE *outfp, struct frag *fg, struct read *rd);
-void print_fragment(FILE *outfp, int fgstart, int fgend, int fgid, struct fginfo *fgi, struct read *rdset);
+void print_fragment(FILE *outfp, int fgstart, int fgid, struct fginfo *fgi, struct read *rdset);
 
 int set_growth_rates(struct config *cfg, double *grate);
 int set_migration_matrix(struct config *cfg, double *mmig);

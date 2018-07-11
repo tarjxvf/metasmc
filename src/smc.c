@@ -2462,7 +2462,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	reflen = prof->ref->chrlen[prof->chrnum];
 	reload_reference(ref, prof->chrnum);
 	fgstart = prof->fgstart;
-	fgend = prof->fgend;
+//	fgend = prof->fgend;
 	fgi = prof->info;
 	fgid = prof->fgid;
 	nds = prof->nds;
@@ -2537,7 +2537,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		if(lb >= ub){
 			lb = (double)fgstart[f] / reflen;
-			ub = (double)fgend[f] / reflen;
+			ub = (double)fgi[f].end / reflen;
 		}
 
 		nR = G->nR[G->curridx];
@@ -2572,7 +2572,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%d: New reads: R", __LINE__);
 		for(i = 0; i < nR; i++){
-			fprintf(stderr, "->(next=%x, prev=%x, id=%d, start=%d, end=%d)", l->next, l->prev, fgid[R[i]], prof->fgstart[R[i]], prof->fgend[R[i]]);
+			fprintf(stderr, "->(next=%x, prev=%x, id=%d, start=%d, end=%d)", l->next, l->prev, fgid[R[i]], prof->fgstart[R[i]], prof->fgi[R[i]].end);
 		}
 		fprintf(stderr, "\n");
 		fprintf(stderr, "%d: lb=%.6f, ub=%.6f\n", __LINE__, lb, ub);
@@ -2582,7 +2582,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%d: Rold", __LINE__);
 		for(i = 0; i < nR; i++){
-			fprintf(stderr, "->(%d, start=%d, end=%d)", fgid[R[i]], prof->fgstart[R[i]], prof->fgend[R[i]]);
+			fprintf(stderr, "->(%d, start=%d, end=%d)", fgid[R[i]], prof->fgstart[R[i]], prof->fgi[R[i]].end);
 		}
 		fprintf(stderr, "\n");
 #endif
@@ -2715,14 +2715,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 		nRold = 0;
 		lb_i = lb * reflen;
 		for(i = 0; i < nR; i++){
-			if(fgend[R[i]] > ub)
-				ub = fgend[R[i]];
+			if(fgi[R[i]].end > ub)
+				ub = fgi[R[i]].end;
 #ifdef DEBUG
 			fprintf(stderr, "Fragment %d, nread=%d\n", fgid[R[i]], fgi[R[i]]->nread);
 #endif
 			nd = nds[R[i]];
 			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
-			if(fgend[R[i]] <= lb_i && fgi[R[i]].trunk == 0){
+			if(fgi[R[i]].end <= lb_i && fgi[R[i]].trunk == 0){
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fgid[R[i]]);
 #endif
