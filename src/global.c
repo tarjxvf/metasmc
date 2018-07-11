@@ -299,17 +299,6 @@ struct profile *load_profile(FILE *filp)
 	prof->nfrag = nfrag;
 	while(ch != '\n') ch = fgetc(filp);
 
-	/* Read number of subpopulations. */
-//	ch = read_integer(filp, &npop);
-//	prof->npop = npop;
-
-	/* Read default population size. */
-//	prof->popsize = malloc(sizeof(double) * npop);
-//	prof->popsize[0] = 1;
-//	for(i = 1; i < npop; i++)
-//	for(i = 0; i < npop; i++)
-//		ch = read_double(filp, &prof->popsize[i]);
-
 	if(ch != '\n'){
 		fprintf(stderr, "Expect for , after read numbers.\n");
 		goto abnormal;
@@ -320,18 +309,17 @@ struct profile *load_profile(FILE *filp)
 	memset(fgset, 0, sizeof(struct frag) * (nfrag + 1));
 	for(i = 0; i < nfrag; i++){
 		struct frag *fg;
-		int j;
+		int j, pop, nread;
 
 		fg = &fgset[i];
 
 		ch = read_integer(filp, &fg->id);
-		ch = read_integer(filp, &fg->pop);
-//		ch = read_integer(filp, &fg->chr);
-//		ch = read_double(filp, &fg->start);
-//		ch = read_double(filp, &fg->end);
+		ch = read_integer(filp, &pop);
+		fg->pop = pop;
 		ch = read_integer(filp, &fg->start);
 		ch = read_integer(filp, &fg->end);
-		ch = read_integer(filp, &fg->nread);
+		ch = read_integer(filp, &nread);
+		fg->nread = nread;
 
 		fg->rd = malloc(sizeof(struct read) * fg->nread);
 		memset(fg->rd, 0, sizeof(struct read) * fg->nread);
@@ -366,8 +354,6 @@ abnormal:
 
 	if(prof->nfrag_pop)
 		free(prof->nfrag_pop);
-//	if(prof->popsize)
-//		free(prof->popsize);
 
 	free(prof);
 	prof = NULL;
@@ -474,8 +460,6 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	cfg->event_cache[EVENT_DXVR] = cache_create(sizeof(struct list_head) + sizeof(struct dxvr_event) + sizeof(int) * 2 * npop_all, 10);
 	cfg->event_cache[EVENT_SAMP] = cache_create(sizeof(struct list_head) + sizeof(struct samp_event) + sizeof(int) * 2 * npop_all, 10);*/
 
-//	cfg->frag_cache = cache_create(sizeof(struct list_head) + sizeof(struct frag *), maxfrag);
-
 	/* Set up empty event list (contains only one dummy event) */
 	ev = alloc_event(cfg, EVENT_GSIZ, INFINITY);
 
@@ -573,11 +557,9 @@ void destroy_config(struct config *cfg)
 	cache_destroy(cfg->node_cache[NODE_XOVER]);
 	cache_destroy(cfg->node_cache[NODE_SAM]);
 
-	cache_destroy(cfg->frag_cache);*/
-
 //	cache_destroy(cfg->event_cache[EVENT_COAL]);
 //	cache_destroy(cfg->event_cache[EVENT_MIGR]);
-/*	cache_destroy(cfg->event_cache[EVENT_GROW]);
+	cache_destroy(cfg->event_cache[EVENT_GROW]);
 	cache_destroy(cfg->event_cache[EVENT_RMIG]);
 	cache_destroy(cfg->event_cache[EVENT_GMIG]);
 	cache_destroy(cfg->event_cache[EVENT_SPLT]);

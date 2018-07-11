@@ -159,16 +159,13 @@ struct sam_node;
 /* Fragment of paired-end reads. */
 struct frag{
 	int id;
-//	int chr;	// Chromosome number
-//	double start;
-//	double end;
 	int start;	// Chromosome start position
 	int end;
-	int pop;
-	int nread;
-	struct read *rd;
-	int trunk;
+	unsigned int pop:8;
+	unsigned int nread:8;
+	unsigned int trunk:1;
 	struct sam_node *nd;
+	struct read *rd;
 };
 
 struct reference {
@@ -243,7 +240,6 @@ struct config {
 	/*** Caches of frequently-used objects ***/
 	struct cache *node_cache[6];
 	struct cache *event_cache[13];
-	struct cache *frag_cache;
 
 	int maxfrag;
 int debug;

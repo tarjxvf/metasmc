@@ -2269,8 +2269,6 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
 	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];
 
-	cfg->frag_cache = cache_create(sizeof(struct list_head) + sizeof(struct frag *), cfg->maxfrag);
-
 	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
 	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
 
@@ -2376,8 +2374,6 @@ void destroy_genealogy(struct genealogy *G)
 	cache_destroy(G->cfg->node_cache[NODE_MIGR]);
 	cache_destroy(G->cfg->node_cache[NODE_XOVER]);
 	cache_destroy(G->cfg->node_cache[NODE_SAM]);
-
-	cache_destroy(cfg->frag_cache);
 
 	cache_destroy(G->cfg->event_cache[EVENT_COAL]);
 	cache_destroy(G->cfg->event_cache[EVENT_MIGR]);
