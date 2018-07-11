@@ -228,8 +228,8 @@ struct config {
 	struct cache *event_cache[13];
 
 	int maxfrag;
-	double *fgstart;
-	double *fgend;
+//	double *fgstart;
+//	double *fgend;
 int debug;
 };
 

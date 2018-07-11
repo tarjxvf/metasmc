@@ -2445,7 +2445,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct read **rdset, *rd;
 	int f, pop, npop_all, ilast, i, j;
 	int nfrag, reflen, nR, nRold, *R, *Rold, maxR, *fgid;
-	double *fgstart, *fgend;
+//	double *fgstart, *fgend;
+	int *fgstart, *fgend;
 	struct fginfo *fgi;
 	struct node_set *F;
 	struct sam_node **nds;
@@ -2461,8 +2462,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 	ref = prof->ref;
 	reflen = prof->ref->chrlen[prof->chrnum];
 	reload_reference(ref, prof->chrnum);
-	fgstart = G->cfg->fgstart;
-	fgend = G->cfg->fgend;
+	fgstart = prof->fgstart;
+	fgend = prof->fgend;
 	fgi = prof->info;
 	fgid = prof->fgid;
 	nds = prof->nds;
@@ -2521,7 +2522,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	do{
 		struct list_head *fgl, *nl, *next, *rl;
 		struct sam_node *nd;
-		int i, j, n0, ntrunk;
+		int i, j, n0, ntrunk, ub_i, lb_i;
 		struct event *ev0;
 		double x;
 
@@ -2536,8 +2537,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 			node_set_init(&F[i], (cfg->maxfrag + 1));
 
 		if(lb >= ub){
-			lb = fgstart[f];
-			ub = fgend[f];
+			lb = (double)fgstart[f] / reflen;
+			ub = (double)fgend[f] / reflen;
 		}
 
 		nR = G->nR[G->curridx];
@@ -2550,13 +2551,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 		Rold = G->R[1 - G->curridx];
 		R = G->R[G->curridx];
 
+		ub_i = ub * reflen;
 		ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
 			R[nR++] = f;
 			node_set_add(&F[fgi[f].pop], (struct node *)nds[f]);
 
-			if(fgend[f] > ub)
-				ub = fgend[f];
+			if(fgend[f] > ub_i)
+				ub_i = fgend[f];
 		}
 		G->nR[G->curridx] = nR;
 
@@ -2564,7 +2566,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			ev0->dn[i] += F[i].n;
 
 		if(f < nfrag){
-			ub = fgstart[f];
+			ub = (double)fgstart[f] / reflen;
 
 		}else{
 			ub = 1;
@@ -2716,6 +2718,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		/* Output finished fragments. */
 		nRold = 0;
+		lb_i = lb * reflen;
 		for(i = 0; i < nR; i++){
 			if(fgend[R[i]] > ub)
 				ub = fgend[R[i]];
@@ -2724,7 +2727,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 			nd = nds[R[i]];
 			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
-			if(fgend[R[i]] <= lb && fgi[R[i]].trunk == 0){
+			if(fgend[R[i]] <= lb_i && fgi[R[i]].trunk == 0){
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fgid[R[i]]);
 #endif

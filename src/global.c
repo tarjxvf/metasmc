@@ -514,12 +514,12 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	((struct gsiz_event *)ev)->size = 1;
 
 	reflen = prof->ref->chrlen[prof->chrnum];
-	cfg->fgstart = malloc(sizeof(double) * prof->nfrag);
+/*	cfg->fgstart = malloc(sizeof(double) * prof->nfrag);
 	cfg->fgend = malloc(sizeof(double) * prof->nfrag);
 	for(i = 0; i < prof->nfrag; i++){
 		cfg->fgstart[i] = (double)prof->fgstart[i] / reflen;
 		cfg->fgend[i] = (double)prof->fgend[i] / reflen;
-	}
+	}*/
 
 	return cfg;
 }
@@ -593,8 +593,8 @@ void destroy_config(struct config *cfg)
 		free(l);
 	}
 
-	free(cfg->fgstart);
-	free(cfg->fgend);
+//	free(cfg->fgstart);
+//	free(cfg->fgend);
 
 	free(cfg->devents);
 	free(cfg->mmut);
