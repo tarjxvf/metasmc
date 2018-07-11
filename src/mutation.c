@@ -52,14 +52,22 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	struct node *e, **edges;
 	char *ances, *deriv;
 	int nedges, maxedges;
-	struct frag *fgset;
+//	struct frag *fgset;
 	struct read **rdset, *rds;
+	int *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+	struct sam_node **nds;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, from=%d, to=%d\n", __func__, from, to);
 #endif
 	cfg = G->cfg;
-	fgset = cfg->prof->fgset;
+//	fgset = cfg->prof->fgset;
+	fgstart = cfg->prof->fgstart;
+	fgend = cfg->prof->fgend;
+	fgid = cfg->prof->fgid;
+	fgi = cfg->prof->info;
+	nds = cfg->prof->nds;
 	rdset = cfg->prof->rdset;
 
 	R = G->R[G->curridx];
@@ -164,9 +172,9 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 		struct read *rd;
 
 //		fg = *((struct frag **)GET_OBJ(fgl));
-		fg = &fgset[R[k]];
+//		fg = &fgset[R[k]];
 		rds = rdset[R[k]];
-		for(r = 0; r < fg->nread; r++){
+		for(r = 0; r < fgi[R[k]].nread; r++){
 			int lb, ub, j;
 
 			rd = &rds[r];
@@ -181,7 +189,7 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 //				fprintf(stderr, "%d: p=%d, j=%d\n", __LINE__, p, j);
 #endif
 				if(ances[j] != deriv[j]){	/* j is a polymorphic site */
-					if(isdesc(G, nmut[j], (struct node *)fg->nd)){
+					if(isdesc(G, nmut[j], (struct node *)nds[R[k]])){
 						rd->seq[p - rd->start] = deriv[j];
 
 					}else{
@@ -215,15 +223,24 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 	double theta, tt, t;
 	struct node *e;
 	char *ances;
-	struct frag *fgset;
+//	struct frag *fgset;
 	struct read **rdset, *rds;
+	int *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+	struct sam_node **nds;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, from=%d, to=%d\n", __func__, from, to);
 #endif
 	cfg = G->cfg;
-	fgset = cfg->prof->fgset;
+//	fgset = cfg->prof->fgset;
+	fgstart = cfg->prof->fgstart;
+	fgend = cfg->prof->fgend;
+	fgid = cfg->prof->fgid;
+	fgi = cfg->prof->info;
+	nds = cfg->prof->nds;
 	rdset = cfg->prof->rdset;
+
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
@@ -306,21 +323,21 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 				struct read *rd;
 
 //				fg = *((struct frag **)GET_OBJ(fgl));
-				fg = &fgset[R[i]];
+//				fg = &fgset[R[i]];
 				rds = rdset[R[i]];
-				for(r = 0; r < fg->nread; r++){
+				for(r = 0; r < fgi[R[i]].nread; r++){
 					rd = &rds[r];
 					if(rd->start <= p && p < rd->end){
 						/* Generate derived allele at random. */
-						if(isdesc(G, e, (struct node *)fg->nd)){
+						if(isdesc(G, e, (struct node *)nds[R[i]])){
 #ifdef DEBUG
-							fprintf(stderr, "%x is descendent of %x\n", fg->nd, e);
+							fprintf(stderr, "%x is descendent of %x\n", nds[R[i]], e);
 #endif
 							rd->seq[p - rd->start] = deriv;
 
 						}else{
 #ifdef DEBUG
-							fprintf(stderr, "%x is not descendent of %x\n", fg->nd, e);
+							fprintf(stderr, "%x is not descendent of %x\n", nds[R[i]], e);
 #endif
 							rd->seq[p - rd->start] = anc;
 						}
@@ -337,12 +354,12 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 				struct read *rd;
 
 //				fg = *((struct frag **)GET_OBJ(fgl));
-				fg = &fgset[R[i]];
+//				fg = &fgset[R[i]];
 				rds = rdset[R[i]];
 #ifdef DEBUG
-				fprintf(stderr, "Processing fragment %d(node %x), nreads=%d\n", fg->id, fg->nd, fg->nread);
+				fprintf(stderr, "Processing fragment %d(node %x), nreads=%d\n", fgid[R[i]], nds[R[i]], fgi[R[i]]->nread);
 #endif
-				for(r = 0; r < fg->nread; r++){
+				for(r = 0; r < fgi[R[i]].nread; r++){
 					rd = &rds[r];
 					if(rd->start <= p && p < rd->end){
 						rd->seq = rd->seq;
@@ -659,18 +676,21 @@ void genseq_model(struct genealogy *G, struct mutation *mmut, struct node *n, ch
 
 	}else if(issamnode(n)){
 		struct sam_node *nd;
-		struct frag *fg;
+//		struct frag *fg;
 		struct read *rd, *rds, **rdset;
-		int i, j, k, f;
+		struct fginfo *fgi;
+		int i, j, k, f, *fgid;
 
 		nd = (struct sam_node *)n;
 		f = nd->fgid;
-		fg = &G->cfg->prof->fgset[f];
+//		fg = &G->cfg->prof->fgset[f];
+		fgi = G->cfg->prof->info;
+		fgid = G->cfg->prof->fgid;
 		rds = G->cfg->prof->rdset[f];
 #ifdef DEBUG
-		fprintf(stderr, "frag id=%d\n", nd->fg->id);
+		fprintf(stderr, "frag id=%d\n", fgid[nd->fgid]);
 #endif
-		for(i = 0; i < fg->nread; i++){
+		for(i = 0; i < fgi[nd->fgid].nread; i++){
 			int lb, ub;
 //			rd = &fg->rd[i];
 			rd = &rds[i];
@@ -830,12 +850,20 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 	double dt, Pmut[SQNUCS];
 	struct read *rd, *rds;
 	char *seq;
-	struct frag *fgset;
+//	struct frag *fgset;
 	struct read **rdset;
+	int *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+	struct sam_node **nds;
 
 	cfg = G->cfg;
-	fgset = cfg->prof->fgset;
+//	fgset = cfg->prof->fgset;
+	fgstart = cfg->prof->fgstart;
+	fgend = cfg->prof->fgend;
+	fgid = cfg->prof->fgid;
+	fgi = cfg->prof->info;
 	rdset = cfg->prof->rdset;
+	nds = cfg->prof->nds;
 
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
@@ -887,9 +915,9 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 			struct read *rd;
 
 //			fg = *((struct frag **)GET_OBJ(fgl));
-			fg = &fgset[R[i]];
+//			fg = &fgset[R[i]];
 			rds = rdset[R[i]];
-			for(r = 0; r < fg->nread; r++){	// Generate sequence for each read covering current region
+			for(r = 0; r < fgi[R[i]].nread; r++){	// Generate sequence for each read covering current region
 				int lb, ub, j;
 
 				rd = &rds[r];
@@ -903,8 +931,8 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 
 					off_lb = lb - from;
 					off_ub = ub - from;
-					n1 = (struct node *)fg->nd;
-					n2 = (struct coal_node *)fg->nd->in;
+					n1 = (struct node *)nds[R[i]];
+					n2 = (struct coal_node *)n1->in;
 
 					// Find nearest coalescent node (the node right above leaf may be migration node)
 					while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in;
@@ -947,15 +975,15 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 					}
 
 					// Evolve leaf node
-					dt = n2->t - fg->nd->t;
-					setmatrix(G->pops[fg->nd->pop].mmut, Pmut, dt);
+					dt = n2->t - nds[R[i]]->t;
+					setmatrix(G->pops[nds[R[i]]->pop].mmut, Pmut, dt);
 #ifdef DEBUG
 					fprintf(stderr, "%d: n2=%x, n=%x, rd->start=%d, lb=%d, rd->end=%d, ub=%d\n", __LINE__, n2, n, rd->start, lb, rd->end, ub);
 #endif
 					for(j = lb; j < ub; j++)
 						rd->seq[j - rd->start] = n2->seq[j - from];
 //					fprintf(stderr, "%d: n=0x%x\n", __LINE__, n);
-					mutate(G->pops[fg->nd->pop].mmut, Pmut, rd->seq + (lb - rd->start), ub - lb);
+					mutate(G->pops[nds[R[i]]->pop].mmut, Pmut, rd->seq + (lb - rd->start), ub - lb);
 				}
 			}
 //			fgl = fgl->next;
@@ -963,12 +991,13 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 
 	}else if(issamnode(G->root)){	// If root is a sample node, do the following operation (theoretically, you shouldn't go here)
 		struct sam_node *n;
-		struct frag *fg;
+//		struct frag *fg;
+//		struct fginfo *fgi;
 
 		n = (struct sam_node *)G->root;
-		fg = &fgset[n->fgid];
+//		fg = &fgset[n->fgid];
 		rds = rdset[n->fgid];
-		for(r = 0; r < fg->nread; r++){
+		for(r = 0; r < fgi[n->fgid].nread; r++){
 			rd = &rds[r];
 			rd = &rds[r];
 			lb = (from < rd->start)?rd->start:from;

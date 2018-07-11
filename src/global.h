@@ -157,7 +157,7 @@ struct read{
 struct sam_node;
 
 /* Fragment of paired-end reads. */
-struct frag{
+/*struct frag{
 	int start;	// Chromosome start position
 	int end;
 	unsigned int pop:8;
@@ -166,6 +166,12 @@ struct frag{
 	int id;
 	struct sam_node *nd;
 //	struct read *rd;
+};*/
+
+struct fginfo{
+	unsigned int pop:8;
+	unsigned int nread:8;
+	unsigned int trunk:1;
 };
 
 struct reference {
@@ -185,6 +191,7 @@ void load_chr(struct reference *ref, int chrnum, char **strp);
 #define NUM_NUCS	4
 #define SQNUCS	NUM_NUCS * NUM_NUCS
 
+struct sam_node;
 struct profile {
 	int npop;
 
@@ -196,7 +203,12 @@ struct profile {
 	int *ntrunks;
 	int nfrag;
 
-	struct frag *fgset;
+//	struct frag *fgset;
+	int *fgstart;
+	int *fgend;
+	int *fgid;
+	struct fginfo *info;
+	struct sam_node **nds;
 	struct read **rdset;
 };
 
@@ -249,7 +261,8 @@ void dump_config(struct config *cfg);
 
 int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut);
 
-void print_fragment(FILE *outfp, struct frag *fg, struct read *rd);
+//void print_fragment(FILE *outfp, struct frag *fg, struct read *rd);
+void print_fragment(FILE *outfp, int fgstart, int fgend, int fgid, struct fginfo *fgi, struct read *rdset);
 
 int set_growth_rates(struct config *cfg, double *grate);
 int set_migration_matrix(struct config *cfg, double *mmig);

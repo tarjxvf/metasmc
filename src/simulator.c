@@ -377,7 +377,7 @@ int main(int argc, char *argv[])
 			mmut[i].pi[j] = (double)1 / NUM_NUCS;
 	}
 
-	fgset = prof->fgset;
+//	fgset = prof->fgset;
 
 	// Fourth round: set up demographic model and additional parameters of mutation models
 	grate = malloc(sizeof(double) * npop);
@@ -689,7 +689,7 @@ int main(int argc, char *argv[])
 	G = alloc_genealogy(cfg, prof);
 
 	/* Sort fragments according to start positions. */
-	qsort((void *)fgset, (size_t)nfrag, sizeof(struct frag), fgcompar);
+//	qsort((void *)fgset, (size_t)nfrag, sizeof(struct frag), fgcompar);
 
 //	fprintf(stderr, "seed=%d\n", sd);
 	init_rand(sd);

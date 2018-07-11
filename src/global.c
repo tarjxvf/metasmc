@@ -109,19 +109,20 @@ int nucl_index(int ch)
 	}
 }
 
-int fgcompar(const void *a, const void *b)
+int fgcompar_r(const void *a, const void *b, int *fgstart)
 {
-	return ((struct frag *)a)->start - ((struct frag *)b)->start;
-}
-
-int fgcompar_r(const void *a, const void *b, struct frag *fgset)
-{
-	return fgset[*(int *)a].start - fgset[*(int *)b].start;
+	return fgstart[*(int *)a] - fgstart[*(int *)b];
 }
 
 void print_profile(struct profile *prof, FILE *outfp)
 {
-	int i, j;
+	int i, j, *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+
+	fgstart = prof->fgstart;
+	fgend = prof->fgend;
+	fgid = prof->fgid;
+	fgi = prof->info;
 
 	fprintf(outfp, "%s,%d\n", prof->reffile, prof->chrnum);
 
@@ -131,8 +132,8 @@ void print_profile(struct profile *prof, FILE *outfp)
 	fprintf(outfp, "\n");
 
 	for(i = 0; i < prof->nfrag; i++){
-		fprintf(outfp, "%d\t%d\t%d\t%d\t%d", prof->fgset[i].id, prof->fgset[i].pop, prof->fgset[i].start, prof->fgset[i].end, prof->fgset[i].nread);
-		for(j = 0; j < prof->fgset[i].nread; j++){
+		fprintf(outfp, "%d\t%d\t%d\t%d\t%d", fgid[i], fgi[i].pop, fgstart[i], fgend[i], fgi[i].nread);
+		for(j = 0; j < fgi[i].nread; j++){
 			fprintf(outfp, "\t%d\t%d", prof->rdset[i][j].start, prof->rdset[i][j].end);
 		}
 		fprintf(outfp, "\n");
@@ -144,6 +145,8 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	struct reference *ref;
 	struct profile *prof;
 	int len, reflen, nfrag, nread, i, j;
+	int *fgstart, *fgend, *fgid, *fgorder;
+	struct fginfo *fgi;
 
 	if(paired == 0)
 		nread = 1;
@@ -170,17 +173,20 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	nfrag = 0;
 	for(i = 0; i < npop; i++)
 		nfrag += nfrags[i] + ntrunks[i];
-	prof->fgset = malloc(sizeof(struct frag) * nfrag);
+
+	fgstart = malloc(sizeof(int) * nfrag);
+	fgend = malloc(sizeof(int) * nfrag);
+	fgi = malloc(sizeof(struct fginfo) * nfrag);
 
 	reflen = prof->ref->chrlen[chrnum];
 
 	for(i = nfrag = 0; i < npop; i++){
 		for(j = 0; j < ntrunks[i]; j++, nfrag++){
-			prof->fgset[nfrag].pop = i;
-			prof->fgset[nfrag].start = 0;
-			prof->fgset[nfrag].end = reflen;
-			prof->fgset[nfrag].nread = 1;
-			prof->fgset[nfrag].trunk = 0;
+			fgi[nfrag].pop = i;
+			fgstart[nfrag] = 0;
+			fgend[nfrag] = reflen;
+			fgi[nfrag].nread = 1;
+			fgi[nfrag].trunk = 0;
 		}
 	}
 
@@ -190,24 +196,38 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 
 			fragpos = dunif(reflen - fraglen);
 			readpos = fragpos;
-			prof->fgset[nfrag].pop = i;
-			prof->fgset[nfrag].start = fragpos;
-			prof->fgset[nfrag].end = fragpos + fraglen;
-			prof->fgset[nfrag].nread = nread;
-			prof->fgset[nfrag].trunk = 0;
+			fgi[nfrag].pop = i;
+			fgstart[nfrag] = fragpos;
+			fgend[nfrag] = fragpos + fraglen;
+			fgi[nfrag].nread = nread;
+			fgi[nfrag].trunk = 0;
 		}
 	}
 	prof->nfrag = nfrag;
 
+	fgorder = malloc(sizeof(int) * nfrag);
+	for(i = 0; i < nfrag; i++)
+		fgorder[i] = i;
+
 	// Sort fragments by position
-	qsort(prof->fgset, nfrag, sizeof(struct frag), fgcompar);
+	qsort_r(fgorder, nfrag, sizeof(int), fgcompar_r, prof->fgstart);
+
+	prof->fgstart = malloc(sizeof(int) * nfrag);
+	prof->fgend = malloc(sizeof(int) * nfrag);
+	prof->fgid = malloc(sizeof(int) * nfrag);
+	prof->info = malloc(sizeof(struct fginfo) * nfrag);
+	prof->nds = malloc(sizeof(struct sam_node *) * nfrag);
+
 	for(i = 0; i < nfrag; i++){
 		int fragpos, readpos, k, nread;
 
-		prof->fgset[i].id = i + 1;
+		prof->fgid[i] = i + 1;
+		prof->fgstart[i] = fgstart[fgorder[i]];
+		prof->fgend[i] = fgend[fgorder[i]];
+		prof->info[i] = fgi[fgorder[i]];
 
-		readpos = fragpos = prof->fgset[i].start;
-		nread = prof->fgset[i].nread;
+		readpos = fragpos = prof->fgstart[i];
+		nread = prof->info[i].nread;
 
 		prof->rdset[i] = malloc(nread * sizeof(struct read));
 		for(k = 0; k < nread; k++){
@@ -218,6 +238,11 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 			prof->rdset[i][k].qual = NULL;
 		}
 	}
+
+	free(fgstart);
+	free(fgend);
+	free(fgi);
+	free(fgorder);
 
 	return prof;
 }
@@ -230,7 +255,7 @@ void unload_profile(struct profile *prof)
 	if(prof->rdset){
 		for(i = 0; i < prof->nfrag; i++){
 			int j;
-			for(j = 0; j < prof->fgset[i].nread; j++){
+			for(j = 0; j < prof->info[i].nread; j++){
 				if(prof->rdset[i][j].seq)
 					free(prof->rdset[i][j].seq);
 
@@ -246,7 +271,12 @@ void unload_profile(struct profile *prof)
 	unload_reference(prof->ref);
 	free(prof->ntrunks);
 	free(prof->nfrag_pop);
-	free(prof->fgset);
+//	free(prof->fgset);
+	free(prof->fgstart);
+	free(prof->fgend);
+	free(prof->fgid);
+	free(prof->info);
+	free(prof->nds);
 	free(prof->reffile);
 	free(prof);
 }
@@ -254,9 +284,10 @@ void unload_profile(struct profile *prof)
 /* Load read profile. */
 struct profile *load_profile(FILE *filp, int genseq)
 {
-	int npop, nfrag, maxfrag, i, ch, *fgorder;
+	int npop, nfrag, maxfrag, i, ch, *fgorder, *fgstart, *fgend, *fgid;
 	struct profile *prof;
-	struct frag *fgset;
+	struct fginfo *fgi;
+//	struct frag *fgset;
 	struct read **rdset;
 	char file[1000];
 
@@ -305,32 +336,36 @@ struct profile *load_profile(FILE *filp, int genseq)
 	}
 
 	/* Load fragment information from input file. */
-	fgset = malloc(sizeof(struct frag) * (nfrag + 1));
+	fgstart = malloc(sizeof(int) * (nfrag + 1));
+	fgend = malloc(sizeof(int) * (nfrag + 1));
+	fgid = malloc(sizeof(int) * (nfrag + 1));
+	fgi = malloc(sizeof(struct fginfo) * (nfrag + 1));
+
 	if(genseq)
 		rdset = malloc(sizeof(struct read *) * (nfrag + 1));
 	fgorder = malloc(sizeof(int) * (nfrag + 1));
 
-	memset(fgset, 0, sizeof(struct frag) * (nfrag + 1));
+//	memset(fgset, 0, sizeof(struct frag) * (nfrag + 1));
 	for(i = 0; i < nfrag; i++){
 		struct frag *fg;
 		int j, pop, nread, seqlen, intbuf;
 
-		fg = &fgset[i];
+//		fg = &fgset[i];
 		fgorder[i] = i;
 
-		ch = read_integer(filp, &fg->id);
+		ch = read_integer(filp, &fgid[i]);
 		ch = read_integer(filp, &pop);
-		ch = read_integer(filp, &fg->start);
-		ch = read_integer(filp, &fg->end);
+		ch = read_integer(filp, &fgstart[i]);
+		ch = read_integer(filp, &fgend[i]);
 		ch = read_integer(filp, &nread);
-		fg->pop = pop;
-		fg->nread = nread;
-		fg->trunk = 0;
+		fgi[i].pop = pop;
+		fgi[i].nread = nread;
+		fgi[i].trunk = 0;
 
 		if(genseq){
-			rdset[i] = malloc(sizeof(struct read) * fg->nread);
+			rdset[i] = malloc(sizeof(struct read) * fgi[i].nread);
 
-			for(j = 0; j < fg->nread; j++){
+			for(j = 0; j < fgi[i].nread; j++){
 				ch = read_integer(filp, &rdset[i][j].start);
 				ch = read_integer(filp, &rdset[i][j].end);
 
@@ -340,7 +375,7 @@ struct profile *load_profile(FILE *filp, int genseq)
 				rdset[i][j].qual = NULL;
 			}
 		}else{
-			for(j = 0; j < fg->nread; j++){
+			for(j = 0; j < fgi[i].nread; j++){
 				ch = read_integer(filp, &intbuf);
 				ch = read_integer(filp, &intbuf);
 			}
@@ -349,11 +384,21 @@ struct profile *load_profile(FILE *filp, int genseq)
 		while(ch != '\n') ch = fgetc(filp);
 	}
 
-	fgset[nfrag].start = fgset[nfrag].end = INT_MAX;
-	qsort_r((void *)fgorder, (size_t)nfrag, sizeof(int), fgcompar_r, fgset);
-	prof->fgset = malloc(sizeof(struct frag) * (nfrag + 1));;
-	for(i = 0; i < nfrag; i++)
-		prof->fgset[i] = fgset[fgorder[i]];
+	fgstart[nfrag] = fgend[nfrag] = INT_MAX;
+	qsort_r((void *)fgorder, (size_t)nfrag, sizeof(int), fgcompar_r, fgstart);
+//	prof->fgset = malloc(sizeof(struct frag) * (nfrag + 1));;
+	prof->fgstart = malloc(sizeof(int) * (nfrag + 1));
+	prof->fgend = malloc(sizeof(int) * (nfrag + 1));
+	prof->fgid = malloc(sizeof(int) * (nfrag + 1));
+	prof->info = malloc(sizeof(struct fginfo) * (nfrag + 1));
+
+	for(i = 0; i < nfrag; i++){
+		prof->fgstart[i] = fgstart[fgorder[i]];
+		prof->fgend[i] = fgend[fgorder[i]];
+		prof->fgid[i] = fgid[fgorder[i]];
+		prof->info[i] = fgi[fgorder[i]];
+//		prof->fgset[i] = fgset[fgorder[i]];
+	}
 
 	if(genseq){
 		prof->rdset = malloc(sizeof(struct read *) * (nfrag + 1));
@@ -361,7 +406,14 @@ struct profile *load_profile(FILE *filp, int genseq)
 			prof->rdset[i] = rdset[fgorder[i]];
 	}
 
-	free(fgset);
+	prof->nds = malloc(sizeof(struct sam_node *) * (nfrag + 1));
+
+//	free(fgset);
+	free(fgstart);
+	free(fgend);
+	free(fgid);
+	free(fgi);
+
 	if(genseq)
 		free(rdset);
 	free(fgorder);
@@ -384,16 +436,16 @@ abnormal:
 	goto finish;
 }
 
-void print_fragment(FILE *outfp, struct frag *fg, struct read *rdset)
+void print_fragment(FILE *outfp, int fgstart, int fgend, int fgid, struct fginfo *fgi, struct read *rdset)
 {
 	struct read *rd;
 	int i;
 #ifdef DEBUG
-	fprintf(stderr, "Entering %s: fg=%x, nread=%d\n", __func__, fg, fg->nread);
+	fprintf(stderr, "Entering %s: fgid=%x, nread=%d\n", __func__, fgid, fgi->nread);
 #endif
-	for(i = 0; i < fg->nread; i++){
+	for(i = 0; i < fgi->nread; i++){
 		rd = &rdset[i];
-		fprintf(outfp, ">%d:%d %d %d-%d %d-%d\n", fg->id, i + 1, fg->pop, fg->start, fg->end, rd->start, rd->end);
+		fprintf(outfp, ">%d:%d %d %d-%d %d-%d\n", fgid, i + 1, fgi->pop, fgstart, fgend, rd->start, rd->end);
 		fprintf(outfp, "%s\n", rd->seq);
 	}
 #ifdef DEBUG
