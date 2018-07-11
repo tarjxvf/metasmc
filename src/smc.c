@@ -2726,18 +2726,17 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "Fragment %d, nread=%d\n", fg->id, fg->nread);
 #endif
 			nd = fg->nd;
+			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
 			if(fg->end <= lb * reflen && fg->trunk == 0){
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fg->id);
 #endif
-				ev0->dn[fg->pop]--;
+				ev0->dn[nd->pop]--;
 				edge_flag_delete((struct node *)nd);
 
 			}else{
 				Rold[nRold++] = R[i];
 			}
-
-			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
 		}
 		G->nR[1 - G->curridx] = nRold;
 		G->curridx = 1 - G->curridx;
