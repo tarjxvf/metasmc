@@ -21,10 +21,6 @@
 #define EVENT_DXVR	11	/* Recombination on dummy lineages. */
 #define EVENT_SAMP	12	/* Add new sample. */
 
-//#define EVENT_MMUT	10	/* Change of mutation model */
-
-//#define MAX(a, b) ((a) > (b))?(a):(b)
-
 struct config;
 struct genealogy;
 struct mutation;
@@ -135,13 +131,6 @@ struct samp_event {
 	int *sumdn;
 };
 
-/*struct mmut_event {
-	int type;
-	double t;
-	int pop;
-	struct mutation *mmut;
-};*/
-
 struct event *alloc_event(struct config *, int, double);
 void free_event(struct config *cfg, struct event *ev);
 void print_event(struct config *cfg, struct event *ev);
@@ -155,18 +144,6 @@ struct read{
 };
 
 struct sam_node;
-
-/* Fragment of paired-end reads. */
-/*struct frag{
-	int start;	// Chromosome start position
-	int end;
-	unsigned int pop:8;
-	unsigned int nread:8;
-	unsigned int trunk:1;
-	int id;
-	struct sam_node *nd;
-//	struct read *rd;
-};*/
 
 struct fginfo{
 	unsigned int pop:8;
@@ -203,7 +180,6 @@ struct profile {
 	int *ntrunks;
 	int nfrag;
 
-//	struct frag *fgset;
 	int *fgstart;
 	int *fgend;
 	int *fgid;
@@ -252,6 +228,8 @@ struct config {
 	struct cache *event_cache[13];
 
 	int maxfrag;
+	double *fgstart;
+	double *fgend;
 int debug;
 };
 
@@ -380,7 +358,6 @@ struct sam_node {
 	};
 	struct event *ev;
 	struct node *in;
-//	struct frag *fg;	// pointer to corresponding fragment
 	int fgid;
 };
 

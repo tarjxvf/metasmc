@@ -2448,11 +2448,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct config *cfg;
 	struct reference *ref;
 	struct list_head *l, *tmp, *fgl;
-//	struct frag *fgset, *fg;
 	struct read **rdset, *rd;
 	int f, pop, npop_all, ilast, i, j;
-	int nfrag, reflen, nR, nRold, *R, *Rold, maxR;
-	int *fgstart, *fgend, *fgid;
+	int nfrag, reflen, nR, nRold, *R, *Rold, maxR, *fgid;
+	double *fgstart, *fgend;
 	struct fginfo *fgi;
 	struct node_set *F;
 	struct sam_node **nds;
@@ -2463,14 +2462,13 @@ int simulate(struct genealogy *G, struct profile *prof)
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 
 	nfrag = prof->nfrag;
-//	fgset = prof->fgset;
 	rdset = prof->rdset;
 
 	ref = prof->ref;
 	reflen = prof->ref->chrlen[prof->chrnum];
 	reload_reference(ref, prof->chrnum);
-	fgstart = prof->fgstart;
-	fgend = prof->fgend;
+	fgstart = G->cfg->fgstart;
+	fgend = G->cfg->fgend;
 	fgi = prof->info;
 	fgid = prof->fgid;
 	nds = prof->nds;
@@ -2544,8 +2542,8 @@ int simulate(struct genealogy *G, struct profile *prof)
 			node_set_init(&F[i], (cfg->maxfrag + 1));
 
 		if(lb >= ub){
-			lb = (double)fgstart[f] / reflen;
-			ub = (double)fgend[f] / reflen;
+			lb = fgstart[f];
+			ub = fgend[f];
 		}
 
 		nR = G->nR[G->curridx];
@@ -2560,17 +2558,11 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
-//			fg = &fgset[f];
 			R[nR++] = f;
-
-//			nd = (struct sam_node *)alloc_node(G, NODE_SAM, fgi[f].pop, 0);
-//			nd->fgid = f;
-//			nds[f] = nd;
-//			fg->nd = nd;
 			node_set_add(&F[fgi[f].pop], (struct node *)nds[f]);
 
-			if((double)fgend[f] / reflen > ub)
-				ub = (double)fgend[f] / reflen;
+			if(fgend[f] > ub)
+				ub = fgend[f];
 		}
 		G->nR[G->curridx] = nR;
 
@@ -2578,7 +2570,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			ev0->dn[i] += F[i].n;
 
 		if(f < nfrag){
-			ub = (double)fgstart[f] / reflen;
+			ub = fgstart[f];
 
 		}else{
 			ub = 1;
@@ -2589,8 +2581,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%d: New reads: R", __LINE__);
 		for(i = 0; i < nR; i++){
-//			fg = &fgset[R[i]];
-			fprintf(stderr, "->(next=%x, prev=%x, id=%d, start=%d, end=%d)", l->next, l->prev, fgid[R[i]], fgstart[R[i]], fgend[R[i]]);
+			fprintf(stderr, "->(next=%x, prev=%x, id=%d, start=%d, end=%d)", l->next, l->prev, fgid[R[i]], prof->fgstart[R[i]], prof->fgend[R[i]]);
 		}
 		fprintf(stderr, "\n");
 		fprintf(stderr, "%d: lb=%.6f, ub=%.6f\n", __LINE__, lb, ub);
@@ -2600,8 +2591,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%d: Rold", __LINE__);
 		for(i = 0; i < nR; i++){
-//			fg = &fgset[R[i]];
-			fprintf(stderr, "->(%d, start=%d, end=%d)", fgid[R[i]], fgstart[R[i]], fgend[R[i]]);
+			fprintf(stderr, "->(%d, start=%d, end=%d)", fgid[R[i]], prof->fgstart[R[i]], prof->fgend[R[i]]);
 		}
 		fprintf(stderr, "\n");
 #endif
@@ -2733,15 +2723,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 		/* Output finished fragments. */
 		nRold = 0;
 		for(i = 0; i < nR; i++){
-//			fg = &fgset[R[i]];
-			if((double)fgend[R[i]] / reflen > ub)
-				ub = (double)fgend[R[i]] / reflen;
+			if(fgend[R[i]] > ub)
+				ub = fgend[R[i]];
 #ifdef DEBUG
 			fprintf(stderr, "Fragment %d, nread=%d\n", fgid[R[i]], fgi[R[i]]->nread);
 #endif
 			nd = nds[R[i]];
 			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
-			if((double)fgend[R[i]] / reflen <= lb && fgi[R[i]].trunk == 0){
+			if(fgend[R[i]] <= lb && fgi[R[i]].trunk == 0){
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fgid[R[i]]);
 #endif
@@ -2762,16 +2751,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	/* Clear read list. */
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
-/*	if(rdset){
-		for(i = 0; i < nR; i++){
-			fg = &fgset[R[i]];
-			rd = rdset[R[i]];
-			for(j = 0; j < fg->nread; j++){
-				free(rd[j].seq);
-				rd[j].seq = NULL;
-			}
-		}
-	}*/
 
 	free(F);
 	free(G->trunk);
