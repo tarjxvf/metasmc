@@ -2445,7 +2445,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct read **rdset, *rd;
 	int f, pop, npop_all, ilast, i, j;
 	int nfrag, reflen, nR, nRold, *R, *Rold, maxR, *fgid;
-//	double *fgstart, *fgend;
 	int *fgstart, *fgend;
 	struct fginfo *fgi;
 	struct node_set *F;
@@ -2551,14 +2550,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 		Rold = G->R[1 - G->curridx];
 		R = G->R[G->curridx];
 
-//		ub_i = ub * reflen;
 		ev0 = (struct event *)GET_OBJ(G->evidx->idx->ls.front);
 		for(i = 0; i < cfg->maxfrag && f < nfrag; i++, f++){
 			R[nR++] = f;
 			node_set_add(&F[fgi[f].pop], (struct node *)nds[f]);
-
-//			if(fgend[f] > ub_i)
-//				ub_i = fgend[f];
 		}
 		G->nR[G->curridx] = nR;
 
