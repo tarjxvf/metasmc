@@ -377,10 +377,6 @@ static inline struct node *insert_xover_node(struct genealogy *G, struct node *e
 	struct node *nxover;
 
 	nxover = copy_node(G, e);
-//	nxover->itop = 0;
-//	nxover->in = NULL;
-//	nxover->xtid = 0;
-//	nxover->idx = -1;
 
 	return nxover;
 }
@@ -766,7 +762,6 @@ struct migr_node *__migration(struct genealogy *G, struct node *nf, int dpop, do
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 	cfg = G->cfg;
-//	nmigr++;
 	// Generate source population (in forward-time sense) at random
 	u = dunif01() * G->pops[dpop].mrate[dpop];
 	sum = 0;
@@ -852,7 +847,6 @@ void clear_tree(struct genealogy *G)
 		nsam += trunk[i].n;
 	}
 
-//	list_init(&remove_list);
 	remove_list = malloc(sizeof(struct node *) * nsam);
 	nca = 0;
 	for(i = 0; i < cfg->npop_all; i++){

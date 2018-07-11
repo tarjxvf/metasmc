@@ -135,7 +135,6 @@ struct genealogy {
 	int nsam;
 	struct config *cfg;
 	struct population *pops;
-//	struct list *evlist;	// List of events
 	struct evindex *evidx;
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
 	int edgeid;
@@ -143,13 +142,11 @@ struct genealogy {
 	int nnodes;		// Number of nodes in local tree
 	struct list n_delete_list;
 
-//	struct list_head *evlcurr;
 	struct node *root;
 	double troot;		// height of existing tree
 	double t;
 	double total;		// Total length of the local tree
 
-//	struct node **pTreeEdgesToCoalesceArray;
 	struct node *localMRCA;
 	int lb;
 	int ub;
@@ -197,28 +194,12 @@ static inline void insert_event_splt(struct genealogy *G, struct event *ev)
 
 static inline void insert_event_rb(struct genealogy *G, struct event *ev)
 {
-//	if(ev->type == EVENT_JOIN){
-//		insert_event_rb_join(G, ev);
-
-//	}else if(ev->type == EVENT_SPLT){
-//		insert_event_rb_splt(G, ev);
-
-//	}else{
-		evindex_rb_insert(G->evidx, ev);
-//	}
+	evindex_rb_insert(G->evidx, ev);
 }
 
 static inline void insert_event(struct genealogy *G, struct event *ev)
 {
-//	if(ev->type == EVENT_JOIN){
-//		insert_event_join(G, ev);
-
-//	}else if(ev->type == EVENT_SPLT){
-//		insert_event_splt(G, ev);
-
-//	}else{
-		evindex_insert(G->evidx, ev);
-//	}
+	evindex_insert(G->evidx, ev);
 }
 
 static inline void remove_event_join_decrease(struct genealogy *G, struct join_event *jev)
@@ -240,21 +221,18 @@ static inline void remove_event_rb(struct genealogy *G, struct event *ev)
 {
 	evindex_rb_delete(G->evidx, ev);
 	free_event(G->cfg, ev);
-//	free(GET_LIST(ev));
 }
 
 static inline void remove_event_s(struct genealogy *G, struct event *ev)
 {
 	evindex_s_delete(G->evidx, ev);
 	free_event(G->cfg, ev);
-//	free(GET_LIST(ev));
 }
 
 static inline void remove_event(struct genealogy *G, struct event *ev)
 {
 	evindex_delete(G->evidx, ev);
 	free_event(G->cfg, ev);
-//	free(GET_LIST(ev));
 }
 
 static inline void remove_event_rb_josp(struct genealogy *G, struct event *ev)

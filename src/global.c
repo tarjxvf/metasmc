@@ -35,7 +35,6 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	ev->t = t;
 	ev->dn = (int *)((char *)l + evsize[type]);
 	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
-//	memset(ev->dn, 0, sizeof(int) * 2 * npop_all);
 	dn_clear(npop_all, ev->dn);
 
 #ifdef DEBUG
@@ -82,9 +81,6 @@ void print_event(struct config *cfg, struct event *ev)
 		fprintf(stderr, ", popi=%d, popj=%d", ((struct join_event *)ev)->popi, ((struct join_event *)ev)->popj);
 	}else if(ev->type == EVENT_SPLT){
 		fprintf(stderr, ", pop=%d, newpop=%d", ((struct splt_event *)ev)->pop, ((struct splt_event *)ev)->newpop);
-/*	}else if(ev->type == EVENT_MMUT){
-		fprintf(stderr, ", pop=%d", ((struct mmut_event *)ev)->pop);
-		dump_mutation_model(((struct mmut_event *)ev)->mmut);*/
 	}else if(ev->type == EVENT_SAMP){
 	}
 
@@ -485,7 +481,6 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	cfg->size = malloc(prof->npop * sizeof(double));
 	for(i = 0; i < prof->npop; i++)
 		cfg->size[i] = 1;
-//	memcpy(cfg->size, prof->popsize, prof->npop * sizeof(double));
 
 	cfg->grate = malloc(sizeof(double) * npop);
 	memset(cfg->grate, 0, sizeof(double) * npop);
@@ -507,27 +502,6 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	if(cfg->npop == 1){
 		cfg->mmig[0][0] = 0;
 	}
-
-	/* Initialize object caches. */
-/*	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node), maxfrag * 4);
-	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), maxfrag * 4);
-	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), maxfrag * 4);
-	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), maxfrag * 4);
-	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
-	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];*/
-
-//	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
-//	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
-/*	cfg->event_cache[EVENT_JOIN] = cfg->event_cache[NODE_MIGR];
-	cfg->event_cache[EVENT_GROW] = cache_create(sizeof(struct list_head) + sizeof(struct grow_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_SIZE] = cfg->event_cache[EVENT_GROW];
-	cfg->event_cache[EVENT_RMIG] = cache_create(sizeof(struct list_head) + sizeof(struct rmig_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_GMIG] = cache_create(sizeof(struct list_head) + sizeof(struct gmig_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_GSIZ] = cfg->event_cache[EVENT_GGRO] = cfg->event_cache[EVENT_GMIG];
-	cfg->event_cache[EVENT_SPLT] = cache_create(sizeof(struct list_head) + sizeof(struct splt_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_DUMY] = cache_create(sizeof(struct list_head) + sizeof(struct dumy_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_DXVR] = cache_create(sizeof(struct list_head) + sizeof(struct dxvr_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_SAMP] = cache_create(sizeof(struct list_head) + sizeof(struct samp_event) + sizeof(int) * 2 * npop_all, 10);*/
 
 	/* Set up empty event list (contains only one dummy event) */
 	ev = alloc_event(cfg, EVENT_GSIZ, INFINITY);
@@ -612,16 +586,6 @@ void destroy_config(struct config *cfg)
 	struct event *ev;
 	int i;
 
-	// Release space of event list
-//	l = cfg->evlist.front;
-/*	while(l){
-		tmp = l;
-		ev = (struct event *)GET_OBJ(l);
-		l = l->next;
-//		if(ev->type == EVENT_MMUT)
-//			free(((struct mmut_event *)ev)->mmut);
-		free(tmp);
-	}*/
 	free(cfg->evlist.front);
 	list_init(&cfg->evlist);
 	for(i = 0; i < cfg->ndevents; i++){
@@ -631,21 +595,6 @@ void destroy_config(struct config *cfg)
 
 	free(cfg->fgstart);
 	free(cfg->fgend);
-
-/*	cache_destroy(cfg->node_cache[NODE_COAL]);
-	cache_destroy(cfg->node_cache[NODE_MIGR]);
-	cache_destroy(cfg->node_cache[NODE_XOVER]);
-	cache_destroy(cfg->node_cache[NODE_SAM]);
-
-//	cache_destroy(cfg->event_cache[EVENT_COAL]);
-//	cache_destroy(cfg->event_cache[EVENT_MIGR]);
-	cache_destroy(cfg->event_cache[EVENT_GROW]);
-	cache_destroy(cfg->event_cache[EVENT_RMIG]);
-	cache_destroy(cfg->event_cache[EVENT_GMIG]);
-	cache_destroy(cfg->event_cache[EVENT_SPLT]);
-	cache_destroy(cfg->event_cache[EVENT_DUMY]);
-	cache_destroy(cfg->event_cache[EVENT_DXVR]);
-	cache_destroy(cfg->event_cache[EVENT_SAMP]);*/
 
 	free(cfg->devents);
 	free(cfg->mmut);
@@ -661,7 +610,6 @@ int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut)
 {
 	int i;
 
-//	for(i = 0; i < cfg->npop; i++)
 	cfg->mmut[pop] = mmut;
 
 	return 0;
@@ -860,30 +808,6 @@ int add_event_samp(struct config *cfg, double t, int pop, double size)
 	return 0;
 }
 
-/*int add_event_mmut(struct config *cfg, double t, int pop, double theta, int model, double *pars, double *pi)
-{
-	struct list_head *evl;
-	struct mmut_event *mev;
-	struct event *ev;
-
-	ev = alloc_event(cfg, EVENT_MMUT, t);
-	mev = (struct mmut_event *)ev;
-	mev->pop = pop;
-
-	evl = cfg->evlist.front;
-	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
-	list_insbefore(evl, ev);
-
-	mev->mmut = malloc(sizeof(struct mutation));
-	mev->mmut->theta = theta;
-	mev->mmut->model = model;
-	memcpy(mev->mmut->mpar, pars, sizeof(double) * npar[model]);
-	memcpy(mev->mmut->pi, pi, sizeof(double) * NUM_NUCS);
-	init_mutation_model(((struct mmut_event *)ev)->mmut);
-
-	return 0;
-}*/
-
 struct reference *load_reference(char *file)
 {
 	struct reference *ref;
@@ -911,7 +835,6 @@ struct reference *load_reference(char *file)
 		// Load chromosome sequence
 		ref->seq_start[nchr] = ftell(ref->filp);
 		chrlen = 0;
-//		ref->curr = 0;
 		ch = fgetc(ref->filp);
 		while(ch != EOF && ch != '>'){
 			chrlen++;

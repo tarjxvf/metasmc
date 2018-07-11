@@ -25,11 +25,6 @@ int isdesc(struct genealogy *G, struct node *n1, struct node *n2)
 		n2 = n2->in;
 	return n1 == n2;
 }
-/*
-int intcompar(const void *a, const void *b)
-{
-	return *(int *)a - *(int *)b;
-}*/
 
 void locate(int from, int to, int segsites, int *pos)
 {
@@ -52,7 +47,6 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	struct node *e, **edges;
 	char *ances, *deriv;
 	int nedges, maxedges;
-//	struct frag *fgset;
 	struct read **rdset, *rds;
 	int *fgstart, *fgend, *fgid;
 	struct fginfo *fgi;
