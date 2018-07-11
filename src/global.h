@@ -158,14 +158,14 @@ struct sam_node;
 
 /* Fragment of paired-end reads. */
 struct frag{
-	int id;
 	int start;	// Chromosome start position
 	int end;
 	unsigned int pop:8;
 	unsigned int nread:8;
 	unsigned int trunk:1;
+	int id;
 	struct sam_node *nd;
-	struct read *rd;
+//	struct read *rd;
 };
 
 struct reference {
@@ -187,18 +187,17 @@ void load_chr(struct reference *ref, int chrnum, char **strp);
 
 struct profile {
 	int npop;
-//	double *popsize;
 
 	char *reffile;
-//	int nchr;
-//	int reflen;
 	struct reference *ref;
 	int chrnum;	// Index of chromosome in the reference;
 
 	int *nfrag_pop;
 	int *ntrunks;
 	int nfrag;
+
 	struct frag *fgset;
+	struct read **rdset;
 };
 
 int fgcompar(const void *a, const void *b);
@@ -222,7 +221,6 @@ struct config {
 
 	/*** Demographic model. ***/
 	int npop;	// Number of initial subpopulations
-//	int *nsams;	// Number of samples in each population
 	int nsplt;	// Number of subpopulations created by splitting events.
 	int npop_all;	// Maximum number of populations, including those created by splitting events
 
@@ -251,7 +249,7 @@ void dump_config(struct config *cfg);
 
 int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut);
 
-void print_fragment(FILE *outfp, struct frag *fg);	
+void print_fragment(FILE *outfp, struct frag *fg, struct read *rd);
 
 int set_growth_rates(struct config *cfg, double *grate);
 int set_migration_matrix(struct config *cfg, double *mmig);
@@ -264,21 +262,10 @@ int add_event_gsiz(struct config *cfg, double t, double size);
 int add_event_join(struct config *cfg, double t, int popi, int popj);
 int add_event_splt(struct config *cfg, double t, int pop, double prop);
 int add_event_size(struct config *cfg, double t, int pop, double size);
-//int add_event_mmut(struct config *cfg, double t, int pop, double theta, int model, double *pars, double *pi);
 int add_event_samp(struct config *cfg, double t, int pop, double size);
 
 extern char nucl[];
 int nucl_index(int ch);
-
-//double dunif01();
-//double dexp();
-//unsigned char dunif(unsigned char max);
-//int poisso(double u);
-//void seedit( char *flag );
-//void init_rand();
-//void init_rand(unsigned char s);
-//void finish_rand();
-//void seed();
 
 struct node;
 
@@ -380,7 +367,8 @@ struct sam_node {
 	};
 	struct event *ev;
 	struct node *in;
-	struct frag *fg;	// pointer to corresponding fragment
+//	struct frag *fg;	// pointer to corresponding fragment
+	int fgid;
 };
 
 // Node representing tip of dummy lineage which represents trapped ancestral material. Recombination is allowed on this type of lineage but take no effect.

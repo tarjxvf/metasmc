@@ -53,12 +53,15 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	char *ances, *deriv;
 	int nedges, maxedges;
 	struct frag *fgset;
+	struct read **rdset, *rds;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, from=%d, to=%d\n", __func__, from, to);
 #endif
 	cfg = G->cfg;
 	fgset = cfg->prof->fgset;
+	rdset = cfg->prof->rdset;
+
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
@@ -162,10 +165,11 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 
 //		fg = *((struct frag **)GET_OBJ(fgl));
 		fg = &fgset[R[k]];
+		rds = rdset[R[k]];
 		for(r = 0; r < fg->nread; r++){
 			int lb, ub, j;
 
-			rd = &fg->rd[r];
+			rd = &rds[r];
 			lb = (from < rd->start)?rd->start:from;
 			ub = (to > rd->end)?rd->end:to;
 			j = lb - from;
@@ -212,12 +216,14 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 	struct node *e;
 	char *ances;
 	struct frag *fgset;
+	struct read **rdset, *rds;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, from=%d, to=%d\n", __func__, from, to);
 #endif
 	cfg = G->cfg;
 	fgset = cfg->prof->fgset;
+	rdset = cfg->prof->rdset;
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
@@ -301,8 +307,9 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 
 //				fg = *((struct frag **)GET_OBJ(fgl));
 				fg = &fgset[R[i]];
+				rds = rdset[R[i]];
 				for(r = 0; r < fg->nread; r++){
-					rd = &fg->rd[r];
+					rd = &rds[r];
 					if(rd->start <= p && p < rd->end){
 						/* Generate derived allele at random. */
 						if(isdesc(G, e, (struct node *)fg->nd)){
@@ -331,11 +338,12 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 
 //				fg = *((struct frag **)GET_OBJ(fgl));
 				fg = &fgset[R[i]];
+				rds = rdset[R[i]];
 #ifdef DEBUG
 				fprintf(stderr, "Processing fragment %d(node %x), nreads=%d\n", fg->id, fg->nd, fg->nread);
 #endif
 				for(r = 0; r < fg->nread; r++){
-					rd = &fg->rd[r];
+					rd = &rds[r];
 					if(rd->start <= p && p < rd->end){
 						rd->seq = rd->seq;
 						rd->seq[p - rd->start] = anc;
@@ -617,9 +625,9 @@ void mutate(struct mutation *mmut, double *Pmut, char *seq, int len)
 #endif
 }
 
-void genseq_model(struct mutation *mmut, struct node *n, char *seq, int from, int to);
+void genseq_model(struct genealogy *G, struct mutation *mmut, struct node *n, char *seq, int from, int to);
 
-void __genseq(struct mutation *mmut, struct node *n, char *seq_old, struct node *n2, int from, int to)
+void __genseq(struct genealogy *G, struct mutation *mmut, struct node *n, char *seq_old, struct node *n2, int from, int to)
 {
 	double Pmut[SQNUCS];
 	char *seq;
@@ -634,11 +642,11 @@ void __genseq(struct mutation *mmut, struct node *n, char *seq_old, struct node 
 	setmatrix(mmut, Pmut, dt);
 	mutate(mmut, Pmut, seq, to - from);
 
-	genseq_model(mmut, n2, seq, from, to);
+	genseq_model(G, mmut, n2, seq, from, to);
 	free(seq);
 }
 
-void genseq_model(struct mutation *mmut, struct node *n, char *seq_old, int from, int to)
+void genseq_model(struct genealogy *G, struct mutation *mmut, struct node *n, char *seq_old, int from, int to)
 {
 	struct node *n2;
 
@@ -646,21 +654,26 @@ void genseq_model(struct mutation *mmut, struct node *n, char *seq_old, int from
 	fprintf(stderr, "Entering %s, n=%x, n->type=%d, from=%d, to=%d\n", __func__, n, n->type, from, to);
 #endif
 	if(iscoalnode(n)){
-		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[0], from, to);
-		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[1], from, to);
+		__genseq(G, mmut, n, seq_old, ((struct coal_node *)n)->out[0], from, to);
+		__genseq(G, mmut, n, seq_old, ((struct coal_node *)n)->out[1], from, to);
 
 	}else if(issamnode(n)){
 		struct sam_node *nd;
-		struct read *rd;
-		int i, j, k;
+		struct frag *fg;
+		struct read *rd, *rds, **rdset;
+		int i, j, k, f;
 
 		nd = (struct sam_node *)n;
+		f = nd->fgid;
+		fg = &G->cfg->prof->fgset[f];
+		rds = G->cfg->prof->rdset[f];
 #ifdef DEBUG
 		fprintf(stderr, "frag id=%d\n", nd->fg->id);
 #endif
-		for(i = 0; i < nd->fg->nread; i++){
+		for(i = 0; i < fg->nread; i++){
 			int lb, ub;
-			rd = &nd->fg->rd[i];
+//			rd = &fg->rd[i];
+			rd = &rds[i];
 			lb = (from < rd->start)?rd->start:from;
 			ub = (to > rd->end)?rd->end:to;
 			for(j = lb; j < ub; j++)
@@ -703,7 +716,7 @@ void generate_sequence_model_slow(struct reference *ref, struct genealogy *G, in
 		setmatrix(G->pops[0].mmut, Pmut, dt);
 		mutate(G->pops[0].mmut, Pmut, seq, to - from);
 	}
-	genseq_model(G->pops[0].mmut, G->root, seq, from, to);
+	genseq_model(G, G->pops[0].mmut, G->root, seq, from, to);
 	free(seq);
 #ifdef DEBUG
 	fprintf(stderr, "Finishing function %s\n", __func__);
@@ -815,12 +828,15 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 	struct config *cfg;
 	int pop, ncell, nmap, lb, ub, i, j, p, r, nR, *R;
 	double dt, Pmut[SQNUCS];
-	struct read *rd;
+	struct read *rd, *rds;
 	char *seq;
 	struct frag *fgset;
+	struct read **rdset;
 
 	cfg = G->cfg;
 	fgset = cfg->prof->fgset;
+	rdset = cfg->prof->rdset;
+
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
@@ -872,10 +888,11 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 
 //			fg = *((struct frag **)GET_OBJ(fgl));
 			fg = &fgset[R[i]];
+			rds = rdset[R[i]];
 			for(r = 0; r < fg->nread; r++){	// Generate sequence for each read covering current region
 				int lb, ub, j;
 
-				rd = &fg->rd[r];
+				rd = &rds[r];
 				lb = (from < rd->start)?rd->start:from;	// Start position is either segment left boundary or read start position
 				ub = (to > rd->end)?rd->end:to;	// End position is either segment right boundary or read end position
 
@@ -946,11 +963,14 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 
 	}else if(issamnode(G->root)){	// If root is a sample node, do the following operation (theoretically, you shouldn't go here)
 		struct sam_node *n;
+		struct frag *fg;
 
 		n = (struct sam_node *)G->root;
-		for(r = 0; r < n->fg->nread; r++){
-			rd = &n->fg->rd[r];
-			rd = &n->fg->rd[r];
+		fg = &fgset[n->fgid];
+		rds = rdset[n->fgid];
+		for(r = 0; r < fg->nread; r++){
+			rd = &rds[r];
+			rd = &rds[r];
 			lb = (from < rd->start)?rd->start:from;
 			ub = (to > rd->end)?rd->end:to;
 			if(lb < ub){

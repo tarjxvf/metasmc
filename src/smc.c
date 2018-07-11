@@ -2387,15 +2387,14 @@ void destroy_genealogy(struct genealogy *G)
 #endif
 }
 
-void print_tree(FILE *out_fp, struct node *nd)
+void print_tree(FILE *out_fp, struct node *nd, struct config *cfg)
 {
 	if(issamnode(nd)){
+		struct frag *fgset = cfg->prof->fgset;
 #ifdef DEBUG
-//		fprintf(stderr, "sam_node=%x;edge=%d", nd, nd->in->eid);
 		fprintf(stderr, "sam_node=%x", nd);
 #else
-		fprintf(out_fp, "%d", AS_SAM_NODE(nd)->fg->id);
-//		fprintf(out_fp, "%d_%d", AS_SAM_NODE(nd)->fg->id, nd->in->id);
+		fprintf(out_fp, "%d", fgset[AS_SAM_NODE(nd)->fgid].id);
 #endif
 
 	}else if(iscoalnode(nd)){
@@ -2406,7 +2405,7 @@ void print_tree(FILE *out_fp, struct node *nd)
 		n2 = AS_COAL_NODE(nd)->out[0];
 		while(ismigrnode(n2))
 			n2 = AS_MIGR_NODE(n2)->out;
-		print_tree(out_fp, n2);
+		print_tree(out_fp, n2, cfg);
 		fprintf(out_fp, ":%.10f", nd->t - n2->t);
 
 		fprintf(out_fp, ",");
@@ -2414,7 +2413,7 @@ void print_tree(FILE *out_fp, struct node *nd)
 		n2 = AS_COAL_NODE(nd)->out[1];
 		while(ismigrnode(n2))
 			n2 = AS_MIGR_NODE(n2)->out;
-		print_tree(out_fp, n2);
+		print_tree(out_fp, n2, cfg);
 		fprintf(out_fp, ":%.10f", nd->t - n2->t);
 
 #ifdef DEBUG
@@ -2431,7 +2430,7 @@ void print_tree(FILE *out_fp, struct node *nd)
 		n2 = AS_DUMMY_NODE(nd)->out;
 		while(ismigrnode(n2))
 			n2 = AS_MIGR_NODE(n2)->out;
-		print_tree(out_fp, n2);
+		print_tree(out_fp, n2, cfg);
 
 #ifdef DEBUG
 		fprintf(out_fp, ":%.10f", nd->t - n2->t);
@@ -2450,6 +2449,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 	struct reference *ref;
 	struct list_head *l, *tmp, *fgl;
 	struct frag *fgset, *fg;
+	struct read **rdset, *rd;
 	int f, pop, npop_all, ilast, i, j;
 	int nfrag, reflen, nR, nRold, *R, *Rold, maxR;
 	struct node_set *F;
@@ -2461,6 +2461,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 	nfrag = prof->nfrag;
 	fgset = prof->fgset;
+	rdset = prof->rdset;
 
 	ref = prof->ref;
 	reflen = prof->ref->chrlen[prof->chrnum];
@@ -2522,7 +2523,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: Tree before merge_floating:", __func__, __LINE__);
 		if(G->root)
-			print_tree(stderr, G->root);
+			print_tree(stderr, G->root, G->cfg);
 		fprintf(stderr, "\n");
 #endif
 		/* Load next fragment sets. */
@@ -2550,7 +2551,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			R[nR++] = f;
 
 			nd = (struct sam_node *)alloc_node(G, NODE_SAM, fg->pop, 0);
-			nd->fg = fg;
+			nd->fgid = f;
 			fg->nd = nd;
 			node_set_add(&F[fg->pop], (struct node *)nd);
 
@@ -2617,7 +2618,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: Tree after clear_tree:", __func__, __LINE__);
 		if(G->root)
-			print_tree(stderr, G->root);
+			print_tree(stderr, G->root, G->cfg);
 		fprintf(stderr, "\n");
 		dump_edges(G);
 #endif
@@ -2634,7 +2635,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 		fprintf(stderr, "%d:", __LINE__);
 		dump_edges(G);
-		print_tree(stderr, G->localMRCA);
+		print_tree(stderr, G->localMRCA, G->cfg);
 #endif
 
 		x = lb;
@@ -2662,14 +2663,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 			fprintf(stderr, "\nL=%.10f, getRate()=%.10f, curPos=%.10f, off=%.10f, inext=%d, ilast=%d\n", G->total, rrho, x, r, inext, ilast);
 			fprintf(stderr, "%d: ", __LINE__);
-			print_tree(stderr, G->root);
+			print_tree(stderr, G->root, G->cfg);
 			fprintf(stderr, "\n");
 #endif
 			if(inext > 0){	// If next recombination doesn't occur on current nucleotide position, output local tree or sequence
 				to = x * reflen;
 				if(cfg->print_tree){
 					fprintf(cfg->treefp, "[%d]", to - ilast);
-					print_tree(cfg->treefp, G->localMRCA);
+					print_tree(cfg->treefp, G->localMRCA, G->cfg);
 					fprintf(cfg->treefp, ";\n");
 				}
 
@@ -2679,7 +2680,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			}
 #ifdef DEBUG
 			fprintf(stderr, "%d:", __LINE__);
-			print_tree(stderr, G->root);
+			print_tree(stderr, G->root, G->cfg);
 			fprintf(stderr, "\n");
 #endif
 			if(x < ub){
@@ -2695,7 +2696,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "%d: edge list:", __LINE__);
 			dump_edges(G);
 			fprintf(stderr, "\n");
-			print_tree(stderr, G->localMRCA);
+			print_tree(stderr, G->localMRCA, G->cfg);
 			fprintf(stderr, "\n");
 #endif
 		}while(x < ub);
@@ -2703,7 +2704,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 #ifdef DEBUG
 		fprintf(stderr, "%d:", __LINE__);
-		print_tree(stderr, G->root);
+		print_tree(stderr, G->root, G->cfg);
 		fprintf(stderr, "\n");
 #endif
 
@@ -2750,9 +2751,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 	nR = G->nR[G->curridx];
 	for(i = 0; i < nR; i++){
 		fg = &fgset[R[i]];
+		rd = rdset[R[i]];
 		for(j = 0; j < fg->nread; j++){
-			free(fg->rd[j].seq);
-			fg->rd[j].seq = NULL;
+			free(rd[j].seq);
+			rd[j].seq = NULL;
 		}
 	}
 	free(F);
