@@ -2265,7 +2265,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_node), cfg->maxfrag * 4);
 	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_node), cfg->maxfrag * 4);
 	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct list_head) + sizeof(struct xover_node), cfg->maxfrag * 4);
-	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), cfg->prof->nfrag);
 	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
 	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];
 
@@ -2475,10 +2475,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 	fgid = prof->fgid;
 	nds = prof->nds;
 
-//	for(i = 0; i < nfrag; i++){
-//		nds[i] = (struct sam_node *)alloc_node(G, NODE_SAM, fgi[i].pop, 0);
-//		nds[i]->fgid = i;
-//	}
+	for(i = 0; i < nfrag; i++){
+		nds[i] = (struct sam_node *)alloc_node(G, NODE_SAM, fgi[i].pop, 0);
+		nds[i]->fgid = i;
+	}
 
 	cfg = G->cfg;
 #ifdef DEBUG
@@ -2563,9 +2563,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 //			fg = &fgset[f];
 			R[nR++] = f;
 
-			nd = (struct sam_node *)alloc_node(G, NODE_SAM, fgi[f].pop, 0);
-			nd->fgid = f;
-			nds[f] = nd;
+//			nd = (struct sam_node *)alloc_node(G, NODE_SAM, fgi[f].pop, 0);
+//			nd->fgid = f;
+//			nds[f] = nd;
 //			fg->nd = nd;
 			node_set_add(&F[fgi[f].pop], (struct node *)nds[f]);
 
@@ -2741,7 +2741,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 			nd = nds[R[i]];
 			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
-			if(fgend[R[i]] <= lb * reflen && fgi[R[i]].trunk == 0){
+			if((double)fgend[R[i]] / reflen <= lb && fgi[R[i]].trunk == 0){
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fgid[R[i]]);
 #endif
