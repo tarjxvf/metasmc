@@ -2131,7 +2131,6 @@ void clear_genealogy(struct genealogy *G)
 	cache_clear(G->cfg->event_cache[EVENT_MIGR]);
 
 	G->total = 0;
-	G->edgeid = 0;
 
 	// Detach right sentinel from event index
 	l = __list_pop(&G->evidx->idx->ls);
@@ -2224,7 +2223,6 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		G->pops[pop].maxedges = prof->nfrag * 5;
 		G->pops[pop].eptrs = malloc(sizeof(struct node *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
-		list_init(&G->pops[pop].e_delete_list);
 	}
 	G->maxR = 4 * cfg->maxfrag;
 	G->R[0] = malloc(sizeof(int) * G->maxR);
@@ -2509,8 +2507,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		}else{
 			ub = 1;
 		}
-		G->lb = lb * reflen;
-		G->ub = ub * reflen;
 
 #ifdef DEBUG
 		fprintf(stderr, "%d: New reads: R", __LINE__);
@@ -2595,7 +2591,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			fprintf(stderr, "%d: G->total=%.6f, lb=%.6f, ub=%.6f, x=%.6f, r=%.6f\n", __LINE__, G->total, lb, ub, x, r);
 #endif
 			x = MIN(x + r, ub);
-			G->x = x;
 			inext = x * reflen - ilast;
 
 #ifdef DEBUG
@@ -2678,10 +2673,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	for(i = 0; i < npop_all; i++)
 		node_set_destroy(&F[i]);
 	
-	/* Clear read list. */
-	R = G->R[G->curridx];
-	nR = G->nR[G->curridx];
-
 	free(F);
 
 	clock_gettime(CLOCK_MONOTONIC, &end);

@@ -19,25 +19,18 @@ struct population {
 
 	struct mutation *mmut;
 
-	/***** MaCS-like data structures. *****/
 	int nedges;
 	int maxedges;
 	struct node **eptrs;		// Array of node pointers
 	struct list idx_queue;	// Queue of index in eptrs
 	struct list id_list;
-	struct list e_delete_list;
 };
 
 struct genealogy {
-	int nsam;
 	struct config *cfg;
 	struct population *pops;
 	struct evindex *evidx;
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
-	int edgeid;
-
-	int nnodes;		// Number of nodes in local tree
-	struct list n_delete_list;
 
 	struct node *root;
 	double troot;		// height of existing tree
@@ -45,8 +38,6 @@ struct genealogy {
 	double total;		// Total length of the local tree
 
 	struct node *localMRCA;
-	int lb;
-	int ub;
 	int x;
 
 	struct tsindex *tr_xover;
