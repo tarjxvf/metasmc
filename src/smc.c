@@ -2480,11 +2480,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		fprintf(stderr, "\n");
 #endif
 
-		if(lb >= ub){
-			lb = (double)fgstart[f] / reflen;
-			ub = (double)fgi[f].end / reflen;
-		}
-
 		nR = G->nR[G->curridx];
 		if(nR + cfg->maxfrag >= G->maxR){
 			G->maxR += cfg->maxfrag;
@@ -2660,8 +2655,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 		nRold = 0;
 		lb_i = lb * reflen;
 		for(i = 0; i < nR; i++){
-			if(fgi[R[i]].end > ub)
-				ub = fgi[R[i]].end;
 #ifdef DEBUG
 			fprintf(stderr, "Fragment %d, nread=%d\n", fgid[R[i]], fgi[R[i]].nread);
 #endif
