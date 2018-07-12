@@ -2204,8 +2204,8 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
 	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];
 
-	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
-	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
+	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
+	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
 
 	G->pops = malloc(sizeof(struct population) * (npop + nsplt));
 	memset(G->pops, 0, sizeof(struct population) * (npop + nsplt));

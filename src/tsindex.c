@@ -130,7 +130,7 @@ void tsindex_replace(struct tsindex *tr, int id, struct node *e)
 
 void tsindex_add_r(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
+	struct intlist *l;
 	double diff;
 	int id, *ptr, i;
 
@@ -147,12 +147,11 @@ void tsindex_add_r(struct tsindex *tr, struct node *e)
 
 	}else{
 		/* Get a existing empty node in binary indexed tree. */
-		l = __list_pop(&tr->free_list);
+		l = (struct intlist *)__list_pop(&tr->free_list);
 //		l = tr->free_list.front;
-		ptr = (int *)GET_OBJ(l);
-		id = *ptr;
-//		__list_remove(&tr->free_list, l);
-		__list_append(&tr->id_list, l);
+		id = l->id;
+//		__list_remove(&tr->free_list, GET_LIST(l));
+		__list_append(&tr->id_list, GET_LIST(l));
 	}
 
 	e->xtid = id;
@@ -163,7 +162,7 @@ void tsindex_add_r(struct tsindex *tr, struct node *e)
 
 void tsindex_add(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
+	struct intlist *l;
 	double diff;
 	int id, *ptr, i;
 
@@ -183,12 +182,11 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 
 	}else{
 		/* Get a existing empty node in binary indexed tree. */
-		l = __list_pop(&tr->free_list);
+		l = (struct intlist *)__list_pop(&tr->free_list);
 //		l = tr->free_list.front;
-		ptr = (int *)GET_OBJ(l);
-		id = *ptr;
-//		__list_remove(&tr->free_list, l);
-		__list_append(&tr->id_list, l);
+		id = l->id;
+//		__list_remove(&tr->free_list, GET_LIST(l));
+		__list_append(&tr->id_list, GET_LIST(l));
 
 		if(!tsindex_isrebuild(tr)){
 			bit_update(tr->index, id, diff);
@@ -209,7 +207,7 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 /* Clear a node in binary indexed tree. */
 void tsindex_clear_r(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
+	struct intlist *l;
 	int *pidx, id;
 	double diff;
 
@@ -219,17 +217,16 @@ void tsindex_clear_r(struct tsindex *tr, struct node *e)
 	e->xtid = 0;
 
 	/* Add freed id to the queue. */
-	l = __list_pop(&tr->id_list);
-	pidx = (int *)GET_OBJ(l);
-	*pidx = id;
-	__list_append(&tr->free_list, l);
+	l = (struct intlist *)__list_pop(&tr->id_list);
+	l->id = id;
+	__list_append(&tr->free_list, GET_LIST(l));
 	tr->nedges--;
 }
 
 /* Clear a node in binary indexed tree. */
 void tsindex_clear(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
+	struct intlist *l;
 	int *pidx, id;
 	double diff;
 
@@ -247,10 +244,9 @@ void tsindex_clear(struct tsindex *tr, struct node *e)
 	e->xtid = 0;
 
 	/* Add freed id to the queue. */
-	l = __list_pop(&tr->id_list);
-	pidx = (int *)GET_OBJ(l);
-	*pidx = id;
-	__list_append(&tr->free_list, l);
+	l = (struct intlist *)__list_pop(&tr->id_list);
+	l->id = id;
+	__list_append(&tr->free_list, GET_LIST(l));
 	tr->nedges--;
 }
 
@@ -276,9 +272,9 @@ void tsindex_free(struct tsindex *tr)
 
 void tsindex_dump(struct tsindex *tr)
 {
-	struct list_head *l;
+	struct intlist *l;
 	struct node *e;
-	int i;
+	int i, pidx;
 
 	fprintf(stderr, "tr->flags=%d, tr->nedges=%d, tr->maxnodes=%d, tr->maxedges=%d, G->tr_xoveredges=", tr->flags, tr->nedges, tr->maxnodes, tr->maxedges);
 	for(i = 1; i <= tr->maxnodes; i++){
@@ -296,12 +292,11 @@ void tsindex_dump(struct tsindex *tr)
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "free_list=");
-	l = tr->free_list.front;
+	l = (struct intlist *)tr->free_list.front;
 	while(l){
-		int *pidx;
-		pidx = (int *)GET_OBJ(l);
-		fprintf(stderr, "%d->", *pidx);
-		l = l->next;
+		pidx = l->id;
+		fprintf(stderr, "%d->", pidx);
+		l = l->l.next;
 	}
 	fprintf(stderr, "\n");
 

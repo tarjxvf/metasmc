@@ -12,7 +12,7 @@
 #include "mutation.h"
 #include "evindex.h"
 
-size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct samp_event)};
+size_t evsize[] = {sizeof(struct coal_event), sizeof(struct migr_event), sizeof(struct grow_event), sizeof(struct size_event), sizeof(struct rmig_event), sizeof(struct gmig_event), sizeof(struct gsiz_event), sizeof(struct ggro_event), sizeof(struct join_event), sizeof(struct splt_event), sizeof(struct event), sizeof(struct event), sizeof(struct samp_event)};
 
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
 struct event *alloc_event(struct config *cfg, int type, double t)
@@ -26,17 +26,17 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 	if(type == EVENT_COAL || type == EVENT_MIGR)
-		l = cache_alloc(cfg->event_cache[type]);
+		ev = cache_alloc(cfg->event_cache[type]);
 	else
-		l = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
+		ev = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
 
-	ev = (struct event *)GET_OBJ(l);
+//	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
 //	ev->dn = (int *)((char *)l + evsize[type]);
 //	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
-	ev->dn_off = ((char *)l + evsize[type] - (char *)ev);
-	ev->sumdn_off = ((char *)l + evsize[type] + sizeof(int) * npop_all - (char *)ev);
+	ev->dn_off = evsize[type];
+	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
 	dn_clear(npop_all, GET_DN(ev));
 
 #ifdef DEBUG

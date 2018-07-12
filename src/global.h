@@ -28,6 +28,16 @@ struct config;
 struct genealogy;
 struct mutation;
 
+struct ptrlist{
+	struct list_head l;
+	char *ptr;
+};
+
+struct intlist{
+	struct list_head l;
+	int id;
+};
+
 struct coal_node;
 struct node;
 
@@ -38,6 +48,7 @@ struct node_set {
 };
 
 struct event {
+	struct list_head l;
 	// dn: Change of the number of lineages in affected populations. sumdn: Sum of dn values of the (red-black tree) nodes below this event
 	double t;
 	unsigned char type;
@@ -46,6 +57,7 @@ struct event {
 };
 
 struct coal_event {
+	struct list_head l;
 	// type==EVENT_COAL,  dn[pop] == -1 and dn[i] == 0 for other i
 	double t;
 	unsigned char type;
@@ -57,6 +69,7 @@ struct coal_event {
 };
 
 struct migr_event {
+	struct list_head l;
 	// type==EVENT_MIGR, dn[dpop] == +1 and dn[spop] == -1
 	double t;
 	unsigned char type;
@@ -69,6 +82,7 @@ struct migr_event {
 };
 
 struct grow_event {
+	struct list_head l;
 	// type==EVENT_GROW and dn Must be zero
 	double t;
 	unsigned char type;
@@ -80,6 +94,7 @@ struct grow_event {
 };
 
 struct size_event {
+	struct list_head l;
 	// type==EVENT_SIZE and dn must be zero
 	double t;
 	unsigned char type;
@@ -91,6 +106,7 @@ struct size_event {
 };
 
 struct gmig_event {
+	struct list_head l;
 	// dn must be zero
 	double t;
 	unsigned char type;
@@ -101,6 +117,7 @@ struct gmig_event {
 };
 
 struct rmig_event {
+	struct list_head l;
 	// dn must be zero
 	double t;
 	unsigned char type;
@@ -113,6 +130,7 @@ struct rmig_event {
 };
 
 struct gsiz_event {
+	struct list_head l;
 	// dn must be zero
 	double t;
 	unsigned char type;
@@ -123,6 +141,7 @@ struct gsiz_event {
 };
 
 struct ggro_event {
+	struct list_head l;
 	// dn must be zero
 	double t;
 	unsigned char type;
@@ -133,6 +152,7 @@ struct ggro_event {
 };
 
 struct join_event {
+	struct list_head l;
 	// dn[0] depends on the number of lineages in source population. dn[1] = -dn[0]
 	double t;
 	unsigned char type;
@@ -145,6 +165,7 @@ struct join_event {
 };
 
 struct splt_event {
+	struct list_head l;
 	// dn[0] depend on the number of migrated lineages. dn[1] = -dn[0]
 	double t;
 	unsigned char type;
@@ -158,6 +179,7 @@ struct splt_event {
 };
 
 struct samp_event {
+	struct list_head l;
 	// Equals to the number of samples of each population added at time t
 	double t;
 	unsigned char type;
