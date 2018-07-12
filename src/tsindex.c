@@ -167,11 +167,6 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 	double diff;
 	int id, *ptr, i;
 
-
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->in->t, e->t, e->xtid);
-#endif
-
 	diff = e->in->t - e->t;
 
 	if(tr->free_list.front == NULL){
@@ -201,6 +196,11 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 	}
 
 	e->xtid = id;
+
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->in->t, e->t, e->xtid);
+#endif
+
 	tr->edges[id] = e;
 	tr->weights[id] = e->in->t - e->t;
 	tr->nedges++;

@@ -530,7 +530,7 @@ struct node *choose_tedge(struct genealogy *G, int pop, double t)
 	eptrs = G->pops[pop].eptrs;
 
 #ifdef DEBUG
-	fprintf(stderr, "%s: %d: pop->n=%d, nthres=%d, t=%.6f\n", __func__, __LINE__, n, nthres, t);
+	fprintf(stderr, "%s: %d: pop->n=%d, t=%.6f\n", __func__, __LINE__, n, t);
 	dump_edges(G);
 #endif
 	if(2 * nall < (2 * n - 3) * n){
@@ -2480,6 +2480,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 	for(i = 0; i < npop_all; i++)
 		node_set_init(&G->trunk[i], (cfg->maxfrag + 1));
 
+	/* Load next fragment sets. */
+	for(i = 0; i < npop_all; i++)
+		node_set_init(&F[i], (cfg->maxfrag + 1));
+
 	rho = cfg->rho;
 	lb = ub = 0;
 	ilast = 0;
@@ -2503,9 +2507,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 			print_tree(stderr, G->root, G->cfg);
 		fprintf(stderr, "\n");
 #endif
-		/* Load next fragment sets. */
-		for(i = 0; i < npop_all; i++)
-			node_set_init(&F[i], (cfg->maxfrag + 1));
 
 		if(lb >= ub){
 			lb = (double)fgstart[f] / reflen;
@@ -2529,6 +2530,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 		}
 		G->nR[G->curridx] = nR;
 
+		for(i = 0; i < npop_all; i++)
+			node_set_resize(&G->trunk[i], (nR + 1));
+
 		for(i = 0; i < cfg->npop_all; i++)
 			ev0->dn[i] += F[i].n;
 
@@ -2544,7 +2548,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%d: New reads: R", __LINE__);
 		for(i = 0; i < nR; i++){
-			fprintf(stderr, "->(next=%x, prev=%x, id=%d, start=%d, end=%d)", l->next, l->prev, fgid[R[i]], prof->fgstart[R[i]], prof->fgi[R[i]].end);
+			fprintf(stderr, "->(id=%d, start=%d, end=%d)", fgid[R[i]], prof->fgstart[R[i]], prof->info[R[i]].end);
 		}
 		fprintf(stderr, "\n");
 		fprintf(stderr, "%d: lb=%.6f, ub=%.6f\n", __LINE__, lb, ub);
@@ -2554,7 +2558,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 		fprintf(stderr, "%d: Rold", __LINE__);
 		for(i = 0; i < nR; i++){
-			fprintf(stderr, "->(%d, start=%d, end=%d)", fgid[R[i]], prof->fgstart[R[i]], prof->fgi[R[i]].end);
+			fprintf(stderr, "->(%d, start=%d, end=%d)", fgid[R[i]], prof->fgstart[R[i]], prof->info[R[i]].end);
 		}
 		fprintf(stderr, "\n");
 #endif
@@ -2676,12 +2680,9 @@ int simulate(struct genealogy *G, struct profile *prof)
 #endif
 
 		for(i = 0; i < npop_all; i++){
-			node_set_destroy(&G->trunk[i]);
-			node_set_destroy(&F[i]);
+			node_set_clear(&G->trunk[i]);
+			node_set_clear(&F[i]);
 		}
-
-		for(i = 0; i < npop_all; i++)
-			node_set_init(&G->trunk[i], (nR + 1));
 
 		/* Output finished fragments. */
 		nRold = 0;
@@ -2690,7 +2691,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			if(fgi[R[i]].end > ub)
 				ub = fgi[R[i]].end;
 #ifdef DEBUG
-			fprintf(stderr, "Fragment %d, nread=%d\n", fgid[R[i]], fgi[R[i]]->nread);
+			fprintf(stderr, "Fragment %d, nread=%d\n", fgid[R[i]], fgi[R[i]].nread);
 #endif
 			nd = nds[R[i]];
 			node_set_add(&G->trunk[nd->pop], (struct node *)nd);
@@ -2709,8 +2710,10 @@ int simulate(struct genealogy *G, struct profile *prof)
 		G->curridx = 1 - G->curridx;
 	}while(lb < 1);
 	
-	for(i = 0; i < npop_all; i++)
+	for(i = 0; i < npop_all; i++){
 		node_set_destroy(&G->trunk[i]);
+		node_set_destroy(&F[i]);
+	}
 	
 	/* Clear read list. */
 	R = G->R[G->curridx];

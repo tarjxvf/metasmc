@@ -326,7 +326,7 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 
 				rds = rdset[R[i]];
 #ifdef DEBUG
-				fprintf(stderr, "Processing fragment %d(node %x), nreads=%d\n", fgid[R[i]], nds[R[i]], fgi[R[i]]->nread);
+				fprintf(stderr, "Processing fragment %d(node %x), nreads=%d\n", fgid[R[i]], nds[R[i]], fgi[R[i]].nread);
 #endif
 				for(r = 0; r < fgi[R[i]].nread; r++){
 					rd = &rds[r];
@@ -930,7 +930,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 					dt = n2->t - nds[R[i]]->t;
 					setmatrix(G->pops[nds[R[i]]->pop].mmut, Pmut, dt);
 #ifdef DEBUG
-					fprintf(stderr, "%d: n2=%x, n=%x, rd->start=%d, lb=%d, rd->end=%d, ub=%d\n", __LINE__, n2, n, rd->start, lb, rd->end, ub);
+					fprintf(stderr, "%d: n2=%x, n1=%x, rd->start=%d, lb=%d, rd->end=%d, ub=%d\n", __LINE__, n2, n1, rd->start, lb, rd->end, ub);
 #endif
 					for(j = lb; j < ub; j++)
 						rd->seq[j - rd->start] = n2->seq[j - from];

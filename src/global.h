@@ -509,10 +509,18 @@ static inline void migr_set_remove(struct node_set *set, struct node *e)
 
 static inline void node_set_init(struct node_set *set, int maxn)
 {
-	set->maxn = maxn;
 	set->n = 0;
+	set->maxn = maxn;
 	set->nodes = malloc(sizeof(struct node *) * maxn);
-	memset(set->nodes, 0, sizeof(struct node *) * maxn);
+}
+
+static inline void node_set_resize(struct node_set *set, int maxn)
+{
+	if(maxn > set->maxn){
+		set->maxn = maxn;
+		set->nodes = realloc(set->nodes, sizeof(struct node *) * maxn);
+//		memset(set->nodes, 0, sizeof(struct node *) * maxn);
+	}
 }
 
 static inline void node_set_clear(struct node_set *set)
