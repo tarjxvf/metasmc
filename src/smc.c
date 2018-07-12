@@ -2203,7 +2203,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];
 
 	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
-	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
+	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
 
 	G->pops = malloc(sizeof(struct population) * (npop + nsplt));
 	memset(G->pops, 0, sizeof(struct population) * (npop + nsplt));
@@ -2220,7 +2220,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 
 		list_init(&G->pops[pop].idx_queue);
 		list_init(&G->pops[pop].id_list);
-		G->pops[pop].maxedges = prof->nfrag * 3;
+		G->pops[pop].maxedges = prof->nfrag * 5;
 		G->pops[pop].eptrs = malloc(sizeof(struct node *) * G->pops[pop].maxedges);
 		G->pops[pop].nedges = 0;
 		list_init(&G->pops[pop].e_delete_list);
@@ -2259,7 +2259,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		evindex_s_forward(G->evidx);
 	}
 
-	G->tr_xover = tsindex_alloc(cfg->maxfrag * 2 * 2);
+	G->tr_xover = tsindex_alloc(cfg->maxfrag * 5);
 	G->trunk = malloc(sizeof(struct node_set) * npop_all);
 	for(i = 0; i < npop + nsplt; i++)
 		node_set_init(&G->trunk[i], cfg->maxfrag * 4);
