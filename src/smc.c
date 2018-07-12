@@ -57,8 +57,8 @@ void free_node(struct genealogy *G, struct node *nd)
 #endif
 
 //	l = GET_LIST(nd);
-//	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], nd);
-	free(nd);
+	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], nd);
+//	free(nd);
 }
 
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
@@ -69,8 +69,8 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 //	char *ptr;
 
 //	cfg = G->cfg;
-//	nd = cache_alloc(G->cfg->node_cache[type]);
-	nd = malloc(nodesize[type]);
+	nd = cache_alloc(G->cfg->node_cache[type]);
+//	nd = malloc(nodesize[type]);
 
 //	l = (struct list_head *)ptr;
 //	nd = (struct node *)GET_OBJ(l);
@@ -91,8 +91,8 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 	struct node *new;
 //	char *ptr;
 
-//	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-	new = malloc(nodesize[old->type]);
+	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+//	new = malloc(nodesize[old->type]);
 //	new = (struct node *)GET_OBJ(ptr);
 	new->t = old->t;
 	new->pop = old->pop;
@@ -2151,7 +2151,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-		destroy_tree(G, G->root);
+//		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
