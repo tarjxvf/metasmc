@@ -1673,13 +1673,13 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 #endif
 
 	if(dead1 || dead2){
-		remove_event(G, (struct event *)cev);
 		if(!dead1){
 			node_set_remove(&trunk[cev->nd->pop], out2->set_id);
 			__remove_coal_node(G, in, out1);
 			G->tr_xover->weights[out1->xtid] = out1->in->t - out1->t;
 			remove_edge_m(G, in->pop, (struct node *)in);
 			remove_edge_m(G, out2->pop, out2);
+			remove_event(G, (struct event *)cev);
 
 			return out1;
 
@@ -1691,6 +1691,7 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			remove_edge_m(G, out1->pop, out1);
 			remove_edge_m(G, in->pop, (struct node *)in);
 			G->tr_xover->weights[out2->xtid] = out2->in->t - out2->t;
+			remove_event(G, (struct event *)cev);
 
 			return out2;
 
@@ -1699,6 +1700,7 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			node_set_remove(&trunk[cev->nd->pop], out2->set_id);
 			remove_edge_m(G, cev->nd->pop, out1);
 			remove_edge_m(G, cev->nd->pop, out2);
+			remove_event(G, (struct event *)cev);
 
 			return (struct node *)in;
 		}

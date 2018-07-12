@@ -52,7 +52,7 @@ struct coal_event {
 	unsigned char dn_off;
 	unsigned char sumdn_off;
 
-	int pop;
+	unsigned char pop;
 	struct coal_node *nd;
 };
 
@@ -63,8 +63,8 @@ struct migr_event {
 	unsigned char dn_off;
 	unsigned char sumdn_off;
 
-	int spop;
-	int dpop;
+	unsigned char spop;
+	unsigned char dpop;
 	struct migr_node *nd;
 };
 
@@ -75,7 +75,7 @@ struct grow_event {
 	unsigned char dn_off;
 	unsigned char sumdn_off;
 
-	int pop;
+	unsigned char pop;
 	double alpha;
 };
 
@@ -86,7 +86,7 @@ struct size_event {
 	unsigned char dn_off;
 	unsigned char sumdn_off;
 
-	int pop;
+	unsigned char pop;
 	double size;
 };
 
@@ -107,8 +107,8 @@ struct rmig_event {
 	unsigned char dn_off;
 	unsigned char sumdn_off;
 
-	int popi;
-	int popj;
+	unsigned char popi;
+	unsigned char popj;
 	double rmig;
 };
 
@@ -139,8 +139,8 @@ struct join_event {
 	unsigned char dn_off;
 	unsigned char sumdn_off;
 
-	int popi;	// Subpopulation to be absorbed
-	int popj;
+	unsigned char popi;	// Subpopulation to be absorbed
+	unsigned char popj;
 	struct node_set ndls;
 };
 
@@ -151,8 +151,8 @@ struct splt_event {
 	unsigned char dn_off;
 	unsigned char sumdn_off;
 
-	int pop;	// Subpopulation to be splitted
-	int newpop;	// New subpopulation
+	unsigned char pop;	// Subpopulation to be splitted
+	unsigned char newpop;	// New subpopulation
 	double prop;	// proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.
 	struct node_set ndls;
 };
