@@ -48,7 +48,6 @@ void *cache_alloc(struct cache *nc)
 	if(queue->front){
 		/* Get a existing empty node in binary indexed tree. */
 		l = (struct intlist *)__list_pop(queue);
-//		ptr = (int *)GET_OBJ(l);
 		id = l->id;
 		__list_append(&nc->id_list, GET_LIST(l));
 		return nc->objs[id];

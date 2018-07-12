@@ -604,7 +604,6 @@ static inline struct node *node_set_remove(struct node_set *set, int i)
 	e = set->nodes[i];
 	set->nodes[i] = set->nodes[--(set->n)];
 	set->nodes[i]->set_id = i;
-//	set->nodes[set->n] = NULL;
 
 	return e;
 }

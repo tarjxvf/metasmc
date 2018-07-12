@@ -30,11 +30,8 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	else
 		ev = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
 
-//	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
-//	ev->dn = (int *)((char *)l + evsize[type]);
-//	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
 	ev->dn_off = evsize[type];
 	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
 	dn_clear(npop_all, GET_DN(ev));
@@ -118,7 +115,6 @@ void print_profile(struct profile *prof, FILE *outfp)
 	struct fginfo *fgi;
 
 	fgstart = prof->fgstart;
-//	fgend = prof->fgend;
 	fgid = prof->fgid;
 	fgi = prof->info;
 
