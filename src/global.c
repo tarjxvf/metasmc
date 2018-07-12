@@ -33,8 +33,10 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
-	ev->dn = (int *)((char *)l + evsize[type]);
-	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
+//	ev->dn = (int *)((char *)l + evsize[type]);
+//	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
+	ev->dn_off = ((char *)l + evsize[type] - (char *)ev);
+	ev->sumdn_off = ((char *)l + evsize[type] + sizeof(int) * npop_all - (char *)ev);
 	dn_clear(npop_all, GET_DN(ev));
 
 #ifdef DEBUG

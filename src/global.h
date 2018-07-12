@@ -38,98 +38,119 @@ struct node_set {
 };
 
 struct event {
-	int type;
+	// dn: Change of the number of lineages in affected populations. sumdn: Sum of dn values of the (red-black tree) nodes below this event
 	double t;
-	int *dn;	// Change of the number of lineages in affected populations
-	int *sumdn;	// Sum of dn values of the (red-black tree) nodes below this event
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
 };
 
 struct coal_event {
-	int type;	// type==EVENT_COAL
+	// type==EVENT_COAL,  dn[pop] == -1 and dn[i] == 0 for other i
 	double t;
-	int *dn;	// dn[pop] == -1 and dn[i] == 0 for other i
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	int pop;
 	struct coal_node *nd;
 };
 
 struct migr_event {
-	int type;	// type==EVENT_MIGR
+	// type==EVENT_MIGR, dn[dpop] == +1 and dn[spop] == -1
 	double t;
-	int *dn;	// dn[dpop] == +1 and dn[spop] == -1
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	int spop;
 	int dpop;
 	struct migr_node *nd;
 };
 
 struct grow_event {
-	int type;	// type==EVENT_GROW
+	// type==EVENT_GROW and dn Must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	int pop;
 	double alpha;
 };
 
 struct size_event {
-	int type;	// type==EVENT_SIZE
+	// type==EVENT_SIZE and dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	int pop;
 	double size;
 };
 
 struct gmig_event {
-	int type;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	double rmig;
 };
 
 struct rmig_event {
-	int type;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	int popi;
 	int popj;
 	double rmig;
 };
 
 struct gsiz_event {
-	int type;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	double size;
 };
 
 struct ggro_event {
-	int type;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	double alpha;	// Growth rate of all subpopulations
 };
 
 struct join_event {
-	int type;
+	// dn[0] depends on the number of lineages in source population. dn[1] = -dn[0]
 	double t;
-	int *dn;	// Depends on the number of lineages in source population. dn[1] = -dn[0]
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	int popi;	// Subpopulation to be absorbed
 	int popj;
 	struct node_set ndls;
 };
 
 struct splt_event {
-	int type;
+	// dn[0] depend on the number of migrated lineages. dn[1] = -dn[0]
 	double t;
-	int *dn;	// Depend on the number of migrated lineages. dn[1] = -dn[0]
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	int pop;	// Subpopulation to be splitted
 	int newpop;	// New subpopulation
 	double prop;	// proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.
@@ -137,14 +158,15 @@ struct splt_event {
 };
 
 struct samp_event {
-	int type;
+	// Equals to the number of samples of each population added at time t
 	double t;
-	int *dn;	// Equals to the number of samples of each population added at time t
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
 };
 
-#define GET_DN(ev) (((struct event *)ev)->dn)
-#define GET_SUMDN(ev) (((struct event *)ev)->sumdn)
+#define GET_DN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->dn_off))
+#define GET_SUMDN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->sumdn_off))
 
 struct event *alloc_event(struct config *, int, double);
 void free_event(struct config *cfg, struct event *ev);
