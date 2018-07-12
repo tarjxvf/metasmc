@@ -147,11 +147,11 @@ void tsindex_add_r(struct tsindex *tr, struct node *e)
 
 	}else{
 		/* Get a existing empty node in binary indexed tree. */
-//		l = __list_pop(queue);
-		l = tr->free_list.front;
+		l = __list_pop(&tr->free_list);
+//		l = tr->free_list.front;
 		ptr = (int *)GET_OBJ(l);
 		id = *ptr;
-		__list_remove(&tr->free_list, l);
+//		__list_remove(&tr->free_list, l);
 		__list_append(&tr->id_list, l);
 	}
 
@@ -188,11 +188,11 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 
 	}else{
 		/* Get a existing empty node in binary indexed tree. */
-//		l = __list_pop(queue);
-		l = tr->free_list.front;
+		l = __list_pop(&tr->free_list);
+//		l = tr->free_list.front;
 		ptr = (int *)GET_OBJ(l);
 		id = *ptr;
-		__list_remove(&tr->free_list, l);
+//		__list_remove(&tr->free_list, l);
 		__list_append(&tr->id_list, l);
 
 		if(!tsindex_isrebuild(tr)){
