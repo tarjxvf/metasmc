@@ -35,7 +35,7 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	ev->t = t;
 	ev->dn = (int *)((char *)l + evsize[type]);
 	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
-	dn_clear(npop_all, ev->dn);
+	dn_clear(npop_all, GET_DN(ev));
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
@@ -59,7 +59,7 @@ void print_event(struct config *cfg, struct event *ev)
 	l = GET_LIST(ev);
 	fprintf(stderr, "(%x, %x)[type=%d, t=%.6f, dn=(", l, ev, ev->type, ev->t);
 	for(i = 0; i < cfg->npop_all; i++)
-		fprintf(stderr, "%d, ", ev->dn[i]);
+		fprintf(stderr, "%d, ", GET_DN(ev)[i]);
 	fprintf(stderr, ")");
 	if(ev->type == EVENT_COAL){
 		fprintf(stderr, ", pop=%d", ((struct coal_event *)ev)->pop);

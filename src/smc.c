@@ -148,7 +148,7 @@ void insert_event_rb_join(struct genealogy *G, struct join_event *jev)
 	G->evidx->dn[jev->popi] = 1;
 	G->evidx->dn[jev->popj] = -1;
 
-	dn_add(G->cfg->npop_all, jev->sumdn, G->evidx->dn);
+	dn_add(G->cfg->npop_all, GET_SUMDN(jev), G->evidx->dn);
 	evindex_propagate_add(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
 
 	insert_event_join_increase(G, jev);
@@ -163,7 +163,7 @@ void insert_event_rb_splt(struct genealogy *G, struct splt_event *sev)
 	G->evidx->dn[sev->newpop] = 1;
 	G->evidx->dn[sev->pop] = -1;
 
-	dn_add(G->cfg->npop_all, sev->sumdn, G->evidx->dn);
+	dn_add(G->cfg->npop_all, GET_SUMDN(sev), G->evidx->dn);
 	evindex_propagate_add(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
 
 	insert_event_splt_increase(G, sev);
@@ -183,7 +183,7 @@ void remove_event_rb_join(struct genealogy *G, struct join_event *jev)
 	G->evidx->dn[jev->popj] = -1;
 
 	// Update tree values
-	dn_sub(G->cfg->npop_all, jev->sumdn, G->evidx->dn);
+	dn_sub(G->cfg->npop_all, GET_SUMDN(jev), G->evidx->dn);
 	evindex_propagate_sub(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
 
 	remove_event_join_decrease(G, jev);
@@ -202,7 +202,7 @@ void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev)
 	G->evidx->dn[sev->pop] = -1;
 
 	// Update tree values
-	dn_sub(G->cfg->npop_all, sev->sumdn, G->evidx->dn);
+	dn_sub(G->cfg->npop_all, GET_SUMDN(sev), G->evidx->dn);
 	evindex_propagate_sub(tr.rb_height, tr.rb_stack, G->cfg->npop_all, G->evidx->dn);
 
 	remove_event_splt_decrease(G, sev);
@@ -545,7 +545,7 @@ struct coal_node *__absorption(struct genealogy *G, struct node *e1, struct node
 	edge_flag_setleft(e1);
 	edge_flag_setright(e2);
 
-	ev->dn[pop] = -1;
+	GET_DN(ev)[pop] = -1;
 	ev->pop = pop;
 	nd->ev = ev;
 	ev->nd = nd;
@@ -614,7 +614,7 @@ struct coal_node *__coalescent(struct genealogy *G, struct node *n1, struct node
 	edge_flag_setleft(n1);
 	edge_flag_setright(n2);
 
-	ev->dn[pop] = -1;
+	GET_DN(ev)[pop] = -1;
 	ev->pop = pop;
 	nd->ev = ev;
 	ev->nd = nd;
@@ -708,8 +708,8 @@ struct migr_node *__migration(struct genealogy *G, struct node *nf, int dpop, do
 	nd = do_migrate(G, nf, dpop, spop, t);
 
 	ev = (struct migr_event *)alloc_event(G->cfg, EVENT_MIGR, t);
-	ev->dn[spop]++;
-	ev->dn[dpop]--;
+	GET_DN(ev)[spop]++;
+	GET_DN(ev)[dpop]--;
 	ev->dpop = dpop;
 	ev->spop = spop;
 
@@ -937,8 +937,8 @@ void update_demography(struct genealogy *G, struct event *ev)
 					G->pops[i].mrate[i] += G->pops[i].mrate[j];
 		}
 
-		G->pops[jev->popi].n += jev->dn[jev->popi];
-		G->pops[jev->popj].n += jev->dn[jev->popj];
+		G->pops[jev->popi].n += GET_DN(jev)[jev->popi];
+		G->pops[jev->popj].n += GET_DN(jev)[jev->popj];
 
 	}else if(ev->type == EVENT_SPLT){	/* Population split */
 		struct splt_event *sev;
@@ -951,12 +951,12 @@ void update_demography(struct genealogy *G, struct event *ev)
 		G->pops[sev->newpop].size = G->pops[sev->pop].size;
 		G->pops[sev->newpop].grate = 0;
 
-		G->pops[sev->newpop].n += sev->dn[sev->newpop];
-		G->pops[sev->pop].n += sev->dn[sev->pop];
+		G->pops[sev->newpop].n += GET_DN(sev)[sev->newpop];
+		G->pops[sev->pop].n += GET_DN(sev)[sev->pop];
 
 	}else if(ev->type == EVENT_SAMP){
 		for(i = 0; i < G->cfg->npop_all; i++)
-			G->pops[0].n += ev->dn[i];
+			G->pops[0].n += GET_DN(ev)[i];
 	}
 
 #ifdef DEBUG
@@ -2136,14 +2136,14 @@ void clear_genealogy(struct genealogy *G)
 	l = __list_pop(&G->evidx->idx->ls);
 	G->evidx->idx->n--;
 	ev0 = (struct event *)GET_OBJ(l);
-	dn_clear(cfg->npop_all, ev0->dn);
+	dn_clear(cfg->npop_all, GET_DN(ev0));
 
 	// Detach left sentinel from event index
 	l = G->evidx->idx->ls.front;
 	__list_remove(&G->evidx->idx->ls, l);
 	G->evidx->idx->n--;
 	ev0 = (struct event *)GET_OBJ(l);
-	dn_clear(cfg->npop_all, ev0->dn);
+	dn_clear(cfg->npop_all, GET_DN(ev0));
 
 	if(G->ev_dxvr){
 		remove_event(G, G->ev_dxvr);
@@ -2505,7 +2505,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 			node_set_resize(&G->trunk[i], (nR + 1));
 
 		for(i = 0; i < cfg->npop_all; i++)
-			ev0->dn[i] += F[i].n;
+			GET_DN(ev0)[i] += F[i].n;
 
 		if(f < nfrag){
 			ub = (double)fgstart[f] / reflen;
@@ -2555,7 +2555,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 		clear_tree(G);
 
 		for(i = 0; i < cfg->npop_all; i++)
-			G->pops[i].nsam = ev0->dn[i];
+			G->pops[i].nsam = GET_DN(ev0)[i];
 
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: Tree after clear_tree:", __func__, __LINE__);
@@ -2670,7 +2670,7 @@ int simulate(struct genealogy *G, struct profile *prof)
 #ifdef DEBUG
 				fprintf(stderr, "Finishing fragment %d\n", fgid[R[i]]);
 #endif
-				ev0->dn[nd->pop]--;
+				GET_DN(ev0)[nd->pop]--;
 				edge_flag_delete((struct node *)nd);
 
 			}else{

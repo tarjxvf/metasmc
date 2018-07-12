@@ -143,6 +143,9 @@ struct samp_event {
 	int *sumdn;
 };
 
+#define GET_DN(ev) (((struct event *)ev)->dn)
+#define GET_SUMDN(ev) (((struct event *)ev)->sumdn)
+
 struct event *alloc_event(struct config *, int, double);
 void free_event(struct config *cfg, struct event *ev);
 void print_event(struct config *cfg, struct event *ev);
