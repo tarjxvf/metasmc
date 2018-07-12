@@ -48,32 +48,19 @@ size_t nodesize[] = {sizeof(struct coal_node), sizeof(struct migr_node), sizeof(
 
 void free_node(struct genealogy *G, struct node *nd)
 {
-//	struct list_head *l;
-//	struct config *cfg;
-
-//	cfg = G->cfg;
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, nd=%x(%.6f)\n", __func__, nd, nd->t);
 #endif
-
-//	l = GET_LIST(nd);
-	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], nd);
-//	free(nd);
+//	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], nd);
+	free(nd);
 }
 
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 {
-//	struct list_head *l;
-//	struct config *cfg;
 	struct node *nd;
-//	char *ptr;
 
-//	cfg = G->cfg;
-	nd = cache_alloc(G->cfg->node_cache[type]);
-//	nd = malloc(nodesize[type]);
-
-//	l = (struct list_head *)ptr;
-//	nd = (struct node *)GET_OBJ(l);
+//	nd = cache_alloc(G->cfg->node_cache[type]);
+	nd = malloc(nodesize[type]);
 
 	*((unsigned char *)&nd->idx + sizeof(int)) = type;
 	nd->pop = pop;
@@ -89,11 +76,9 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 struct node *copy_node(struct genealogy *G, struct node *old)
 {
 	struct node *new;
-//	char *ptr;
 
-	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-//	new = malloc(nodesize[old->type]);
-//	new = (struct node *)GET_OBJ(ptr);
+//	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+	new = malloc(nodesize[old->type]);
 	new->t = old->t;
 	new->pop = old->pop;
 	new->type = old->type;
@@ -2151,7 +2136,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
@@ -2293,6 +2278,9 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	}
 
 	G->tr_xover = tsindex_alloc(cfg->maxfrag * 2 * 2);
+	G->trunk = malloc(sizeof(struct node_set) * npop_all);
+	for(i = 0; i < npop + nsplt; i++)
+		node_set_init(&G->trunk[i], (cfg->maxfrag + 1));
 
 	return G;
 }
@@ -2302,7 +2290,7 @@ void destroy_genealogy(struct genealogy *G)
 	struct list_head *l;
 	struct config *cfg;
 	struct event *ev;
-	int pop;
+	int pop, i;
 
 	tsindex_free(G->tr_xover);
 	cfg = G->cfg;
@@ -2315,6 +2303,10 @@ void destroy_genealogy(struct genealogy *G)
 #endif
 		destroy_tree(G, G->root);
 	}
+	
+	for(i = 0; i < cfg->npop + cfg->nsplt; i++)
+		node_set_destroy(&G->trunk[i]);
+	free(G->trunk);
 
 	for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++)
 		destroy_pop(G, &G->pops[pop]);
@@ -2476,13 +2468,12 @@ int simulate(struct genealogy *G, struct profile *prof)
 
 	seed();
 	F = malloc(sizeof(struct node_set) * npop_all);
-	G->trunk = malloc(sizeof(struct node_set) * npop_all);
-	for(i = 0; i < npop_all; i++)
-		node_set_init(&G->trunk[i], (cfg->maxfrag + 1));
 
 	/* Load next fragment sets. */
-	for(i = 0; i < npop_all; i++)
+	for(i = 0; i < npop_all; i++){
+		node_set_clear(&G->trunk[i]);
 		node_set_init(&F[i], (cfg->maxfrag + 1));
+	}
 
 	rho = cfg->rho;
 	lb = ub = 0;
@@ -2710,17 +2701,14 @@ int simulate(struct genealogy *G, struct profile *prof)
 		G->curridx = 1 - G->curridx;
 	}while(lb < 1);
 	
-	for(i = 0; i < npop_all; i++){
-		node_set_destroy(&G->trunk[i]);
+	for(i = 0; i < npop_all; i++)
 		node_set_destroy(&F[i]);
-	}
 	
 	/* Clear read list. */
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
 	free(F);
-	free(G->trunk);
 
 	clock_gettime(CLOCK_MONOTONIC, &end);
 
