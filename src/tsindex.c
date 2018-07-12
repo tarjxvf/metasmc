@@ -239,7 +239,6 @@ void tsindex_clear(struct tsindex *tr, struct node *e)
 #endif
 	if(!tsindex_isrebuild(tr)){
 		diff = tr->weights[id];
-//		diff = tr->edges[id]->in->t - tr->edges[id]->t;
 		bit_update(tr->index, id, -diff);
 	}
 

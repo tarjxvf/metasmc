@@ -57,7 +57,6 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 #endif
 	cfg = G->cfg;
 	fgstart = cfg->prof->fgstart;
-//	fgend = cfg->prof->fgend;
 	fgid = cfg->prof->fgid;
 	fgi = cfg->prof->info;
 	nds = cfg->prof->nds;
@@ -213,7 +212,6 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 #endif
 	cfg = G->cfg;
 	fgstart = cfg->prof->fgstart;
-//	fgend = cfg->prof->fgend;
 	fgid = cfg->prof->fgid;
 	fgi = cfg->prof->info;
 	nds = cfg->prof->nds;
@@ -823,7 +821,6 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 
 	cfg = G->cfg;
 	fgstart = cfg->prof->fgstart;
-//	fgend = cfg->prof->fgend;
 	fgid = cfg->prof->fgid;
 	fgi = cfg->prof->info;
 	rdset = cfg->prof->rdset;

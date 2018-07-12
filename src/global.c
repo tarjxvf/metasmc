@@ -171,7 +171,6 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 		nfrag += nfrags[i] + ntrunks[i];
 
 	fgstart = malloc(sizeof(int) * nfrag);
-//	fgend = malloc(sizeof(int) * nfrag);
 	fgi = malloc(sizeof(struct fginfo) * nfrag);
 
 	reflen = prof->ref->chrlen[chrnum];
@@ -209,7 +208,6 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	qsort_r(fgorder, nfrag, sizeof(int), fgcompar_r, prof->fgstart);
 
 	prof->fgstart = malloc(sizeof(int) * nfrag);
-//	prof->fgend = malloc(sizeof(int) * nfrag);
 	prof->fgid = malloc(sizeof(int) * nfrag);
 	prof->info = malloc(sizeof(struct fginfo) * nfrag);
 	prof->nds = malloc(sizeof(struct sam_node *) * nfrag);
@@ -219,7 +217,6 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 
 		prof->fgid[i] = i + 1;
 		prof->fgstart[i] = fgstart[fgorder[i]];
-//		prof->fgend[i] = fgend[fgorder[i]];
 		prof->info[i] = fgi[fgorder[i]];
 
 		readpos = fragpos = prof->fgstart[i];
@@ -236,7 +233,6 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	}
 
 	free(fgstart);
-//	free(fgend);
 	free(fgi);
 	free(fgorder);
 
@@ -268,7 +264,6 @@ void unload_profile(struct profile *prof)
 	free(prof->ntrunks);
 	free(prof->nfrag_pop);
 	free(prof->fgstart);
-//	free(prof->fgend);
 	free(prof->fgid);
 	free(prof->info);
 	free(prof->nds);
@@ -331,7 +326,6 @@ struct profile *load_profile(FILE *filp, int genseq)
 
 	/* Load fragment information from input file. */
 	fgstart = malloc(sizeof(int) * (nfrag + 1));
-//	fgend = malloc(sizeof(int) * (nfrag + 1));
 	fgid = malloc(sizeof(int) * (nfrag + 1));
 	fgi = malloc(sizeof(struct fginfo) * (nfrag + 1));
 
@@ -339,7 +333,6 @@ struct profile *load_profile(FILE *filp, int genseq)
 		rdset = malloc(sizeof(struct read *) * (nfrag + 1));
 	fgorder = malloc(sizeof(int) * (nfrag + 1));
 
-//	memset(fgset, 0, sizeof(struct frag) * (nfrag + 1));
 	for(i = 0; i < nfrag; i++){
 		struct frag *fg;
 		int j, pop, nread, seqlen, intbuf;
@@ -380,13 +373,11 @@ struct profile *load_profile(FILE *filp, int genseq)
 	fgstart[nfrag] = fgi[nfrag].end = INT_MAX;
 	qsort_r((void *)fgorder, (size_t)nfrag, sizeof(int), fgcompar_r, fgstart);
 	prof->fgstart = malloc(sizeof(int) * (nfrag + 1));
-//	prof->fgend = malloc(sizeof(int) * (nfrag + 1));
 	prof->fgid = malloc(sizeof(int) * (nfrag + 1));
 	prof->info = malloc(sizeof(struct fginfo) * (nfrag + 1));
 
 	for(i = 0; i < nfrag; i++){
 		prof->fgstart[i] = fgstart[fgorder[i]];
-//		prof->fgend[i] = fgend[fgorder[i]];
 		prof->fgid[i] = fgid[fgorder[i]];
 		prof->info[i] = fgi[fgorder[i]];
 	}
@@ -400,7 +391,6 @@ struct profile *load_profile(FILE *filp, int genseq)
 	prof->nds = malloc(sizeof(struct sam_node *) * (nfrag + 1));
 
 	free(fgstart);
-//	free(fgend);
 	free(fgid);
 	free(fgi);
 
@@ -514,12 +504,6 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	((struct gsiz_event *)ev)->size = 1;
 
 	reflen = prof->ref->chrlen[prof->chrnum];
-/*	cfg->fgstart = malloc(sizeof(double) * prof->nfrag);
-	cfg->fgend = malloc(sizeof(double) * prof->nfrag);
-	for(i = 0; i < prof->nfrag; i++){
-		cfg->fgstart[i] = (double)prof->fgstart[i] / reflen;
-		cfg->fgend[i] = (double)prof->fgend[i] / reflen;
-	}*/
 
 	return cfg;
 }
@@ -588,13 +572,6 @@ void destroy_config(struct config *cfg)
 
 	free(cfg->evlist.front);
 	list_init(&cfg->evlist);
-/*	for(i = 0; i < cfg->ndevents; i++){
-		l = GET_LIST(cfg->devents[i]);
-		free(l);
-	}*/
-
-//	free(cfg->fgstart);
-//	free(cfg->fgend);
 
 	for(i = 0; i < cfg->ndevents; i++){
 		if(cfg->devents[i]->type == EVENT_SPLT)
@@ -748,7 +725,6 @@ int add_event_join(struct config *cfg, double t, int popi, int popj)
 	ev = alloc_event(cfg, EVENT_JOIN, t);
 	((struct join_event *)ev)->popi = popi;
 	((struct join_event *)ev)->popj = popj;
-//	list_init(&((struct join_event *)ev)->ndls);
 	node_set_init(&((struct join_event *)ev)->ndls, cfg->maxfrag);
 
 	evl = cfg->evlist.front;
@@ -770,7 +746,6 @@ int add_event_splt(struct config *cfg, double t, int pop, double prop)
 	((struct splt_event *)ev)->pop = pop;
 	((struct splt_event *)ev)->newpop = cfg->npop_all++;
 	((struct splt_event *)ev)->prop = prop;
-//	list_init(&((struct splt_event *)ev)->ndls);
 	node_set_init(&((struct splt_event *)ev)->ndls, cfg->maxfrag);
 
 	evl = cfg->evlist.front;

@@ -464,11 +464,8 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 
 		}else if(ev->type == EVENT_JOIN){
 			jev = (struct join_event *)ev;
-//			l = jev->ndls.front;
-//			while(l){
 			for(i = 0; i < jev->ndls.n; i++){
 				mnd = (struct migr_node *)node_set_get(&jev->ndls, i);
-//				mnd = (struct migr_node *)GET_OBJ(l);
 				node_set_remove(&trunk[mnd->pop], mnd->set_id);
 
 				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
@@ -476,16 +473,12 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 					else return mnd->out;
 				}
 				node_set_add(&trunk[mnd->out->pop], mnd->out);
-//				l = l->next;
 			}
 
 		}else if(ev->type == EVENT_SPLT){
 			sev = (struct splt_event *)ev;
-//			l = sev->ndls.front;
-//			while(l){
 			for(i = 0; i < sev->ndls.n; i++){
 				mnd = (struct migr_node *)node_set_get(&sev->ndls, i);
-//				mnd = (struct migr_node *)GET_OBJ(l);
 				node_set_remove(&G->trunk[mnd->pop], mnd->set_id);
 
 				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
@@ -493,7 +486,6 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 					else return mnd->out;
 				}
 				node_set_add(&trunk[mnd->out->pop], mnd->out);
-//				l = l->next;
 			}
 		}
 		evl = (struct list_head *)evl->prev;
@@ -1929,16 +1921,11 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				if(ev->type == EVENT_JOIN){
 					jev = (struct join_event *)ev;
 					/* Move edges of trunk genealogy. */
-//					l = jev->ndls.front;
-//					while(l){
 					i = 0;
 					while(i < jev->ndls.n){
-//						next = l->next;
-//						nm = (struct migr_node *)GET_OBJ(l);
 						nm = (struct migr_node *)node_set_get(&jev->ndls, i);
 						if(__trunk_migr(G, trunk, jev->popj, jev->popi, ev, nm))
 							i++;
-//						l = next;
 					}
 
 					/* Move all new lineages in population j to population i. */
@@ -1961,16 +1948,11 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				}else if(ev->type == EVENT_SPLT){
 					sev = (struct splt_event *)ev;
 					/* Move edges of trunk genealogy. */
-//					l = sev->ndls.front;
-//					while(l){
 					i = 0;
 					while(i < sev->ndls.n){
-//						next = l->next;
-//						nm = (struct migr_node *)GET_OBJ(l);
 						nm = (struct migr_node *)node_set_get(&sev->ndls, i);
 						if(__trunk_migr(G, trunk, sev->pop, sev->newpop, ev, nm))
 							i++;
-//						l = next;
 					}
 
 					/* Move new lineages in population old population to new population with probability sev->prop. */
@@ -2280,7 +2262,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	G->tr_xover = tsindex_alloc(cfg->maxfrag * 2 * 2);
 	G->trunk = malloc(sizeof(struct node_set) * npop_all);
 	for(i = 0; i < npop + nsplt; i++)
-		node_set_init(&G->trunk[i], (cfg->maxfrag + 1));
+		node_set_init(&G->trunk[i], cfg->maxfrag * 4);
 
 	return G;
 }
@@ -2348,7 +2330,6 @@ void destroy_genealogy(struct genealogy *G)
 void print_tree(FILE *out_fp, struct node *nd, struct config *cfg)
 {
 	if(issamnode(nd)){
-//		struct frag *fgset = cfg->prof->fgset;
 #ifdef DEBUG
 		fprintf(stderr, "sam_node=%x", nd);
 #else
@@ -2426,7 +2407,6 @@ int simulate(struct genealogy *G, struct profile *prof)
 	reflen = prof->ref->chrlen[prof->chrnum];
 	reload_reference(ref, prof->chrnum);
 	fgstart = prof->fgstart;
-//	fgend = prof->fgend;
 	fgi = prof->info;
 	fgid = prof->fgid;
 	nds = prof->nds;
