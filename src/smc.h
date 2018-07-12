@@ -60,14 +60,14 @@ struct genealogy {
 
 static inline void insert_event_join_increase(struct genealogy *G, struct join_event *jev)
 {
-	jev->dn[jev->popi]++;
-	jev->dn[jev->popj]--;
+	GET_DN(jev)[jev->popi]++;
+	GET_DN(jev)[jev->popj]--;
 }
 
 static inline void insert_event_splt_increase(struct genealogy *G, struct splt_event *sev)
 {
-	sev->dn[sev->pop]--;
-	sev->dn[sev->newpop]++;
+	GET_DN(sev)[sev->pop]--;
+	GET_DN(sev)[sev->newpop]++;
 }
 
 void insert_event_rb_join(struct genealogy *G, struct join_event *jev);
@@ -101,14 +101,14 @@ static inline void insert_event(struct genealogy *G, struct event *ev)
 
 static inline void remove_event_join_decrease(struct genealogy *G, struct join_event *jev)
 {
-	jev->dn[jev->popi]--;
-	jev->dn[jev->popj]++;
+	GET_DN(jev)[jev->popi]--;
+	GET_DN(jev)[jev->popj]++;
 }
 
 static inline void remove_event_splt_decrease(struct genealogy *G, struct splt_event *sev)
 {
-	sev->dn[sev->pop]++;
-	sev->dn[sev->newpop]--;
+	GET_DN(sev)[sev->pop]++;
+	GET_DN(sev)[sev->newpop]--;
 }
 
 void remove_event_rb_join(struct genealogy *G, struct join_event *jev);
