@@ -2123,7 +2123,7 @@ void clear_genealogy(struct genealogy *G)
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
 	cache_clear(G->cfg->node_cache[NODE_MIGR]);
-	cache_clear(G->cfg->node_cache[NODE_XOVER]);
+//	cache_clear(G->cfg->node_cache[NODE_XOVER]);
 	cache_clear(G->cfg->node_cache[NODE_SAM]);
 
 	cache_clear(G->cfg->event_cache[EVENT_COAL]);
@@ -2196,8 +2196,8 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 
 	G->cfg = cfg;
 	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node), cfg->maxfrag * 4);
-	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), cfg->maxfrag * 4);
-	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), cfg->maxfrag * 2);
+//	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), cfg->maxfrag * 4);
 	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct sam_node), cfg->prof->nfrag);
 	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
 	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];
@@ -2312,7 +2312,7 @@ void destroy_genealogy(struct genealogy *G)
 
 	cache_destroy(G->cfg->node_cache[NODE_COAL]);
 	cache_destroy(G->cfg->node_cache[NODE_MIGR]);
-	cache_destroy(G->cfg->node_cache[NODE_XOVER]);
+//	cache_destroy(G->cfg->node_cache[NODE_XOVER]);
 	cache_destroy(G->cfg->node_cache[NODE_SAM]);
 
 	cache_destroy(G->cfg->event_cache[EVENT_COAL]);
