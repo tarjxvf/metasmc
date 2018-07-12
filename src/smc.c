@@ -48,32 +48,32 @@ size_t nodesize[] = {sizeof(struct coal_node), sizeof(struct migr_node), sizeof(
 
 void free_node(struct genealogy *G, struct node *nd)
 {
-	struct list_head *l;
-	struct config *cfg;
+//	struct list_head *l;
+//	struct config *cfg;
 
-	cfg = G->cfg;
+//	cfg = G->cfg;
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, nd=%x(%.6f)\n", __func__, nd, nd->t);
 #endif
 
-	l = GET_LIST(nd);
-//	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], l);
-	free(l);
+//	l = GET_LIST(nd);
+//	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], nd);
+	free(nd);
 }
 
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 {
-	struct list_head *l;
-	struct config *cfg;
+//	struct list_head *l;
+//	struct config *cfg;
 	struct node *nd;
-	char *ptr;
+//	char *ptr;
 
-	cfg = G->cfg;
-//	ptr = cache_alloc(G->cfg->node_cache[type]);
-	ptr = malloc(nodesize[type] + sizeof(struct list_head));
+//	cfg = G->cfg;
+//	nd = cache_alloc(G->cfg->node_cache[type]);
+	nd = malloc(nodesize[type]);
 
-	l = (struct list_head *)ptr;
-	nd = (struct node *)GET_OBJ(l);
+//	l = (struct list_head *)ptr;
+//	nd = (struct node *)GET_OBJ(l);
 
 	*((unsigned char *)&nd->idx + sizeof(int)) = type;
 	nd->pop = pop;
@@ -89,11 +89,11 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 struct node *copy_node(struct genealogy *G, struct node *old)
 {
 	struct node *new;
-	char *ptr;
+//	char *ptr;
 
-//	ptr = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-	ptr = malloc(nodesize[old->type] + sizeof(struct list_head));
-	new = (struct node *)GET_OBJ(ptr);
+//	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+	new = malloc(nodesize[old->type]);
+//	new = (struct node *)GET_OBJ(ptr);
 	new->t = old->t;
 	new->pop = old->pop;
 	new->type = old->type;
@@ -237,55 +237,6 @@ void dump_events(struct genealogy *G)
 		ev = evindex_next(&l);
 	}
 	fprintf(stderr, "\n");
-}
-
-void node_set_init(struct node_set *set, int maxn)
-{
-	set->maxn = maxn;
-	set->n = 0;
-	set->nodes = malloc(sizeof(struct node *) * maxn);
-	memset(set->nodes, 0, sizeof(struct node *) * maxn);
-}
-
-static inline void node_set_clear(struct node_set *set)
-{
-	set->n = 0;
-}
-
-static inline void node_set_destroy(struct node_set *set)
-{
-	set->maxn = set->n = 0;
-	free(set->nodes);
-}
-
-static inline void node_set_add(struct node_set *set, struct node *e)
-{
-	e->set_id = set->n;
-	set->nodes[set->n++] = e;
-}
-
-static inline struct node *node_set_get(struct node_set *set, int i)
-{
-	return set->nodes[i];
-}
-
-static inline void node_set_replace(struct node_set *set, int i, struct node *e)
-{
-	set->nodes[i]->set_id = -1;
-	e->set_id = i;
-	set->nodes[i] = e;
-}
-
-static inline struct node *node_set_remove(struct node_set *set, int i)
-{
-	struct node *e;
-
-	e = set->nodes[i];
-	set->nodes[i] = set->nodes[--(set->n)];
-	set->nodes[i]->set_id = i;
-//	set->nodes[set->n] = NULL;
-
-	return e;
 }
 
 void
@@ -438,9 +389,9 @@ void erase_dangling2(struct genealogy *G, struct node *e)
 	tsindex_clear(G->tr_xover, e);
 	while(ismigrnode(ntop)){
 		if(ntop->ev->type == EVENT_JOIN)
-			list_remove(&((struct join_event *)ntop->ev)->ndls, ntop);
+			migr_set_remove(&((struct join_event *)ntop->ev)->ndls, ntop);
 		else if(ntop->ev->type == EVENT_SPLT)
-			list_remove(&((struct splt_event *)ntop->ev)->ndls, ntop);
+			migr_set_remove(&((struct splt_event *)ntop->ev)->ndls, ntop);
 		remove_event_josp(G, (struct event *)ntop->ev);
 
 		e = ntop;
@@ -528,9 +479,11 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 
 		}else if(ev->type == EVENT_JOIN){
 			jev = (struct join_event *)ev;
-			l = jev->ndls.front;
-			while(l){
-				mnd = (struct migr_node *)GET_OBJ(l);
+//			l = jev->ndls.front;
+//			while(l){
+			for(i = 0; i < jev->ndls.n; i++){
+				mnd = (struct migr_node *)node_set_get(&jev->ndls, i);
+//				mnd = (struct migr_node *)GET_OBJ(l);
 				node_set_remove(&trunk[mnd->pop], mnd->set_id);
 
 				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
@@ -538,15 +491,16 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 					else return mnd->out;
 				}
 				node_set_add(&trunk[mnd->out->pop], mnd->out);
-
-				l = l->next;
+//				l = l->next;
 			}
 
 		}else if(ev->type == EVENT_SPLT){
 			sev = (struct splt_event *)ev;
-			l = sev->ndls.front;
-			while(l){
-				mnd = (struct migr_node *)GET_OBJ(l);
+//			l = sev->ndls.front;
+//			while(l){
+			for(i = 0; i < sev->ndls.n; i++){
+				mnd = (struct migr_node *)node_set_get(&sev->ndls, i);
+//				mnd = (struct migr_node *)GET_OBJ(l);
 				node_set_remove(&G->trunk[mnd->pop], mnd->set_id);
 
 				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
@@ -554,8 +508,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 					else return mnd->out;
 				}
 				node_set_add(&trunk[mnd->out->pop], mnd->out);
-
-				l = l->next;
+//				l = l->next;
 			}
 		}
 		evl = (struct list_head *)evl->prev;
@@ -868,11 +821,11 @@ void clear_tree(struct genealogy *G)
 					if(!isvisited(e))
 						free_node(G, e);
 					if(nd->ev->type == EVENT_JOIN){
-						__list_remove__(&((struct join_event *)nd->ev)->ndls, GET_LIST(nd));
+						migr_set_remove(&((struct join_event *)nd->ev)->ndls, nd);
 						remove_event_join_decrease(G, (struct join_event *)nd->ev);
 
 					}else if(nd->ev->type == EVENT_SPLT){
-						__list_remove__(&((struct splt_event *)nd->ev)->ndls, GET_LIST(nd));
+						migr_set_remove(&((struct splt_event *)nd->ev)->ndls, nd);
 						remove_event_splt_decrease(G, (struct splt_event *)nd->ev);
 
 					}else{
@@ -1194,9 +1147,9 @@ void erase_dummy_path_rb(struct genealogy *G, struct node *edum)
 	while(erm->in){
 		nrm = erm->in;
 		if(erm->ev->type == EVENT_JOIN)
-			list_remove(&((struct join_event *)erm->ev)->ndls, erm);
+			migr_set_remove(&((struct join_event *)erm->ev)->ndls, erm);
 		else if(erm->ev->type == EVENT_SPLT)
-			list_remove(&((struct splt_event *)erm->ev)->ndls, erm);
+			migr_set_remove(&((struct splt_event *)erm->ev)->ndls, erm);
 
 		remove_event_josp(G, (struct event *)erm->ev);
 		remove_edge_r(G, erm->pop, erm);
@@ -1204,9 +1157,9 @@ void erase_dummy_path_rb(struct genealogy *G, struct node *edum)
 	}
 
 	if(nrm->ev->type == EVENT_JOIN)
-		list_remove(&((struct join_event *)nrm->ev)->ndls, nrm);
+		migr_set_remove(&((struct join_event *)nrm->ev)->ndls, nrm);
 	else if(nrm->ev->type == EVENT_SPLT)
-		list_remove(&((struct splt_event *)nrm->ev)->ndls, nrm);
+		migr_set_remove(&((struct splt_event *)nrm->ev)->ndls, nrm);
 
 	remove_event_josp(G, (struct event *)nrm->ev);
 
@@ -1229,9 +1182,9 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 	while(erm->in){
 		nrm = erm->in;
 		if(erm->ev->type == EVENT_JOIN)
-			list_remove(&((struct join_event *)erm->ev)->ndls, erm);
+			migr_set_remove(&((struct join_event *)erm->ev)->ndls, erm);
 		else if(erm->ev->type == EVENT_SPLT)
-			list_remove(&((struct splt_event *)erm->ev)->ndls, erm);
+			migr_set_remove(&((struct splt_event *)erm->ev)->ndls, erm);
 
 		remove_event_josp(G, (struct event *)erm->ev);
 		remove_edge_m(G, erm->pop, erm);
@@ -1239,9 +1192,9 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 	}
 
 	if(nrm->ev->type == EVENT_JOIN)
-		list_remove(&((struct join_event *)nrm->ev)->ndls, nrm);
+		migr_set_remove(&((struct join_event *)nrm->ev)->ndls, nrm);
 	else if(nrm->ev->type == EVENT_SPLT)
-		list_remove(&((struct splt_event *)nrm->ev)->ndls, nrm);
+		migr_set_remove(&((struct splt_event *)nrm->ev)->ndls, nrm);
 
 	remove_event_josp(G, (struct event *)nrm->ev);
 
@@ -1395,7 +1348,7 @@ finish_selection:
 
 					node_set_add(&F[jev->popi], (struct node *)nm);
 					nm->ev = (struct migr_event *)ev;
-					list_append(&jev->ndls, nm);
+					migr_set_add(&jev->ndls, (struct node *)nm);
 					insert_event_join(G, ev);
 				}
 
@@ -1414,7 +1367,7 @@ finish_selection:
 
 						node_set_add(&F[sev->newpop], (struct node *)nm);
 						nm->ev = (struct migr_event *)ev;
-						list_append(&sev->ndls, nm);
+						migr_set_add(&sev->ndls, (struct node *)nm);
 						insert_event_splt(G, ev);
 
 					}else{
@@ -1686,7 +1639,7 @@ double recombination(struct genealogy *G, double x)
 
 						nf = (struct node *)nm;
 						nm->ev = (struct migr_event *)ev;
-						list_append(&jev->ndls, nm);
+						migr_set_add(&jev->ndls, (struct node *)nm);
 
 						pop = jev->popi;
 						insert_event_rb_join(G, jev);
@@ -1703,7 +1656,7 @@ double recombination(struct genealogy *G, double x)
 
 							nf = (struct node *)nm;
 							nm->ev = (struct migr_event *)ev;
-							list_append(&sev->ndls, nm);
+							migr_set_add(&sev->ndls, (struct node *)nm);
 							pop = sev->newpop;
 							insert_event_rb_splt(G, sev);
 						}
@@ -1781,7 +1734,7 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 }
 
 /* Process migration/join/split event in trunk genealogy. */
-void __trunk_migr(struct genealogy *G, struct node_set *trunk, int dpop, int spop, struct event *ev, struct migr_node *nd)
+int __trunk_migr(struct genealogy *G, struct node_set *trunk, int dpop, int spop, struct event *ev, struct migr_node *nd)
 {
 	struct node *e, *in, *out;
 
@@ -1795,16 +1748,19 @@ void __trunk_migr(struct genealogy *G, struct node_set *trunk, int dpop, int spo
 		remove_edge_m(G, dpop, out);
 		if(ev->type == EVENT_SPLT){
 			remove_event_splt_decrease(G, (struct splt_event *)ev);
-			list_remove(&((struct splt_event *)ev)->ndls, nd);
+			migr_set_remove(&((struct splt_event *)ev)->ndls, (struct node *)nd);
 
 		}else if(ev->type == EVENT_JOIN){
 			remove_event_join_decrease(G, (struct join_event *)ev);
-			list_remove(&((struct join_event *)ev)->ndls, nd);
+			migr_set_remove(&((struct join_event *)ev)->ndls, (struct node *)nd);
 
 		}else{
 			remove_event_s(G, ev);
 		}
+		return 0;
 	}
+
+	return 1;
 }
 
 /* Process migration event in trunk genealogy. */
@@ -1982,17 +1938,22 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				trunk_migr(G, trunk, (struct migr_event *)ev);
 
 			}else{
+				int i;
 				update_demography(G, ev);
 
 				if(ev->type == EVENT_JOIN){
 					jev = (struct join_event *)ev;
 					/* Move edges of trunk genealogy. */
-					l = jev->ndls.front;
-					while(l){
-						next = l->next;
-						nm = (struct migr_node *)GET_OBJ(l);
-						__trunk_migr(G, trunk, jev->popj, jev->popi, ev, nm);
-						l = next;
+//					l = jev->ndls.front;
+//					while(l){
+					i = 0;
+					while(i < jev->ndls.n){
+//						next = l->next;
+//						nm = (struct migr_node *)GET_OBJ(l);
+						nm = (struct migr_node *)node_set_get(&jev->ndls, i);
+						if(__trunk_migr(G, trunk, jev->popj, jev->popi, ev, nm))
+							i++;
+//						l = next;
 					}
 
 					/* Move all new lineages in population j to population i. */
@@ -2006,7 +1967,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 
 						node_set_add(&F[jev->popi], (struct node *)nm);
 						nm->ev = (struct migr_event *)ev;
-						list_append(&jev->ndls, nm);
+						migr_set_add(&jev->ndls, (struct node *)nm);
 						insert_event_join(G, ev);
 					}
 
@@ -2015,12 +1976,16 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				}else if(ev->type == EVENT_SPLT){
 					sev = (struct splt_event *)ev;
 					/* Move edges of trunk genealogy. */
-					l = sev->ndls.front;
-					while(l){
-						next = l->next;
-						nm = (struct migr_node *)GET_OBJ(l);
-						__trunk_migr(G, trunk, sev->pop, sev->newpop, ev, nm);
-						l = next;
+//					l = sev->ndls.front;
+//					while(l){
+					i = 0;
+					while(i < sev->ndls.n){
+//						next = l->next;
+//						nm = (struct migr_node *)GET_OBJ(l);
+						nm = (struct migr_node *)node_set_get(&sev->ndls, i);
+						if(__trunk_migr(G, trunk, sev->pop, sev->newpop, ev, nm))
+							i++;
+//						l = next;
 					}
 
 					/* Move new lineages in population old population to new population with probability sev->prop. */
@@ -2034,7 +1999,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 
 							node_set_add(&F[sev->newpop], (struct node *)nm);
 							nm->ev = (struct migr_event *)ev;
-							list_append(&sev->ndls, nm);
+							migr_set_add(&sev->ndls, (struct node *)nm);
 							insert_event_splt(G, ev);
 
 						}else{
@@ -2218,6 +2183,13 @@ void clear_genealogy(struct genealogy *G)
 		G->ev_dxvr = NULL;
 	}
 
+	for(i = 0; i < cfg->ndevents; i++){
+		if(cfg->devents[i]->type == EVENT_SPLT)
+			node_set_clear(&((struct splt_event *)cfg->devents[i])->ndls);
+		else if(cfg->devents[i]->type == EVENT_JOIN)
+			node_set_clear(&((struct join_event *)cfg->devents[i])->ndls);
+	}
+
 	// Clear event list
 	while(G->evidx->idx->ls.front){
 		l = __list_pop(&G->evidx->idx->ls);
@@ -2256,10 +2228,10 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	memset(G, 0, sizeof(struct genealogy));
 
 	G->cfg = cfg;
-	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_node), cfg->maxfrag * 4);
-	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_node), cfg->maxfrag * 4);
-	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct list_head) + sizeof(struct xover_node), cfg->maxfrag * 4);
-	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), cfg->prof->nfrag);
+	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), cfg->maxfrag * 4);
+	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct sam_node), cfg->prof->nfrag);
 	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
 	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];
 

@@ -588,13 +588,22 @@ void destroy_config(struct config *cfg)
 
 	free(cfg->evlist.front);
 	list_init(&cfg->evlist);
-	for(i = 0; i < cfg->ndevents; i++){
+/*	for(i = 0; i < cfg->ndevents; i++){
 		l = GET_LIST(cfg->devents[i]);
 		free(l);
-	}
+	}*/
 
 //	free(cfg->fgstart);
 //	free(cfg->fgend);
+
+	for(i = 0; i < cfg->ndevents; i++){
+		if(cfg->devents[i]->type == EVENT_SPLT)
+			node_set_destroy(&((struct splt_event *)cfg->devents[i])->ndls);
+		else if(cfg->devents[i]->type == EVENT_JOIN)
+			node_set_destroy(&((struct join_event *)cfg->devents[i])->ndls);
+		l = GET_LIST(cfg->devents[i]);
+		free(l);
+	}
 
 	free(cfg->devents);
 	free(cfg->mmut);
@@ -739,7 +748,8 @@ int add_event_join(struct config *cfg, double t, int popi, int popj)
 	ev = alloc_event(cfg, EVENT_JOIN, t);
 	((struct join_event *)ev)->popi = popi;
 	((struct join_event *)ev)->popj = popj;
-	list_init(&((struct join_event *)ev)->ndls);
+//	list_init(&((struct join_event *)ev)->ndls);
+	node_set_init(&((struct join_event *)ev)->ndls, cfg->maxfrag);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
@@ -760,7 +770,8 @@ int add_event_splt(struct config *cfg, double t, int pop, double prop)
 	((struct splt_event *)ev)->pop = pop;
 	((struct splt_event *)ev)->newpop = cfg->npop_all++;
 	((struct splt_event *)ev)->prop = prop;
-	list_init(&((struct splt_event *)ev)->ndls);
+//	list_init(&((struct splt_event *)ev)->ndls);
+	node_set_init(&((struct splt_event *)ev)->ndls, cfg->maxfrag);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;

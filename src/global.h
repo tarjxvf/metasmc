@@ -2,6 +2,9 @@
 #define GLOBAL_H
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "list.h"
 #include "cache.h"
 
@@ -24,6 +27,15 @@
 struct config;
 struct genealogy;
 struct mutation;
+
+struct coal_node;
+struct node;
+
+struct node_set {
+	int maxn;
+	int n;
+	struct node **nodes;
+};
 
 struct event {
 	int type;
@@ -110,7 +122,7 @@ struct join_event {
 	int *sumdn;
 	int popi;	// Subpopulation to be absorbed
 	int popj;
-	struct list ndls;
+	struct node_set ndls;
 };
 
 struct splt_event {
@@ -121,7 +133,7 @@ struct splt_event {
 	int pop;	// Subpopulation to be splitted
 	int newpop;	// New subpopulation
 	double prop;	// proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.
-	struct list ndls;
+	struct node_set ndls;
 };
 
 struct samp_event {
@@ -142,8 +154,6 @@ struct read{
 	char *seq;
 	char *qual;
 };
-
-struct sam_node;
 
 struct fginfo{
 	int end;
@@ -169,7 +179,6 @@ void load_chr(struct reference *ref, int chrnum, char **strp);
 #define NUM_NUCS	4
 #define SQNUCS	NUM_NUCS * NUM_NUCS
 
-struct sam_node;
 struct profile {
 	int npop;
 
@@ -259,8 +268,6 @@ int add_event_samp(struct config *cfg, double t, int pop, double size);
 extern char nucl[];
 int nucl_index(int ch);
 
-struct node;
-
 typedef size_t map_t;
 #define CELLSIZE 32
 #define NCELL_PER_MAP sizeof(map_t)
@@ -341,6 +348,7 @@ struct migr_node {
 	struct migr_event *ev;
 	struct node *in;
 	struct node *out;
+	int mgid;
 };
 
 // Node representing sample.
@@ -383,5 +391,169 @@ struct dummy_node {
 
 #define NODE_FLAG_VISITED_LEFT 0x1
 #define NODE_FLAG_VISITED_RIGHT 0x2
+
+#define NODE_COAL	0
+#define NODE_MIGR	1
+#define NODE_XOVER	2
+#define NODE_SAM	3
+#define NODE_FLOAT	4
+#define NODE_DUMMY	5
+
+#define AS_COAL_NODE(n)	((struct coal_node *)(n))
+#define AS_MIGR_NODE(n)	((struct migr_node *)(n))
+#define AS_XOVER_NODE(n)	((struct xover_node *)(n))
+#define AS_SAM_NODE(n)	((struct sam_node *)(n))
+#define AS_FLOAT_NODE(n)	((struct dummy_node *)(n))
+#define AS_DUMMY_NODE(n)	((struct dummy_node *)(n))
+
+static inline int iscoalnode(struct node *nd)
+{
+	return nd->type == NODE_COAL;
+}
+
+static inline int isxovernode(struct node *nd)
+{
+	return nd->type == NODE_XOVER;
+}
+
+static inline int ismigrnode(struct node *nd)
+{
+	return nd->type == NODE_MIGR;
+}
+
+static inline int issamnode(struct node *nd)
+{
+	return nd->type == NODE_SAM;
+}
+
+static inline int isfloatnode(struct node *nd)
+{
+	return nd->type == NODE_FLOAT;
+}
+
+static inline int isdummynode(struct node *nd)
+{
+	return nd->type == NODE_DUMMY;
+}
+
+static int node_flag_gettype(struct node *nd)
+{
+	return nd->type;
+}
+
+static void edge_flag_settype(struct node *nd, char type)
+{
+	nd->type = type;
+}
+
+static inline char isdeleted(struct node *e)
+{
+	return e->deleted;
+}
+
+static inline void edge_flag_delete(struct node *e)
+{
+	e->deleted = 1;
+}
+
+static inline void edge_flag_undelete(struct node *e)
+{
+	e->deleted = 0;
+}
+
+static inline void edge_flag_setdeleted(struct node *e, char flag)
+{
+	e->deleted = flag;
+}
+
+static inline int edge_flag_getitop(struct node *e)
+{
+	return e->itop;
+}
+
+static inline void edge_flag_setleft(struct node *e)
+{
+	e->itop = 0;
+}
+
+static inline void edge_flag_setright(struct node *e)
+{
+	e->itop = 1;
+}
+
+static inline void edge_flag_setitop(struct node *e, char flag)
+{
+	e->itop = flag;
+}
+
+void free_node(struct genealogy *G, struct node *nd);
+struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
+
+static inline void migr_set_add(struct node_set *set, struct node *e)
+{
+	if(set->n >= set->maxn){
+		set->maxn *= 2;
+		set->nodes = realloc(set->nodes, sizeof(struct node *) * set->maxn);
+	}
+	AS_MIGR_NODE(e)->mgid = set->n;
+	set->nodes[set->n++] = e;
+}
+
+static inline void migr_set_remove(struct node_set *set, struct node *e)
+{
+	int i;
+	i = AS_MIGR_NODE(e)->mgid;
+	set->nodes[i] = set->nodes[--(set->n)];
+	AS_MIGR_NODE(set->nodes[i])->mgid = i;
+}
+
+static inline void node_set_init(struct node_set *set, int maxn)
+{
+	set->maxn = maxn;
+	set->n = 0;
+	set->nodes = malloc(sizeof(struct node *) * maxn);
+	memset(set->nodes, 0, sizeof(struct node *) * maxn);
+}
+
+static inline void node_set_clear(struct node_set *set)
+{
+	set->n = 0;
+}
+
+static inline void node_set_destroy(struct node_set *set)
+{
+	set->maxn = set->n = 0;
+	free(set->nodes);
+}
+
+static inline void node_set_add(struct node_set *set, struct node *e)
+{
+	e->set_id = set->n;
+	set->nodes[set->n++] = e;
+}
+
+static inline struct node *node_set_get(struct node_set *set, int i)
+{
+	return set->nodes[i];
+}
+
+static inline void node_set_replace(struct node_set *set, int i, struct node *e)
+{
+	set->nodes[i]->set_id = -1;
+	e->set_id = i;
+	set->nodes[i] = e;
+}
+
+static inline struct node *node_set_remove(struct node_set *set, int i)
+{
+	struct node *e;
+
+	e = set->nodes[i];
+	set->nodes[i] = set->nodes[--(set->n)];
+	set->nodes[i]->set_id = i;
+//	set->nodes[set->n] = NULL;
+
+	return e;
+}
 
 #endif
