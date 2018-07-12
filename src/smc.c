@@ -660,13 +660,13 @@ struct coal_node *coalescent( struct genealogy *G, struct node_set *F, int pop, 
 	c1 = dunif(F[pop].n) ;
 	while( ( c2 = dunif(F[pop].n) ) == c1 );
 
-	if(c1 > c2){
-		n1 = node_set_get(&F[pop], c2);
-		n2 = node_set_remove(&F[pop], c1);
-	}else{
+//	if(c1 > c2){
+//		n1 = node_set_get(&F[pop], c2);
+//		n2 = node_set_remove(&F[pop], c1);
+//	}else{
 		n1 = node_set_get(&F[pop], c1);
 		n2 = node_set_remove(&F[pop], c2);
-	}
+//	}
 
 	nd = __coalescent(G, n1, n2, pop, t);
 	node_set_replace(&F[pop], n1->set_id, (struct node *)nd);
