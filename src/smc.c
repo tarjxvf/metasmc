@@ -1653,6 +1653,11 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 	char dead1, dead2;
 	int pop;
 
+//	struct timespec beg, end;
+//	int nsec;
+//	n_abs_merge++;
+//	clock_gettime(CLOCK_MONOTONIC, &beg);
+
 	in = cev->nd;
 	pop = in->pop;
 	out1 = cev->nd->out[0];
@@ -1675,6 +1680,10 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			remove_edge_m(G, pop, out2);
 			remove_event(G, (struct event *)cev);
 
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_trunk_coal += nsec;
+
 			return out1;
 
 		}else if(!dead2){
@@ -1687,6 +1696,10 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			G->tr_xover->weights[out2->xtid] = out2->in->t - out2->t;
 			remove_event(G, (struct event *)cev);
 
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_trunk_coal += nsec;
+
 			return out2;
 
 		}else{
@@ -1696,12 +1709,21 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			remove_edge_m(G, pop, out2);
 			remove_event(G, (struct event *)cev);
 
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_trunk_coal += nsec;
+
 			return (struct node *)in;
 		}
 
 	}else{
 		node_set_replace(&trunk[pop], out1->set_id, (struct node *)in);
 		node_set_remove(&trunk[pop], out2->set_id);
+
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_trunk_coal += nsec;
+
 		return (struct node *)in;
 	}
 }
