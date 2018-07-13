@@ -61,7 +61,7 @@ struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 	nd = cache_alloc(G->cfg->node_cache[type]);
 //	nd = malloc(nodesize[type]);
 
-	*((unsigned char *)&nd->idx + sizeof(int)) = type;
+	*((unsigned char *)&nd->set_id + sizeof(int)) = type;
 	nd->pop = pop;
 	nd->t = t;
 	nd->xtid = nd->idx = 0;

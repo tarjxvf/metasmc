@@ -320,9 +320,9 @@ typedef size_t map_t;
 struct node {
 	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -339,9 +339,9 @@ struct node {
 struct coal_node {
 	// type==NODE_COAL
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -360,9 +360,9 @@ struct coal_node {
 struct xover_node {
 	// type==NODE_XOVER
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -380,9 +380,9 @@ struct xover_node {
 struct migr_node {
 	// type==NODE_MIGR
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -400,9 +400,9 @@ struct migr_node {
 struct sam_node {
 	// type==NODE_SAM
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -419,9 +419,9 @@ struct sam_node {
 struct dummy_node {
 	// type==NODE_DUMMY of type==NODE_FLOAT
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
