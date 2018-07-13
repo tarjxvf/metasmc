@@ -1651,8 +1651,10 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 	struct node *out1, *out2, *enew;
 	struct coal_node *in;
 	char dead1, dead2;
+	int pop;
 
 	in = cev->nd;
+	pop = in->pop;
 	out1 = cev->nd->out[0];
 	out2 = cev->nd->out[1];
 
@@ -1666,40 +1668,40 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 
 	if(dead1 || dead2){
 		if(!dead1){
-			node_set_remove(&trunk[cev->nd->pop], out2->set_id);
+			node_set_remove(&trunk[pop], out2->set_id);
 			__remove_coal_node(G, in, out1);
 			G->tr_xover->weights[out1->xtid] = out1->in->t - out1->t;
-			remove_edge_m(G, in->pop, (struct node *)in);
-			remove_edge_m(G, out2->pop, out2);
+			remove_edge_m(G, pop, (struct node *)in);
+			remove_edge_m(G, pop, out2);
 			remove_event(G, (struct event *)cev);
 
 			return out1;
 
 		}else if(!dead2){
-			node_set_remove(&trunk[cev->nd->pop], out2->set_id);
-			node_set_replace(&trunk[cev->nd->pop], out1->set_id, out2);
+			node_set_remove(&trunk[pop], out2->set_id);
+			node_set_replace(&trunk[pop], out1->set_id, out2);
 
 			__remove_coal_node(G, in, out2);
-			remove_edge_m(G, out1->pop, out1);
-			remove_edge_m(G, in->pop, (struct node *)in);
+			remove_edge_m(G, pop, out1);
+			remove_edge_m(G, pop, (struct node *)in);
 			G->tr_xover->weights[out2->xtid] = out2->in->t - out2->t;
 			remove_event(G, (struct event *)cev);
 
 			return out2;
 
 		}else{
-			node_set_replace(&trunk[cev->nd->pop], out1->set_id, (struct node *)in);
-			node_set_remove(&trunk[cev->nd->pop], out2->set_id);
-			remove_edge_m(G, cev->nd->pop, out1);
-			remove_edge_m(G, cev->nd->pop, out2);
+			node_set_replace(&trunk[pop], out1->set_id, (struct node *)in);
+			node_set_remove(&trunk[pop], out2->set_id);
+			remove_edge_m(G, pop, out1);
+			remove_edge_m(G, pop, out2);
 			remove_event(G, (struct event *)cev);
 
 			return (struct node *)in;
 		}
 
 	}else{
-		node_set_replace(&trunk[cev->nd->pop], out1->set_id, (struct node *)in);
-		node_set_remove(&trunk[cev->nd->pop], out2->set_id);
+		node_set_replace(&trunk[pop], out1->set_id, (struct node *)in);
+		node_set_remove(&trunk[pop], out2->set_id);
 		return (struct node *)in;
 	}
 }
