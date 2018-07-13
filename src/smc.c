@@ -1051,7 +1051,6 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
-	tlast = G->pops[pop].tlast;
 	if(alpha == 0){
 		dt = dexp((nF << 1) * G->pops[pop].n / size);
 //		clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1061,6 +1060,7 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 		return dt;
 
 	}else{
+		tlast = G->pops[pop].tlast;
 		u = dunif01();
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / ((nF << 1) * G->pops[pop].n);
 		dt = log(r) / alpha;
