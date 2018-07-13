@@ -564,7 +564,6 @@ static inline void node_set_resize(struct node_set *set, int maxn)
 	if(maxn > set->maxn){
 		set->maxn = maxn;
 		set->nodes = realloc(set->nodes, sizeof(struct node *) * maxn);
-//		memset(set->nodes, 0, sizeof(struct node *) * maxn);
 	}
 }
 
@@ -592,7 +591,6 @@ static inline struct node *node_set_get(struct node_set *set, int i)
 
 static inline void node_set_replace(struct node_set *set, int i, struct node *e)
 {
-//	set->nodes[i]->set_id = -1;
 	e->set_id = i;
 	set->nodes[i] = e;
 }
