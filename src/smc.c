@@ -1300,7 +1300,7 @@ finish_selection:
 			}
 
 			if(evnew)	// evnew is NULL when the absorption event is ignored because the absorption target will be removed later
-				insert_event(G, evnew);
+				insert_event_rb(G, evnew);
 
 		}else{
 //ndiscard_merge++;
@@ -1321,7 +1321,7 @@ finish_selection:
 					node_set_add(&F[jev->popi], (struct node *)nm);
 					nm->ev = (struct migr_event *)ev;
 					migr_set_add(&jev->ndls, (struct node *)nm);
-					insert_event_join(G, ev);
+					insert_event_rb_join(G, (struct join_event *)ev);
 				}
 
 				node_set_clear(&F[jev->popj]);
@@ -1340,7 +1340,7 @@ finish_selection:
 						node_set_add(&F[sev->newpop], (struct node *)nm);
 						nm->ev = (struct migr_event *)ev;
 						migr_set_add(&sev->ndls, (struct node *)nm);
-						insert_event_splt(G, ev);
+						insert_event_rb_splt(G, (struct splt_event *)ev);
 
 					}else{
 						i++;
@@ -1374,7 +1374,7 @@ finish_selection:
 	evnew = alloc_event(G->cfg, EVENT_DUMY, e->in->t);
 	while((evindex_s_get(G->evidx))->t < evnew->t)
 		evindex_s_forward(G->evidx);
-	insert_event(G, evnew);
+	insert_event_rb(G, evnew);
 	e->in->ev = evnew;
 
 #ifdef DEBUG
@@ -1421,19 +1421,19 @@ double recombination(struct genealogy *G, double x)
 				struct event *ev_dxvr;
 
 				ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
-				remove_event(G, G->ev_dxvr);
+				remove_event_rb(G, G->ev_dxvr);
 
 				/* Change on 2018/05/31: Find first event after time of new event. The old version crashes in the presence of migration. */
 				evindex_s_seek(G->evidx, ev_dxvr->t);
 				/* End of change. */
-				insert_event(G, ev_dxvr);
+				insert_event_rb(G, ev_dxvr);
 				G->ev_dxvr = ev_dxvr;
 			}
 
 		}else{
 			G->ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
 			evindex_s_seek(G->evidx, G->ev_dxvr->t);
-			insert_event(G, G->ev_dxvr);
+			insert_event_rb(G, G->ev_dxvr);
 		}
 
 		return 0;
@@ -1579,7 +1579,7 @@ double recombination(struct genealogy *G, double x)
 				node_set_add(&F[nf->pop], nf);
 
 				G->root = G->localMRCA = NULL;
-				remove_event(G, ev);
+				remove_event_rb(G, ev);
 
 				G->t = t;
 				merge_floating_r(G, trunk, F);
@@ -1886,7 +1886,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 			}
 
 			if(evnew)	// evnew is NULL when the absorption event is ignored because the absorption target will be removed later
-				insert_event(G, evnew);
+				insert_event_s(G, evnew);
 
 		}else{
 //ndiscard_merge++;
@@ -1909,7 +1909,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 						G->pops[pop].n--;
 						G->troot = G->root->t;
 						__node_set_remove(&trunk[pop], e->set_id);
-						erase_dummy_path(G, e);
+						erase_dummy_path_s(G, e);
 						if(G->ev_dxvr)
 							__remove_event_s(G, G->ev_dxvr);
 						G->localMRCA = G->root = NULL;
@@ -1953,7 +1953,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 						node_set_add(&F[jev->popi], (struct node *)nm);
 						nm->ev = (struct migr_event *)ev;
 						migr_set_add(&jev->ndls, (struct node *)nm);
-						insert_event_join(G, ev);
+						insert_event_s_join(G, (struct event *)ev);
 					}
 
 					node_set_clear(&F[jev->popj]);
@@ -1980,7 +1980,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 							node_set_add(&F[sev->newpop], (struct node *)nm);
 							nm->ev = (struct migr_event *)ev;
 							migr_set_add(&sev->ndls, (struct node *)nm);
-							insert_event_splt(G, ev);
+							insert_event_s_splt(G, (struct event *)ev);
 
 						}else{
 							i++;

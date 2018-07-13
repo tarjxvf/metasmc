@@ -64,6 +64,16 @@ static inline void insert_event_splt_increase(struct genealogy *G, struct splt_e
 void insert_event_rb_join(struct genealogy *G, struct join_event *jev);
 void insert_event_rb_splt(struct genealogy *G, struct splt_event *sev);
 
+static inline void insert_event_s_join(struct genealogy *G, struct event *ev)
+{
+	insert_event_join_increase(G, (struct join_event *)ev);
+}
+
+static inline void insert_event_s_splt(struct genealogy *G, struct event *ev)
+{
+	insert_event_splt_increase(G, (struct splt_event *)ev);
+}
+
 static inline void insert_event_join(struct genealogy *G, struct event *ev)
 {
 	if(!rbindex_isseq(G->evidx->idx))
@@ -83,6 +93,11 @@ static inline void insert_event_splt(struct genealogy *G, struct event *ev)
 static inline void insert_event_rb(struct genealogy *G, struct event *ev)
 {
 	evindex_rb_insert(G->evidx, ev);
+}
+
+static inline void insert_event_s(struct genealogy *G, struct event *ev)
+{
+	evindex_s_insert(G->evidx, ev);
 }
 
 static inline void insert_event(struct genealogy *G, struct event *ev)
