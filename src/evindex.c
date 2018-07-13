@@ -109,13 +109,13 @@ void evindex_seq_off(struct evindex *evidx)
 		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
 
 		// Link nodes
-		if(i * 2 + 1 < nnodes){
-			left = nodes[i * 2 + 1]->rb_data;
+		if((i << 1) + 1 < nnodes){
+			left = nodes[(i << 1) + 1]->rb_data;
 			dn_add(evidx->npop_all, GET_SUMDN(ev), GET_SUMDN(left));
 		}
 
-		if(i * 2 + 2 < nnodes){
-			right = nodes[i * 2 + 2]->rb_data;
+		if((i << 1) + 2 < nnodes){
+			right = nodes[(i << 1) + 2]->rb_data;
 			dn_add(evidx->npop_all, GET_SUMDN(ev), GET_SUMDN(right));
 		}
 	}

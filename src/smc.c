@@ -1050,7 +1050,7 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 	alpha = G->pops[pop].grate;
 	tlast = G->pops[pop].tlast;
 	if(alpha == 0){
-		dt = dexp(2 * nF * G->pops[pop].n / size);
+		dt = dexp((nF << 1) * G->pops[pop].n / size);
 //		clock_gettime(CLOCK_MONOTONIC, &end);
 //		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //		t_abs_time += nsec;
@@ -1059,7 +1059,7 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 
 	}else{
 		u = dunif01();
-		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / (2 * nF * G->pops[pop].n);
+		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / ((nF << 1) * G->pops[pop].n);
 		dt = log(r) / alpha;
 //		clock_gettime(CLOCK_MONOTONIC, &end);
 //		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1080,7 +1080,7 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 //	n_coal_time++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	npair = nF * ((nF - 1) + 2 * G->pops[pop].n);
+	npair = nF * ((nF - 1) + (G->pops[pop].n << 1));
 	size = G->pops[pop].size;
 	alpha = G->pops[pop].grate;
 
@@ -1191,7 +1191,7 @@ void erase_dummy_path(struct genealogy *G, struct node *edum)
 double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node_set *F)
 {
 	struct config *cfg;
-	int pop, uvpop, zpop, sumnF, i, c, nfrom;
+	int pop, uvpop, zpop, sumnF, i, c, nfrom, npop_all;
 	double t, uv, minuv, z, minz, rmig;
 	double pabs, rate1, rate2, sum, x, inc, u;
 	struct node *last, *nf, *nd, *edum, *ndum, *e;
@@ -1205,6 +1205,7 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
+	npop_all = cfg->npop + cfg->nsplt;
 	t = G->t;
 	sumnF = 0;
 	for(pop = 0; pop < cfg->npop_all; pop++){
@@ -1217,34 +1218,27 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 		rmig = 0;
 		minuv = minz = INFINITY;
 		uvpop = zpop = 0;
-		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
+		for(pop = 0; pop < npop_all; pop++){
 			if(F[pop].n > 0){
 //n_abs_time_merge++;
 				uv = ca_time(G, F[pop].n, pop, t);
 #ifdef DEBUG
 				fprintf(stderr, "%d: ca_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, uv, pop, F[pop].n, pop, G->pops[pop].n);
 #endif
-
-			}else{
-				uv = INFINITY;
-			}
-
-			if(uv < minuv){
-				minuv = uv;
-				uvpop = pop;
+				if(uv < minuv){
+					minuv = uv;
+					uvpop = pop;
+				}
 			}
 		}
 
-		rmig = 0;
-		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
-			rmig += G->pops[pop].mrate[pop] * F[pop].n;
-		}
+		if(npop_all > 1){
+			rmig = 0;
+			for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++)
+				rmig += G->pops[pop].mrate[pop] * F[pop].n;
 
-		if(rmig > 0){
-			minz = dexp(rmig);
-
-		}else{
-			minz = INFINITY;
+			if(rmig > 0)
+				minz = dexp(rmig);
 		}
 
 		ev = evindex_s_get(G->evidx);
@@ -1277,7 +1271,7 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 				t += minz;
 				x = rmig * dunif01();
 				sum = 0;
-				for(zpop = 0; zpop < cfg->npop_all; zpop++){
+				for(zpop = 0; zpop < npop_all; zpop++){
 					inc = G->pops[zpop].mrate[zpop] * F[zpop].n;
 					if(x < sum + inc)
 						break;
@@ -1353,7 +1347,7 @@ finish_selection:
 		}
 	}
 
-	for(i = 0; i < cfg->npop_all; i++){
+	for(i = 0; i < npop_all; i++){
 		if(F[i].n > 0){
 			nd = node_set_remove(&F[i], 0);
 			ndum = alloc_node(G, NODE_DUMMY, nd->pop, nd->t);
@@ -1398,6 +1392,7 @@ double recombination(struct genealogy *G, double x)
 	struct migr_node *nm;
 	struct splt_event *sev;
 	struct join_event *jev;
+	int npop_all;
 
 	if(tsindex_isrebuild(G->tr_xover))
 		tsindex_rebuild(G->tr_xover);
@@ -1407,6 +1402,8 @@ double recombination(struct genealogy *G, double x)
 		evindex_seq_off(G->evidx);
 
 	cfg = G->cfg;
+	npop_all = cfg->npop_all;
+
 	/* Choose recombination point at random. */
 	ev = rnd_select_point(G, &e, &pop, &t);
 
@@ -1458,13 +1455,12 @@ double recombination(struct genealogy *G, double x)
 //	n_abs_time_xover++;
 
 		at = abs_time(G, 1, pop, t);
+		mg = INFINITY;
 
-		dmig = G->pops[pop].mrate[pop] * 1;
-		if(dmig > 0){
-			mg = dexp(dmig);
-
-		}else{
-			mg = INFINITY;
+		if(npop_all > 1){
+			dmig = G->pops[pop].mrate[pop];
+			if(dmig > 0)
+				mg = dexp(dmig);
 		}
 
 		ev = evindex_s_get(G->evidx);
@@ -1747,7 +1743,7 @@ static inline void trunk_migr(struct genealogy *G, struct node_set *trunk, struc
 double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_set *F)
 {
 	struct config *cfg;
-	int pop, uvpop, zpop, sumnF, i, c, nfrom, rate1, rate2;
+	int pop, uvpop, zpop, sumnF, i, c, nfrom, rate1, rate2, npop_all;
 	double t, uv, minuv, z, minz, rmig;
 	double pabs, sum, x, inc, u;
 	struct node *last, *nf, *nd, *edum, *ndum, *e;
@@ -1761,6 +1757,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
+	npop_all = cfg->npop + cfg->nsplt;
 	t = G->t;
 	sumnF = 0;
 	for(pop = 0; pop < cfg->npop_all; pop++){
@@ -1773,34 +1770,27 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 		rmig = 0;
 		minuv = minz = INFINITY;
 		uvpop = zpop = 0;
-		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
+		for(pop = 0; pop < npop_all; pop++){
 			if(F[pop].n > 0){
 //n_abs_time_merge++;
 				uv = ca_time(G, F[pop].n, pop, t);
 #ifdef DEBUG
 				fprintf(stderr, "%d: ca_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, uv, pop, F[pop].n, pop, G->pops[pop].n);
 #endif
-
-			}else{
-				uv = INFINITY;
-			}
-
-			if(uv < minuv){
-				minuv = uv;
-				uvpop = pop;
+				if(uv < minuv){
+					minuv = uv;
+					uvpop = pop;
+				}
 			}
 		}
 
-		rmig = 0;
-		for(pop = 0; pop < cfg->npop + cfg->nsplt; pop++){
-			rmig += G->pops[pop].mrate[pop] * F[pop].n;
-		}
+		if(npop_all > 1){
+			rmig = 0;
+			for(pop = 0; pop < npop_all; pop++)
+				rmig += G->pops[pop].mrate[pop] * F[pop].n;
 
-		if(rmig > 0){
-			minz = dexp(rmig);
-
-		}else{
-			minz = INFINITY;
+			if(rmig > 0)
+				minz = dexp(rmig);
 		}
 
 		ev = evindex_s_get(G->evidx);
@@ -1810,7 +1800,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 		}
 #ifdef DEBUG
 		fprintf(stderr, "%d:", __LINE__);
-		for(i = 0; i < cfg->npop + cfg->nsplt; i++)
+		for(i = 0; i < npop_all; i++)
 			fprintf(stderr, ",G->pops[%d].n=%d", i, G->pops[i].n);
 		fprintf(stderr, "\n");
 
@@ -1821,7 +1811,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 			evnew = NULL;
 			if(minuv < minz){	// Coalescent or Absorption
 				// Calculate probability of absorption event
-				rate1 = 2 * G->pops[uvpop].n;
+				rate1 = G->pops[uvpop].n << 1;
 				rate2 = F[uvpop].n - 1;
 
 				t += minuv;
@@ -1844,7 +1834,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				t += minz;
 				x = rmig * dunif01();
 				sum = 0;
-				for(zpop = 0; zpop < cfg->npop_all; zpop++){
+				for(zpop = 0; zpop < npop_all; zpop++){
 					inc = G->pops[zpop].mrate[zpop] * F[zpop].n;
 					if(x < sum + inc)
 						break;
@@ -1989,7 +1979,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 						ndum = edum->in;
 					}
 
-					for(i = 0; i < cfg->npop_all; i++)
+					for(i = 0; i < npop_all; i++)
 						node_set_clear(&trunk[i]);
 
 					// Remove remaining edges in dummy edge list
@@ -2015,7 +2005,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 	}
 
 	if(G->localMRCA == NULL){	// In this case, last event must be coalescent between two floating lineages
-		for(i = 0; i < cfg->npop_all; i++){
+		for(i = 0; i < npop_all; i++){
 			if(F[i].n > 0){
 				nd = node_set_remove(&F[i], 0);
 				ndum = alloc_node(G, NODE_DUMMY, nd->pop, nd->t);
