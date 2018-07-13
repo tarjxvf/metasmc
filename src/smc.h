@@ -111,6 +111,12 @@ static inline void remove_event_rb(struct genealogy *G, struct event *ev)
 	free_event(G->cfg, ev);
 }
 
+static inline void __remove_event_s(struct genealogy *G, struct event *ev)
+{
+	__evindex_s_delete(G->evidx, ev);
+	free_event(G->cfg, ev);
+}
+
 static inline void remove_event_s(struct genealogy *G, struct event *ev)
 {
 	evindex_s_delete(G->evidx, ev);

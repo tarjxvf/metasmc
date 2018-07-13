@@ -110,6 +110,11 @@ static inline struct event *evindex_find(seq_traverser *it, struct evindex *evid
 	return rbindex_find(it, evidx->idx, key);
 }
 
+static inline void __evindex_s_delete(struct evindex *evidx, struct event *e)
+{
+	__rbindex_s_delete(evidx->idx, (void *)e);
+}
+
 static inline void evindex_s_delete(struct evindex *evidx, struct event *e)
 {
 	rbindex_s_delete(evidx->idx, (void *)e);
