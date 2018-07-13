@@ -592,9 +592,15 @@ static inline struct node *node_set_get(struct node_set *set, int i)
 
 static inline void node_set_replace(struct node_set *set, int i, struct node *e)
 {
-	set->nodes[i]->set_id = -1;
+//	set->nodes[i]->set_id = -1;
 	e->set_id = i;
 	set->nodes[i] = e;
+}
+
+static inline void __node_set_remove(struct node_set *set, int i)
+{
+	set->nodes[i] = set->nodes[--(set->n)];
+	set->nodes[i]->set_id = i;
 }
 
 static inline struct node *node_set_remove(struct node_set *set, int i)

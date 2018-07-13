@@ -50,16 +50,16 @@ void free_node(struct genealogy *G, struct node *nd)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, nd=%x(%.6f)\n", __func__, nd, nd->t);
 #endif
-	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], nd);
-//	free(nd);
+//	cache_free(G->cfg->node_cache[node_flag_gettype(nd)], nd);
+	free(nd);
 }
 
 struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 {
 	struct node *nd;
 
-	nd = cache_alloc(G->cfg->node_cache[type]);
-//	nd = malloc(nodesize[type]);
+//	nd = cache_alloc(G->cfg->node_cache[type]);
+	nd = malloc(nodesize[type]);
 
 	*((unsigned char *)&nd->set_id + sizeof(int)) = type;
 	nd->pop = pop;
@@ -76,8 +76,8 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 {
 	struct node *new;
 
-	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-//	new = malloc(nodesize[old->type]);
+//	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+	new = malloc(nodesize[old->type]);
 	new->t = old->t;
 	new->pop = old->pop;
 	new->type = old->type;
@@ -430,7 +430,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 		if(ev->type == EVENT_COAL){
 			cev = (struct coal_event *)ev;
 			cnd = cev->nd;
-			node_set_remove(&trunk[cnd->pop], cnd->set_id);
+			__node_set_remove(&trunk[cnd->pop], cnd->set_id);
 
 			if(cnd->pop == pop && cnd->out[0]->t < t && cnd->t > t){
 				if(c < u) c++;
@@ -447,7 +447,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 		}else if(ev->type == EVENT_MIGR){
 			mev = (struct migr_event *)ev;
 			mnd = mev->nd;
-			node_set_remove(&trunk[mnd->pop], mnd->set_id);
+			__node_set_remove(&trunk[mnd->pop], mnd->set_id);
 
 			if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
 				if(c < u) c++;
@@ -459,7 +459,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 			jev = (struct join_event *)ev;
 			for(i = 0; i < jev->ndls.n; i++){
 				mnd = (struct migr_node *)node_set_get(&jev->ndls, i);
-				node_set_remove(&trunk[mnd->pop], mnd->set_id);
+				__node_set_remove(&trunk[mnd->pop], mnd->set_id);
 
 				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
 					if(c < u) c++;
@@ -472,7 +472,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 			sev = (struct splt_event *)ev;
 			for(i = 0; i < sev->ndls.n; i++){
 				mnd = (struct migr_node *)node_set_get(&sev->ndls, i);
-				node_set_remove(&G->trunk[mnd->pop], mnd->set_id);
+				__node_set_remove(&G->trunk[mnd->pop], mnd->set_id);
 
 				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
 					if(c < u) c++;
@@ -760,7 +760,7 @@ void clear_tree(struct genealogy *G)
 		while(j < trunk[i].n){
 			e = node_set_get(&trunk[i], j);
 			if(!isdeleted(e))
-				node_set_remove(&trunk[i], j);
+				__node_set_remove(&trunk[i], j);
 			else
 				j++;
 		}
@@ -1673,12 +1673,12 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 
 	if(dead1 || dead2){
 		if(!dead1){
-			node_set_remove(&trunk[pop], out2->set_id);
+			__node_set_remove(&trunk[pop], out2->set_id);
 			__remove_coal_node(G, in, out1);
 			G->tr_xover->weights[out1->xtid] = out1->in->t - out1->t;
 			remove_edge_m(G, pop, (struct node *)in);
 			remove_edge_m(G, pop, out2);
-			remove_event(G, (struct event *)cev);
+			remove_event_s(G, (struct event *)cev);
 
 //		clock_gettime(CLOCK_MONOTONIC, &end);
 //		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1687,14 +1687,14 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			return out1;
 
 		}else if(!dead2){
-			node_set_remove(&trunk[pop], out2->set_id);
+			__node_set_remove(&trunk[pop], out2->set_id);
 			node_set_replace(&trunk[pop], out1->set_id, out2);
 
 			__remove_coal_node(G, in, out2);
 			remove_edge_m(G, pop, out1);
 			remove_edge_m(G, pop, (struct node *)in);
 			G->tr_xover->weights[out2->xtid] = out2->in->t - out2->t;
-			remove_event(G, (struct event *)cev);
+			remove_event_s(G, (struct event *)cev);
 
 //		clock_gettime(CLOCK_MONOTONIC, &end);
 //		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1704,10 +1704,10 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 
 		}else{
 			node_set_replace(&trunk[pop], out1->set_id, (struct node *)in);
-			node_set_remove(&trunk[pop], out2->set_id);
+			__node_set_remove(&trunk[pop], out2->set_id);
 			remove_edge_m(G, pop, out1);
 			remove_edge_m(G, pop, out2);
-			remove_event(G, (struct event *)cev);
+			remove_event_s(G, (struct event *)cev);
 
 //		clock_gettime(CLOCK_MONOTONIC, &end);
 //		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1718,7 +1718,7 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 
 	}else{
 		node_set_replace(&trunk[pop], out1->set_id, (struct node *)in);
-		node_set_remove(&trunk[pop], out2->set_id);
+		__node_set_remove(&trunk[pop], out2->set_id);
 
 //		clock_gettime(CLOCK_MONOTONIC, &end);
 //		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1736,7 +1736,7 @@ int __trunk_migr(struct genealogy *G, struct node_set *trunk, int dpop, int spop
 	in = (struct node *)nd;
 	out = nd->out;
 	edge_flag_setdeleted(in, isdeleted(out));
-	node_set_remove(&trunk[dpop], out->set_id);
+	__node_set_remove(&trunk[dpop], out->set_id);
 	node_set_add(&trunk[spop], in);
 
 	if(isdeleted(out)){
@@ -1905,7 +1905,7 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 #endif
 						G->pops[pop].n--;
 						G->troot = G->root->t;
-						node_set_remove(&trunk[pop], e->set_id);
+						__node_set_remove(&trunk[pop], e->set_id);
 						erase_dummy_path(G, e);
 						if(G->ev_dxvr)
 							remove_event(G, G->ev_dxvr);
@@ -2128,7 +2128,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
