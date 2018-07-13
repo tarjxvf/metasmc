@@ -90,12 +90,9 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 
 static inline void __add_edge__(struct genealogy *G, int pop, struct node *e)
 {
-	struct population *ppop;
 	int idx;
-
-	ppop = &G->pops[pop];
-	idx = ppop->nedges++;
-	ppop->eptrs[idx] = e;
+	idx = G->pops[pop].nedges++;
+	G->pops[pop].eptrs[idx] = e;
 	e->idx = idx;
 }
 
@@ -115,13 +112,10 @@ static inline void add_edge_m(struct genealogy *G, int pop, struct node *e)
 
 static inline void __remove_edge__(struct genealogy *G, int pop, struct node *e)
 {
-	struct population *ppop;
 	int idx;
-
-	ppop = &G->pops[pop];
 	idx = e->idx;
-	ppop->eptrs[idx] = ppop->eptrs[--(ppop->nedges)];
-	ppop->eptrs[idx]->idx = idx;
+	G->pops[pop].eptrs[idx] = G->pops[pop].eptrs[--(G->pops[pop].nedges)];
+	G->pops[pop].eptrs[idx]->idx = idx;
 }
 
 static inline void remove_edge_r(struct genealogy *G, int pop, struct node *e)
@@ -525,7 +519,6 @@ struct node *choose_tedge(struct genealogy *G, int pop, double t)
 /* Absorb floating lineage n2 into e1. */
 struct coal_node *__absorption(struct genealogy *G, struct node *e1, struct node *n2, int pop, double t)
 {
-	struct node *e_new, *e2;
 	struct coal_node *nd;
 	struct coal_event *ev;
 
@@ -538,11 +531,9 @@ struct coal_node *__absorption(struct genealogy *G, struct node *e1, struct node
 	nd->out[0] = e1;
 	nd->out[1] = n2;
 
-	e2 = n2;
-	e1->in = (struct node *)nd;
-	e2->in = (struct node *)nd;
+	e1->in = n2->in = (struct node *)nd;
 	edge_flag_setleft(e1);
-	edge_flag_setright(e2);
+	edge_flag_setright(n2);
 
 	GET_DN(ev)[pop] = -1;
 	ev->pop = pop;
@@ -1060,18 +1051,22 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 	tlast = G->pops[pop].tlast;
 	if(alpha == 0){
 		dt = dexp(2 * nF * G->pops[pop].n / size);
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_abs_time += nsec;
+
+		return dt;
 
 	}else{
 		u = dunif01();
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / (2 * nF * G->pops[pop].n);
 		dt = log(r) / alpha;
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_abs_time += nsec;
+
+		return dt;
 	}
-
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_abs_time += nsec;
-
-	return dt;
 }
 
 // Time of next coalescent or absorption event
@@ -1092,18 +1087,24 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 	if(alpha == 0){
 		dt = dexp(npair / size);
 
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_coal_time += nsec;
+
+		return dt;
+
 	}else{
 		tlast = G->pops[pop].tlast;
 		u = dunif01();
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / npair;
 		dt = log(r) / alpha;
+
+//		clock_gettime(CLOCK_MONOTONIC, &end);
+//		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
+//		t_coal_time += nsec;
+
+		return dt;
 	}
-
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_coal_time += nsec;
-
-	return dt;
 }
 
 double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_set *F);
@@ -1192,7 +1193,6 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 	struct config *cfg;
 	int pop, uvpop, zpop, sumnF, i, c, nfrom;
 	double t, uv, minuv, z, minz, rmig;
-//	double totalprob;
 	double pabs, rate1, rate2, sum, x, inc, u;
 	struct node *last, *nf, *nd, *edum, *ndum, *e;
 	struct event *ev, *evnew;
@@ -1214,7 +1214,6 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 	/* If trunk genealogy is not empty, loop until all floating lineages are absorbed.
 	   Otherwise, loop until only one floating lineage remained. */
 	while((G->root != NULL && sumnF > 0) || (G->root == NULL && sumnF > 1)){
-//		totalprob = 0;
 		rmig = 0;
 		minuv = minz = INFINITY;
 		uvpop = zpop = 0;
@@ -1225,7 +1224,6 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 #ifdef DEBUG
 				fprintf(stderr, "%d: ca_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, uv, pop, F[pop].n, pop, G->pops[pop].n);
 #endif
-//				totalprob += F[pop].n * G->pops[pop].n + F[pop].n * (F[pop].n - 1);
 
 			}else{
 				uv = INFINITY;
@@ -1244,7 +1242,6 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 
 		if(rmig > 0){
 			minz = dexp(rmig);
-//			totalprob += rmig;
 
 		}else{
 			minz = INFINITY;
@@ -1398,7 +1395,6 @@ double recombination(struct genealogy *G, double x)
 	struct event *ev, *evnew;
 	struct node *e, *e2, *nf, *nd, *last, *edum, *ndum, *nxover;	// e: edge where recombination event occur
 	double t, at, mg, dmig, u;
-//	double totalprob;
 	struct migr_node *nm;
 	struct splt_event *sev;
 	struct join_event *jev;
@@ -1461,12 +1457,10 @@ double recombination(struct genealogy *G, double x)
 	do{
 //	n_abs_time_xover++;
 
-//		totalprob = G->pops[pop].n;
 		at = abs_time(G, 1, pop, t);
 
 		dmig = G->pops[pop].mrate[pop] * 1;
 		if(dmig > 0){
-//			totalprob += dmig;
 			mg = dexp(dmig);
 
 		}else{
@@ -1755,7 +1749,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 	struct config *cfg;
 	int pop, uvpop, zpop, sumnF, i, c, nfrom, rate1, rate2;
 	double t, uv, minuv, z, minz, rmig;
-//	double totalprob;
 	double pabs, sum, x, inc, u;
 	struct node *last, *nf, *nd, *edum, *ndum, *e;
 	struct event *ev, *evnew;
@@ -1777,7 +1770,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 	/* If trunk genealogy is not empty, loop until all floating lineages are absorbed.
 	   Otherwise, loop until only one floating lineage remained. */
 	while((G->root != NULL && sumnF > 0) || (G->root == NULL && sumnF > 1)){
-//		totalprob = 0;
 		rmig = 0;
 		minuv = minz = INFINITY;
 		uvpop = zpop = 0;
@@ -1788,7 +1780,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 #ifdef DEBUG
 				fprintf(stderr, "%d: ca_time=%.10f, nF[%d]=%d, G->pops[%d].n=%d\n", __LINE__, uv, pop, F[pop].n, pop, G->pops[pop].n);
 #endif
-//				totalprob += F[pop].n * G->pops[pop].n + F[pop].n * (F[pop].n - 1);
 
 			}else{
 				uv = INFINITY;
@@ -1807,7 +1798,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 
 		if(rmig > 0){
 			minz = dexp(rmig);
-//			totalprob += rmig;
 
 		}else{
 			minz = INFINITY;

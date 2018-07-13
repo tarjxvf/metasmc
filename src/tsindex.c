@@ -53,21 +53,11 @@ double tsindex_size(struct tsindex *tr)
 void tsindex_rebuild(struct tsindex *tr)
 {
 	double *weights;
-	int i;
-
-	struct timespec beg, end;
-	int nsec;
-
-	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	weights = tr->weights + 1;
 	__bit_build(tr->index, tr->maxnodes, weights);
 	tsindex_clearflag(tr, TSINDEX_DIRTY);
 	tsindex_clearflag(tr, TSINDEX_REBUILD);
-
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_ts_rebuild += nsec;
 }
 
 struct tsindex *tsindex_alloc(int maxedges)
@@ -123,7 +113,7 @@ void tsindex_replace(struct tsindex *tr, int id, struct node *e)
 	tr->weights[id] = wnew = e->in->t - e->t;
 	tr->edges[id] = e;
 	e->xtid = id;
-	if(!tsindex_isrebuild(tr))
+//	if(!tsindex_isrebuild(tr))
 		bit_update(tr->index, id, wnew - wold);
 
 }
@@ -131,8 +121,7 @@ void tsindex_replace(struct tsindex *tr, int id, struct node *e)
 void tsindex_add_r(struct tsindex *tr, struct node *e)
 {
 	struct intlist *l;
-	double diff;
-	int id, *ptr, i;
+	int id;
 
 
 #ifdef DEBUG
@@ -164,7 +153,7 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 {
 	struct intlist *l;
 	double diff;
-	int id, *ptr, i;
+	int id;
 
 	diff = e->in->t - e->t;
 
@@ -208,13 +197,12 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 void tsindex_clear_r(struct tsindex *tr, struct node *e)
 {
 	struct intlist *l;
-	int *pidx, id;
-	double diff;
+	int id;
 
 	id = e->xtid;
 	tr->edges[id] = NULL;
 	tr->weights[id] = 0;
-	e->xtid = 0;
+//	e->xtid = 0;
 
 	/* Add freed id to the queue. */
 	l = (struct intlist *)__list_pop(&tr->id_list);
@@ -228,20 +216,14 @@ void tsindex_clear(struct tsindex *tr, struct node *e)
 {
 	struct intlist *l;
 	int *pidx, id;
-	double diff;
 
 	id = e->xtid;
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: id=%d\n", __func__, __LINE__, id);
-#endif
-	if(!tsindex_isrebuild(tr)){
-		diff = tr->weights[id];
-		bit_update(tr->index, id, -diff);
-	}
+	if(!tsindex_isrebuild(tr))
+		bit_update(tr->index, id, -tr->weights[id]);
 
 	tr->edges[id] = NULL;
 	tr->weights[id] = 0;
-	e->xtid = 0;
+//	e->xtid = 0;
 
 	/* Add freed id to the queue. */
 	l = (struct intlist *)__list_pop(&tr->id_list);
