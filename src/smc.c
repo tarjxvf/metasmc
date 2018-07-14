@@ -866,6 +866,8 @@ void update_demography(struct genealogy *G, struct event *ev)
 		G->pops[epop].size *= exp(-G->pops[epop].grate * (ev->t - G->pops[epop].tlast));
 		G->pops[epop].tlast = ev->t;
 		G->pops[epop].grate = ((struct grow_event *)ev)->alpha;
+		if(G->pops[epop].grate != 0)
+			G->pops[epop].growth = 1;
 
 	}else if(ev->type == EVENT_SIZE){	/* Change size of a subpopulation */
 		G->pops[((struct size_event *)ev)->pop].size = ((struct size_event *)ev)->size;
@@ -910,6 +912,8 @@ void update_demography(struct genealogy *G, struct event *ev)
 				G->pops[i].size *= exp(-G->pops[i].grate * (ev->t - G->pops[i].tlast));
 				G->pops[i].tlast = ev->t;
 				G->pops[i].grate = ((struct ggro_event *)ev)->alpha;
+				if(((struct ggro_event *)ev)->alpha != 0)
+					G->pops[i].growth = 1;
 			}
 		}
 
@@ -943,6 +947,7 @@ void update_demography(struct genealogy *G, struct event *ev)
 		G->pops[sev->newpop].enabled = 1;
 		G->pops[sev->newpop].size = G->pops[sev->pop].size;
 		G->pops[sev->newpop].grate = 0;
+		G->pops[sev->newpop].growth = 0;
 
 		G->pops[sev->newpop].n += GET_DN(sev)[sev->newpop];
 		G->pops[sev->pop].n += GET_DN(sev)[sev->pop];
@@ -978,6 +983,7 @@ void reset_populations(struct genealogy *G)
 		G->pops[pop].n = G->pops[pop].nsam;
 		G->pops[pop].enabled = 1;
 		G->pops[pop].grate = cfg->grate[pop];
+		G->pops[pop].growth = cfg->grate[pop] != 0;
 		G->pops[pop].size = cfg->size[pop];
 		for(i = 0; i < cfg->npop; i++)
 			G->pops[pop].mrate[i] = cfg->mmig[pop][i];
@@ -989,10 +995,11 @@ void reset_populations(struct genealogy *G)
 	/* Reset populations created by splt event. */
 	for(;pop < cfg->npop + cfg->nsplt; pop++){
 		G->pops[pop].n = 0;
+		G->pops[pop].growth = 0;
+		G->pops[pop].enabled = 0;
 		G->pops[pop].grate = 0;
 		G->pops[pop].size = 0;
 		G->pops[pop].tlast = 0;
-		G->pops[pop].enabled = 0;
 		memset(G->pops[pop].mrate, 0, sizeof(double) * (cfg->npop + cfg->nsplt));
 	}
 
@@ -1050,8 +1057,7 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	size = G->pops[pop].size;
-	alpha = G->pops[pop].grate;
-	if(alpha == 0){
+	if(!G->pops[pop].growth){
 		dt = dexp((nF << 1) * G->pops[pop].n / size);
 //		clock_gettime(CLOCK_MONOTONIC, &end);
 //		nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -1061,6 +1067,7 @@ double abs_time(struct genealogy *G, int nF, int pop, double t)
 
 	}else{
 		tlast = G->pops[pop].tlast;
+		alpha = G->pops[pop].grate;
 		u = dunif01();
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / ((nF << 1) * G->pops[pop].n);
 		dt = log(r) / alpha;
@@ -1085,9 +1092,8 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 
 	npair = nF * ((nF - 1) + (G->pops[pop].n << 1));
 	size = G->pops[pop].size;
-	alpha = G->pops[pop].grate;
 
-	if(alpha == 0){
+	if(!G->pops[pop].growth){
 		dt = dexp(npair / size);
 
 //		clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1097,6 +1103,7 @@ double ca_time(struct genealogy *G, int nF, int pop, double t)
 		return dt;
 
 	}else{
+		alpha = G->pops[pop].grate;
 		tlast = G->pops[pop].tlast;
 		u = dunif01();
 		r = 1 - alpha * size * exp(-alpha * (t - tlast)) * log(u) / npair;

@@ -8,22 +8,22 @@
 #include "evindex.h"
 
 struct population {
-	int n;
+	unsigned int n:30;
+	unsigned int growth:1;
+	unsigned int enabled:1;		// Whether this population is enabled at tlast
+	int nsam;			// Number of sample nodes
 	double grate;			// Growth rate at tlast
 	double size;			// Relative size at tlast
 	double tlast;
 	double *mrate;
-	int enabled;			// Whether this population is enabled at tlast
-
-	int nsam;			// Number of sample nodes
-
-	struct mutation *mmut;
 
 	int nedges;
 	int maxedges;
 	struct node **eptrs;		// Array of node pointers
 	struct list idx_queue;	// Queue of index in eptrs
 	struct list id_list;
+
+	struct mutation *mmut;
 };
 
 struct genealogy {
