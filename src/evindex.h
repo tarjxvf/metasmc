@@ -22,6 +22,20 @@ static inline void dn_add(int npop, int *x, int *y)
 		x[j] += y[j];
 }
 
+static inline void dn_add2(int npop, int *x, int *y, int *z)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] = y[j] + z[j];
+}
+
+static inline void dn_add3(int npop, int *w, int *x, int *y, int *z)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		w[j] = x[j] + y[j] + z[j];
+}
+
 static inline void dn_sub(int npop, int *x, int *y)
 {
 	int j;

@@ -82,6 +82,7 @@ int evindex_compar(struct event *a, struct event *b)
 
 void evindex_seq_off(struct evindex *evidx)
 {
+	struct event *ev, *left, *right;
 	struct rb_node **nodes;
 	int nnodes, i, j;
 
@@ -102,22 +103,26 @@ void evindex_seq_off(struct evindex *evidx)
 
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	for(i = nnodes - 1; i >= 0; i--){
-		struct event *ev, *left, *right;
-
+	for(i = nnodes - 1; i > (nnodes - 1) / 2; i--){
 		ev = nodes[i]->rb_data;
 		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+	}
 
-		// Link nodes
-		if((i << 1) + 1 < nnodes){
-			left = nodes[(i << 1) + 1]->rb_data;
-			dn_add(evidx->npop_all, GET_SUMDN(ev), GET_SUMDN(left));
-		}
+	ev = nodes[i]->rb_data;
+	if(i == nnodes / 2){
+		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
 
-		if((i << 1) + 2 < nnodes){
-			right = nodes[(i << 1) + 2]->rb_data;
-			dn_add(evidx->npop_all, GET_SUMDN(ev), GET_SUMDN(right));
-		}
+	}else{
+		left = nodes[(i << 1) + 1]->rb_data;
+		dn_add2(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
+	}
+	i--;
+
+	for(; i >= 0; i--){
+		ev = nodes[i]->rb_data;
+		left = nodes[(i << 1) + 1]->rb_data;
+		right = nodes[(i << 1) + 2]->rb_data;
+		dn_add3(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
 	}
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
