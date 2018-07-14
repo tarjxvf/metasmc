@@ -305,7 +305,7 @@ void complete_binary_tree(int nnodes, int *map)
 // Rebuild tree index from sorted list
 void rbindex_rebuild_tree(struct rbindex *eidx)
 {
-	int i, nnodes, h, half, *tree;
+	int i, j, nnodes, h, half, *tree;
 	struct rb_node **nodes;
 	struct list_head *l;
 	void **objs;
@@ -330,34 +330,36 @@ void rbindex_rebuild_tree(struct rbindex *eidx)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
-#pragma omp parallel sections
-	{
-#pragma omp section
-		{
-			int j;
-			for(j = half - 1; j < nnodes; j++){
-				nodes[j]->rb_color = RB_RED;
-				nodes[j]->rb_data = objs[tree[j]];
-				nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
-			}
-		}
+	for(j = nnodes - 1; j >= half - 1; j--){
+		nodes[j]->rb_color = RB_RED;
+		nodes[j]->rb_data = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
+	}
 
-#pragma omp section
-		{
-			int j;
-			for(j = 0; j < half - 1; j++){
-				int left, right;
+	for(; j > (nnodes - 1) / 2; j--){
+		nodes[j]->rb_color = RB_BLACK;
+		nodes[j]->rb_data = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
+	}
 
-				nodes[j]->rb_color = RB_BLACK;
-				nodes[j]->rb_data = objs[tree[j]];
+	if(j == nnodes / 2){
+		nodes[j]->rb_color = RB_BLACK;
+		nodes[j]->rb_data = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
 
-				// Link nodes
-				left = j * 2 + 1;
-				right = left + 1;
-				nodes[j]->rb_link[0] = (left < nnodes)?nodes[left]:NULL;
-				nodes[j]->rb_link[1] = (right < nnodes)?nodes[right]:NULL;
-			}
-		}
+	}else{
+		nodes[j]->rb_color = RB_BLACK;
+		nodes[j]->rb_data = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
+		nodes[j]->rb_link[1] = NULL;
+	}
+	j--;
+
+	for(; j >= 0; j--){
+		nodes[j]->rb_color = RB_BLACK;
+		nodes[j]->rb_data = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
+		nodes[j]->rb_link[1] = nodes[(j << 1) + 2];
 	}
 
 	eidx->tree->rb_root = nodes[0];
