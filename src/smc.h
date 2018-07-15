@@ -28,21 +28,22 @@ struct population {
 };
 
 struct genealogy {
+	struct population *pops;
+
 	struct cache *node_cache[6];
 	struct config *cfg;
-	struct population *pops;
 
 	struct node *localMRCA;
 	struct node *root;
 	struct node_set *trunk;
 
+	struct tsindex tr_xover;
+	struct evindex evidx;
+
 	double t;
 	double troot;		// height of existing tree
 	double total;		// Total length of the local tree
 	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
-
-	struct tsindex tr_xover;
-	struct evindex evidx;
 
 	int maxR;
 	int curridx;

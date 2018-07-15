@@ -252,15 +252,15 @@ void unload_profile(struct profile *prof);
 
 struct mutation;
 struct config {
-	/*** Caches of frequently-used objects ***/
-	struct cache *event_cache[13];
-
 	unsigned char npop;
 	unsigned char nsplt;
 	unsigned int npop_all:14;
 	unsigned int print_tree:1;	// 1 if you wish to print trees
 	unsigned int gensam:1;		// 1 if you wish to generate sequences
 	int maxfrag;
+
+	/*** Caches of frequently-used objects ***/
+	struct cache *event_cache[13];
 
 	/*** Basic parameters. ***/
 	double rho;
