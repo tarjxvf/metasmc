@@ -53,16 +53,16 @@ void free_node(struct config *cfg, struct node *nd)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, nd=%x(%.6f)\n", __func__, nd, nd->t);
 #endif
-//	cache_free(cfg->node_cache[node_flag_gettype(nd)], nd);
-	free(nd);
+	cache_free(cfg->node_cache[node_flag_gettype(nd)], nd);
+//	free(nd);
 }
 
 struct node *alloc_node(struct config *cfg, int type, int pop, double t)
 {
 	struct node *nd;
 
-//	nd = cache_alloc(cfg->node_cache[type]);
-	nd = malloc(nodesize[type]);
+	nd = cache_alloc(cfg->node_cache[type]);
+//	nd = malloc(nodesize[type]);
 
 	*((unsigned char *)&nd->set_id + sizeof(int)) = type;
 	nd->pop = pop;
@@ -79,8 +79,8 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 {
 	struct node *new;
 
-//	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-	new = malloc(nodesize[old->type]);
+	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+//	new = malloc(nodesize[old->type]);
 	new->t = old->t;
 	new->pop = old->pop;
 	new->type = old->type;
@@ -2142,7 +2142,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-		destroy_tree(G, G->root);
+//		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
