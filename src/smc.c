@@ -53,16 +53,16 @@ void free_node(struct config *cfg, struct node *nd)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, nd=%x(%.6f)\n", __func__, nd, nd->t);
 #endif
-	cache_free(cfg->node_cache[node_flag_gettype(nd)], nd);
-//	free(nd);
+//	cache_free(cfg->node_cache[node_flag_gettype(nd)], nd);
+	free(nd);
 }
 
 struct node *alloc_node(struct config *cfg, int type, int pop, double t)
 {
 	struct node *nd;
 
-	nd = cache_alloc(cfg->node_cache[type]);
-//	nd = malloc(nodesize[type]);
+//	nd = cache_alloc(cfg->node_cache[type]);
+	nd = malloc(nodesize[type]);
 
 	*((unsigned char *)&nd->set_id + sizeof(int)) = type;
 	nd->pop = pop;
@@ -79,8 +79,8 @@ struct node *copy_node(struct genealogy *G, struct node *old)
 {
 	struct node *new;
 
-	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
-//	new = malloc(nodesize[old->type]);
+//	new = cache_alloc(G->cfg->node_cache[node_flag_gettype(old)]);
+	new = malloc(nodesize[old->type]);
 	new->t = old->t;
 	new->pop = old->pop;
 	new->type = old->type;
@@ -324,14 +324,14 @@ static inline void remove_xover_node(struct genealogy *G, struct node *nxover, s
 	G->tr_xover.edges[ebelow->xtid] = ebelow;
 }
 
-static inline void insert_coal_node(struct genealogy *G, struct node *e, struct node *nd)
+static inline void insert_coal_node(struct node *e, struct node *nd)
 {
 	e->in->out[e->itop] = nd;
 	nd->in = e->in;
 	nd->itop = e->itop;
 }
 
-static inline void __remove_coal_node(struct genealogy *G, struct coal_node *nd, struct node *ebelow)
+static inline void __remove_coal_node(struct coal_node *nd, struct node *ebelow)
 {
 	nd->in->out[nd->itop] = ebelow;
 	ebelow->in = nd->in;
@@ -346,7 +346,7 @@ static inline void remove_coal_node(struct genealogy *G, struct coal_node *nd, i
 	remove_event_rb(G, (struct event *)nd->ev);
 	/* Extend edges above the coalescent node to be removed. */
 	tsindex_update(&G->tr_xover, (struct node *)e, nd->in->t - nd->t);
-	__remove_coal_node(G, nd, e);
+	__remove_coal_node(nd, e);
 	remove_edge_r(G, nd->pop, (struct node *)nd);
 }
 
@@ -529,7 +529,7 @@ struct coal_node *__absorption(struct genealogy *G, struct node *e1, struct node
 	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 
 	/* Set up another branch below the coalescent node */
-	insert_coal_node(G, e1, (struct node *)nd);
+	insert_coal_node(e1, (struct node *)nd);
 
 	nd->out[0] = e1;
 	nd->out[1] = n2;
@@ -561,7 +561,7 @@ struct coal_node *absorption(struct genealogy *G, struct node_set *trunk, struct
 	u = dunif(trunk[pop].n);
 	e = node_set_get(&trunk[pop], u);
 	if(isdeleted(e)){	// This absorption can be ignored
-		insert_coal_node(G, e, nf);
+		insert_coal_node(e, nf);
 		nf->idx = e->idx;
 		nf->xtid = e->xtid;
 		G->pops[pop].eptrs[nf->idx] = nf;
@@ -830,7 +830,7 @@ void clear_tree(struct genealogy *G)
 
 		}else{	// One edge is still in the local genealogy
 			ebelow = AS_COAL_NODE(nd)->out[1 - visited_lr(nd)];
-			__remove_coal_node(G, (struct coal_node *)nd, ebelow);
+			__remove_coal_node((struct coal_node *)nd, ebelow);
 			remove_edge_m(G, nd->pop, (struct node *)nd);
 			G->tr_xover.weights[ebelow->xtid] = ebelow->in->t - ebelow->t;
 		}
@@ -1507,7 +1507,7 @@ double recombination(struct genealogy *G, double x)
 						free_node(cfg, nxover);
 
 					}else{
-						insert_coal_node(G, e2, nf);
+						insert_coal_node(e2, nf);
 						tsindex_replace(&G->tr_xover, e2->xtid, nf);
 						nf->idx = e2->idx;
 						G->pops[e2->pop].eptrs[nf->idx] = nf;
@@ -1688,7 +1688,7 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 	if(dead1 || dead2){
 		if(!dead1){
 			__node_set_remove(&trunk[pop], out2->set_id);
-			__remove_coal_node(G, in, out1);
+			__remove_coal_node(in, out1);
 			G->tr_xover.weights[out1->xtid] = out1->in->t - out1->t;
 			remove_edge_m(G, pop, (struct node *)in);
 			remove_edge_m(G, pop, out2);
@@ -1704,7 +1704,7 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 			__node_set_remove(&trunk[pop], out2->set_id);
 			node_set_replace(&trunk[pop], out1->set_id, out2);
 
-			__remove_coal_node(G, in, out2);
+			__remove_coal_node(in, out2);
 			remove_edge_m(G, pop, out1);
 			remove_edge_m(G, pop, (struct node *)in);
 			G->tr_xover.weights[out2->xtid] = out2->in->t - out2->t;
@@ -2142,7 +2142,7 @@ void clear_genealogy(struct genealogy *G)
 
 	cfg = G->cfg;
 	if(G->root){
-//		destroy_tree(G, G->root);
+		destroy_tree(G, G->root);
 		G->root = G->localMRCA = NULL;
 	}
 	cache_clear(G->cfg->node_cache[NODE_COAL]);
