@@ -253,7 +253,6 @@ void unload_profile(struct profile *prof);
 struct mutation;
 struct config {
 	/*** Caches of frequently-used objects ***/
-	struct cache *node_cache[6];
 	struct cache *event_cache[13];
 
 	unsigned char npop;

@@ -28,6 +28,7 @@ struct population {
 };
 
 struct genealogy {
+	struct cache *node_cache[6];
 	struct config *cfg;
 	struct population *pops;
 
