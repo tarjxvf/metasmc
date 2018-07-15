@@ -12,16 +12,17 @@ struct population {
 	unsigned int growth:1;
 	unsigned int enabled:1;		// Whether this population is enabled at tlast
 	int nsam;			// Number of sample nodes
-	double grate;			// Growth rate at tlast
-	double size;			// Relative size at tlast
-	double tlast;
-	double *mrate;
 
+	struct node **eptrs;		// Array of node pointers
 	int nedges;
 	int maxedges;
-	struct node **eptrs;		// Array of node pointers
-	struct list idx_queue;	// Queue of index in eptrs
+	struct list idx_queue;		// Queue of index in eptrs
 	struct list id_list;
+
+	double size;			// Relative size at tlast
+	double grate;			// Growth rate at tlast
+	double tlast;
+	double *mrate;
 
 	struct mutation *mmut;
 };
@@ -29,24 +30,22 @@ struct population {
 struct genealogy {
 	struct config *cfg;
 	struct population *pops;
+	struct tsindex *tr_xover;
 	struct evindex *evidx;
-	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
-
-	struct node *root;
-	double troot;		// height of existing tree
-	double t;
-	double total;		// Total length of the local tree
 
 	struct node *localMRCA;
-	int x;
-
-	struct tsindex *tr_xover;
+	struct node *root;
 	struct node_set *trunk;
 
+	double t;
+	double troot;		// height of existing tree
+	double total;		// Total length of the local tree
+	struct event *ev_dxvr;	// Dummy recombination event occuring above localMRCA and below root.
+
 	int maxR;
+	int curridx;
 	int nR[2];
 	int *R[2];
-	int curridx;
 };
 
 static inline void insert_event_join_increase(struct genealogy *G, struct join_event *jev)
