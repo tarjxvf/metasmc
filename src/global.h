@@ -532,9 +532,9 @@ static inline void edge_flag_setitop(struct node *e, char flag)
 }
 
 //void free_node(struct genealogy *G, struct node *nd);
-void free_node(struct config *cfg, struct node *nd);
+//void free_node(struct config *cfg, struct node *nd);
 //struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
-struct node *alloc_node(struct config *cfg, int type, int pop, double t);
+//struct node *alloc_node(struct config *cfg, int type, int pop, double t);
 
 static inline void migr_set_add(struct node_set *set, struct node *e)
 {
