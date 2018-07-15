@@ -74,8 +74,8 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	edges = malloc(sizeof(struct edge *) * maxedges);
 	tt = 0;
 	weights[0] = 0;
-	for(i = 1; i < G->tr_xover->maxnodes; i++){
-		e = G->tr_xover->edges[i];
+	for(i = 1; i < G->tr_xover.maxnodes; i++){
+		e = G->tr_xover.edges[i];
 		if(e){
 			double w;
 

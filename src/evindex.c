@@ -165,7 +165,6 @@ void evindex_seq_off(struct evindex *evidx)
 
 //	struct timespec beg, end;
 //	int nsec;
-
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 //	nnodes = evidx->idx->n;
@@ -740,7 +739,7 @@ void evindex_reset(struct genealogy *G, struct evindex *evidx)
 	rbindex_rb_clear(evidx->idx);
 }
 
-void evindex_destroy(struct genealogy *G, struct evindex *evidx)
+void __evindex_destroy(struct genealogy *G, struct evindex *evidx)
 {
 	struct event *ev;
 
@@ -751,6 +750,11 @@ void evindex_destroy(struct genealogy *G, struct evindex *evidx)
 
 	rbindex_destroy(evidx->idx);
 	free(evidx->dn);
+}
+
+void evindex_destroy(struct genealogy *G, struct evindex *evidx)
+{
+	__evindex_destroy(G, evidx);
 	free(evidx);
 }
 
@@ -771,13 +775,11 @@ void evindex_s_seek(struct evindex *evidx, double t)
 	}
 }
 
-struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
+void evindex_init(struct genealogy *G, struct config *cfg, struct evindex *evidx)
 {
-	struct evindex *evidx;
 	struct event *ev;
 	int npop;
 
-	evidx = malloc(sizeof(struct evindex));
 	evidx->idx = rbindex_create(evindex_compar, cfg->maxfrag * 2);
 	evidx->npop_all = npop = cfg->npop_all;
 	evidx->dn = malloc(sizeof(int) * npop);
@@ -795,6 +797,14 @@ struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
 
 	list_append(&evidx->idx->ls, ev);
 	evidx->idx->n++;
+}
+
+struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
+{
+	struct evindex *evidx;
+
+	evidx = malloc(sizeof(struct evindex));
+	evindex_init(G, cfg, evidx);
 
 	return evidx;
 }

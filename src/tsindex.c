@@ -60,13 +60,8 @@ void tsindex_rebuild(struct tsindex *tr)
 	tsindex_clearflag(tr, TSINDEX_REBUILD);
 }
 
-struct tsindex *tsindex_alloc(int maxedges)
+void tsindex_init(struct tsindex *tr, int maxedges)
 {
-	struct list_head *l;
-	struct tsindex *tr;
-	int i;
-
-	tr = malloc(sizeof(struct tsindex));
 	tr->flags = 0;
 	tr->index = bit_alloc(maxedges);
 	tr->maxedges = 1;
@@ -79,6 +74,15 @@ struct tsindex *tsindex_alloc(int maxedges)
 	list_init(&tr->id_list);
 
 	tsindex_resize(tr, maxedges);
+}
+
+struct tsindex *tsindex_alloc(int maxedges)
+{
+	struct list_head *l;
+	struct tsindex *tr;
+
+	tr = malloc(sizeof(struct tsindex));
+	tsindex_init(tr, maxedges);
 
 	return tr;
 }
@@ -232,7 +236,7 @@ void tsindex_clear(struct tsindex *tr, struct node *e)
 	tr->nedges--;
 }
 
-void tsindex_free(struct tsindex *tr)
+void tsindex_destroy(struct tsindex *tr)
 {
 	struct list_head *l;
 
@@ -249,6 +253,11 @@ void tsindex_free(struct tsindex *tr)
 	free(tr->edges);
 	free(tr->weights);
 	bit_free(tr->index);
+}
+
+void tsindex_free(struct tsindex *tr)
+{
+	tsindex_destroy(tr);
 	free(tr);
 }
 
