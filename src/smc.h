@@ -178,6 +178,10 @@ struct genealogy *alloc_genealogy(struct config *, struct profile *);
 void destroy_genealogy(struct genealogy *);
 void clear_genealogy(struct genealogy *);
 
-struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo, double *to);
+//struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo, double *to);
+double rnd_select_point(struct genealogy *G, struct node **eo);
+struct event *trace_event(struct genealogy *G, double t);
+
+
 
 #endif

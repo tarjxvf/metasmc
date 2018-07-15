@@ -288,7 +288,8 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 #ifdef DEBUG
 			fprintf(stderr, ", derived allele=%c\n", deriv);
 #endif
-			rnd_select_point(G, &e, &pop, &t);	/* Select point of mutation event. */
+			t = rnd_select_point(G, &e);	/* Select point of mutation event. */
+			pop = e->pop;
 #ifdef DEBUG
 			fprintf(stderr, "Mutation on edge %x in population %d at %.6f\n", e, pop, t);
 #endif

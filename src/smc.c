@@ -1008,12 +1008,10 @@ void reset_populations(struct genealogy *G)
 
 /* Select a point uniformly on G. Note that selected point must be below root.
  * The event next to the new event time will be returned. */
-struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo, double *to)
+double rnd_select_point(struct genealogy *G, struct node **eo)
 {
 	double g, t, running;
-	struct event *ev;
 	struct node *e;
-	int i, c;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
@@ -1027,8 +1025,15 @@ struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo,
 #endif
 	/* Change on 2018/05/13: Search a a random point on current local genealogy by searching binary indexed tree. */
 	*eo = e = tsindex_search(G->tr_xover, g, &running);
-	*popo = e->pop;
-	*to = t = e->t + g - running;
+	t = e->t + g - running;
+
+	return t;
+}
+
+struct event *trace_event(struct genealogy *G, double t)
+{
+	struct event *ev;
+	int i;
 
 	reset_populations(G);
 
@@ -1407,44 +1412,43 @@ double recombination(struct genealogy *G, double x)
 	if(tsindex_isrebuild(G->tr_xover))
 		tsindex_rebuild(G->tr_xover);
 
-	// Leave sequential mode and rebuild red-black tree index
-	if(rbindex_isseq(G->evidx->idx))
-		evindex_seq_off(G->evidx);
-
 	cfg = G->cfg;
 	npop_all = cfg->npop_all;
 
 	/* Choose recombination point at random. */
-	ev = rnd_select_point(G, &e, &pop, &t);
+	t = rnd_select_point(G, &e);
+	pop = e->pop;
 
 	if(t > G->localMRCA->t){
 		/* Deal with dummy recombination event. */
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: Dummy recombination occur at time %.10f, position %.10f, localMRCA->t=%.10f, root->t=%.10f\n", __func__, __LINE__, t, x, G->localMRCA->t, G->root->t);
 #endif
+		evindex_s_set(G->evidx, G->localMRCA->ev);
+		evindex_s_seek(G->evidx, t);
 
 		if(G->ev_dxvr){
 			if(G->ev_dxvr->t > t){
 				struct event *ev_dxvr;
 
 				ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
-				remove_event_rb(G, G->ev_dxvr);
-
-				/* Change on 2018/05/31: Find first event after time of new event. The old version crashes in the presence of migration. */
-				evindex_s_seek(G->evidx, ev_dxvr->t);
-				/* End of change. */
-				insert_event_rb(G, ev_dxvr);
+				remove_event(G, G->ev_dxvr);
+				insert_event(G, ev_dxvr);
 				G->ev_dxvr = ev_dxvr;
 			}
 
 		}else{
 			G->ev_dxvr = alloc_event(G->cfg, EVENT_DXVR, t);
-			evindex_s_seek(G->evidx, G->ev_dxvr->t);
-			insert_event_rb(G, G->ev_dxvr);
+			insert_event(G, G->ev_dxvr);
 		}
 
 		return 0;
 	}
+
+	// Leave sequential mode and rebuild red-black tree index
+	if(rbindex_isseq(G->evidx->idx))
+		evindex_seq_off(G->evidx);
+	ev = trace_event(G, t);
 
 #ifdef DEBUG
 	fprintf(stderr, "Recombination on %x, t=%.6f, pop=%d, range=[%x(%d, %.6f), %x(%d, %.6f)]\n", e, t, pop, e, e->type, e->t, e->in, e->in->type, e->in->t);
