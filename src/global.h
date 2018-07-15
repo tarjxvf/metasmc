@@ -238,7 +238,6 @@ struct profile {
 	int nfrag;
 
 	int *fgstart;
-//	int *fgend;
 	int *fgid;
 	struct fginfo *info;
 	struct sam_node **nds;
@@ -253,21 +252,25 @@ void unload_profile(struct profile *prof);
 
 struct mutation;
 struct config {
-	struct profile *prof;
-	unsigned char seed;
-	int print_tree;	// 1 if you wish to print trees
-	int gensam;	// 1 if you wish to generate sequences
-	FILE *treefp;	// If print_tree is set to 1, this points to file object of tree output
-	FILE *readfp;	// Output file for simulated reads
+	/*** Caches of frequently-used objects ***/
+	struct cache *node_cache[6];
+	struct cache *event_cache[13];
+
+	unsigned char npop;
+	unsigned char nsplt;
+	unsigned int npop_all:14;
+	unsigned int print_tree:1;	// 1 if you wish to print trees
+	unsigned int gensam:1;		// 1 if you wish to generate sequences
+	int maxfrag;
 
 	/*** Basic parameters. ***/
 	double rho;
 	double tdiv;	// Divergence time
 
 	/*** Demographic model. ***/
-	int npop;	// Number of initial subpopulations
-	int nsplt;	// Number of subpopulations created by splitting events.
-	int npop_all;	// Maximum number of populations, including those created by splitting events
+//	int npop;	// Number of initial subpopulations
+//	int nsplt;	// Number of subpopulations created by splitting events.
+//	int npop_all;	// Maximum number of populations, including those created by splitting events
 
 	double *size;	// Initial subpopulation size (at time 0)
 	double **mmig;	// Initial migration matrix(at time 0)
@@ -277,15 +280,15 @@ struct config {
 	struct mutation **mmut;
 
 	struct list evlist;
-	int ndevents;		// Number of demographic events
 	struct event **devents;	// Array of demographic events
+	int ndevents;		// Number of demographic events
+	unsigned int seed;
 
-	/*** Caches of frequently-used objects ***/
-	struct cache *node_cache[6];
-	struct cache *event_cache[13];
+	struct profile *prof;
+	FILE *treefp;	// If print_tree is set to 1, this points to file object of tree output
+	FILE *readfp;	// Output file for simulated reads
 
-	int maxfrag;
-int debug;
+//	int debug;
 };
 
 struct config *create_config(int seed, int print_tree, int gensam, FILE *, FILE *, int maxfrag, struct profile *prof, double rho);
