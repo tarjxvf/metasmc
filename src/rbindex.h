@@ -112,6 +112,12 @@ static inline void *rbindex_find(seq_traverser *it, struct rbindex *eidx, void *
 	return obj;
 }
 
+static inline void __rbindex_s_delete(struct rbindex *eidx, void *obj)
+{
+	__list_remove(&eidx->ls, GET_LIST(obj));
+	eidx->n--;
+}
+
 static inline void rbindex_s_delete(struct rbindex *eidx, void *obj)
 {
 	if(GET_LIST(obj) == eidx->cur_s)

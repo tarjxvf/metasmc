@@ -25,11 +25,6 @@ int isdesc(struct genealogy *G, struct node *n1, struct node *n2)
 		n2 = n2->in;
 	return n1 == n2;
 }
-/*
-int intcompar(const void *a, const void *b)
-{
-	return *(int *)a - *(int *)b;
-}*/
 
 void locate(int from, int to, int segsites, int *pos)
 {
@@ -52,13 +47,21 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	struct node *e, **edges;
 	char *ances, *deriv;
 	int nedges, maxedges;
-	struct frag *fgset;
+	struct read **rdset, *rds;
+	int *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+	struct sam_node **nds;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, from=%d, to=%d\n", __func__, from, to);
 #endif
 	cfg = G->cfg;
-	fgset = cfg->prof->fgset;
+	fgstart = cfg->prof->fgstart;
+	fgid = cfg->prof->fgid;
+	fgi = cfg->prof->info;
+	nds = cfg->prof->nds;
+	rdset = cfg->prof->rdset;
+
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
@@ -71,10 +74,8 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 	edges = malloc(sizeof(struct edge *) * maxedges);
 	tt = 0;
 	weights[0] = 0;
-//	el = G->e_list.front;
-//	while(el){
-	for(i = 1; i < G->tr_xover->maxnodes; i++){
-		e = G->tr_xover->edges[i];
+	for(i = 1; i < G->tr_xover.maxnodes; i++){
+		e = G->tr_xover.edges[i];
 		if(e){
 			double w;
 
@@ -82,13 +83,11 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 			fprintf(stderr, "i=%d, e=%x(%.6f)\n", i, e, e->t);
 #endif
 
-//			e = (struct edge *)GET_OBJ(el);
 			edges[nedges] = e;
 			pop = e->pop;
 			w = (e->in->t - e->t) * G->pops[pop].mmut->theta;
 			weights[nedges + 1] = weights[nedges] + w;
 			nedges++;
-//			el = el->next;
 		}
 	}
 	tt = weights[nedges];
@@ -124,7 +123,6 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 			double wsum, u, *hit;
 
 			/* Select point of mutation event. */
-//			el = G->e_list.front;
 			u = dunif01() * tt;
 			// Get mutation point using binary search
 			hit = (double *)search_interval(&u, (void *)weights, nedges + 1, sizeof(double), (int (*)(void *, void *))dblcompar);
@@ -155,17 +153,14 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 #endif
 
 	for(k = 0; k < G->nR[G->curridx]; k++){
-//	fgl = G->r_list->front;
-//	while(fgl){
 		struct frag *fg;
 		struct read *rd;
 
-//		fg = *((struct frag **)GET_OBJ(fgl));
-		fg = &fgset[R[k]];
-		for(r = 0; r < fg->nread; r++){
+		rds = rdset[R[k]];
+		for(r = 0; r < fgi[R[k]].nread; r++){
 			int lb, ub, j;
 
-			rd = &fg->rd[r];
+			rd = &rds[r];
 			lb = (from < rd->start)?rd->start:from;
 			ub = (to > rd->end)?rd->end:to;
 			j = lb - from;
@@ -173,11 +168,8 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 			fprintf(stderr, "%d: lb=%d, ub=%d, rd->start=%d, rd->end=%d\n", __LINE__, lb, ub, rd->start, rd->end);
 #endif
 			for(i = 0, p = lb; p < ub && i < rd->end - rd->start; i++, j++, p++){
-#ifdef DEBUG
-//				fprintf(stderr, "%d: p=%d, j=%d\n", __LINE__, p, j);
-#endif
 				if(ances[j] != deriv[j]){	/* j is a polymorphic site */
-					if(isdesc(G, nmut[j], (struct node *)fg->nd)){
+					if(isdesc(G, nmut[j], (struct node *)nds[R[k]])){
 						rd->seq[p - rd->start] = deriv[j];
 
 					}else{
@@ -189,7 +181,6 @@ void generate_sequence_infinite_fast(struct reference *ref, struct genealogy *G,
 				}
 			}
 		}
-//		fgl = fgl->next;
 	}
 
 	free(nmut);
@@ -211,13 +202,21 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 	double theta, tt, t;
 	struct node *e;
 	char *ances;
-	struct frag *fgset;
+	struct read **rdset, *rds;
+	int *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+	struct sam_node **nds;
 
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s, from=%d, to=%d\n", __func__, from, to);
 #endif
 	cfg = G->cfg;
-	fgset = cfg->prof->fgset;
+	fgstart = cfg->prof->fgstart;
+	fgid = cfg->prof->fgid;
+	fgi = cfg->prof->info;
+	nds = cfg->prof->nds;
+	rdset = cfg->prof->rdset;
+
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
@@ -289,53 +288,47 @@ void generate_sequence_infinite_slow(struct reference *ref, struct genealogy *G,
 #ifdef DEBUG
 			fprintf(stderr, ", derived allele=%c\n", deriv);
 #endif
-			rnd_select_point(G, &e, &pop, &t);	/* Select point of mutation event. */
+			t = rnd_select_point(G, &e);	/* Select point of mutation event. */
+			pop = e->pop;
 #ifdef DEBUG
 			fprintf(stderr, "Mutation on edge %x in population %d at %.6f\n", e, pop, t);
 #endif
-//			fgl = G->r_list->front;
-//			while(fgl){
 			for(i = 0; i < nR; i++){
 				struct frag *fg;
 				struct read *rd;
 
-//				fg = *((struct frag **)GET_OBJ(fgl));
-				fg = &fgset[R[i]];
-				for(r = 0; r < fg->nread; r++){
-					rd = &fg->rd[r];
+				rds = rdset[R[i]];
+				for(r = 0; r < fgi[R[i]].nread; r++){
+					rd = &rds[r];
 					if(rd->start <= p && p < rd->end){
 						/* Generate derived allele at random. */
-						if(isdesc(G, e, (struct node *)fg->nd)){
+						if(isdesc(G, e, (struct node *)nds[R[i]])){
 #ifdef DEBUG
-							fprintf(stderr, "%x is descendent of %x\n", fg->nd, e);
+							fprintf(stderr, "%x is descendent of %x\n", nds[R[i]], e);
 #endif
 							rd->seq[p - rd->start] = deriv;
 
 						}else{
 #ifdef DEBUG
-							fprintf(stderr, "%x is not descendent of %x\n", fg->nd, e);
+							fprintf(stderr, "%x is not descendent of %x\n", nds[R[i]], e);
 #endif
 							rd->seq[p - rd->start] = anc;
 						}
 					}
 				}
-//				fgl = fgl->next;
 			}
 
 		}else{	/* Copy reference allele. */
-//			fgl = G->r_list->front;
-//			while(fgl){
 			for(i = 0; i < nR; i++){
 				struct frag *fg;
 				struct read *rd;
 
-//				fg = *((struct frag **)GET_OBJ(fgl));
-				fg = &fgset[R[i]];
+				rds = rdset[R[i]];
 #ifdef DEBUG
-				fprintf(stderr, "Processing fragment %d(node %x), nreads=%d\n", fg->id, fg->nd, fg->nread);
+				fprintf(stderr, "Processing fragment %d(node %x), nreads=%d\n", fgid[R[i]], nds[R[i]], fgi[R[i]].nread);
 #endif
-				for(r = 0; r < fg->nread; r++){
-					rd = &fg->rd[r];
+				for(r = 0; r < fgi[R[i]].nread; r++){
+					rd = &rds[r];
 					if(rd->start <= p && p < rd->end){
 						rd->seq = rd->seq;
 						rd->seq[p - rd->start] = anc;
@@ -617,9 +610,9 @@ void mutate(struct mutation *mmut, double *Pmut, char *seq, int len)
 #endif
 }
 
-void genseq_model(struct mutation *mmut, struct node *n, char *seq, int from, int to);
+void genseq_model(struct genealogy *G, struct mutation *mmut, struct node *n, char *seq, int from, int to);
 
-void __genseq(struct mutation *mmut, struct node *n, char *seq_old, struct node *n2, int from, int to)
+void __genseq(struct genealogy *G, struct mutation *mmut, struct node *n, char *seq_old, struct node *n2, int from, int to)
 {
 	double Pmut[SQNUCS];
 	char *seq;
@@ -634,11 +627,11 @@ void __genseq(struct mutation *mmut, struct node *n, char *seq_old, struct node 
 	setmatrix(mmut, Pmut, dt);
 	mutate(mmut, Pmut, seq, to - from);
 
-	genseq_model(mmut, n2, seq, from, to);
+	genseq_model(G, mmut, n2, seq, from, to);
 	free(seq);
 }
 
-void genseq_model(struct mutation *mmut, struct node *n, char *seq_old, int from, int to)
+void genseq_model(struct genealogy *G, struct mutation *mmut, struct node *n, char *seq_old, int from, int to)
 {
 	struct node *n2;
 
@@ -646,21 +639,26 @@ void genseq_model(struct mutation *mmut, struct node *n, char *seq_old, int from
 	fprintf(stderr, "Entering %s, n=%x, n->type=%d, from=%d, to=%d\n", __func__, n, n->type, from, to);
 #endif
 	if(iscoalnode(n)){
-		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[0], from, to);
-		__genseq(mmut, n, seq_old, ((struct coal_node *)n)->out[1], from, to);
+		__genseq(G, mmut, n, seq_old, ((struct coal_node *)n)->out[0], from, to);
+		__genseq(G, mmut, n, seq_old, ((struct coal_node *)n)->out[1], from, to);
 
 	}else if(issamnode(n)){
 		struct sam_node *nd;
-		struct read *rd;
-		int i, j, k;
+		struct read *rd, *rds, **rdset;
+		struct fginfo *fgi;
+		int i, j, k, f, *fgid;
 
 		nd = (struct sam_node *)n;
+		f = nd->fgid;
+		fgi = G->cfg->prof->info;
+		fgid = G->cfg->prof->fgid;
+		rds = G->cfg->prof->rdset[f];
 #ifdef DEBUG
-		fprintf(stderr, "frag id=%d\n", nd->fg->id);
+		fprintf(stderr, "frag id=%d\n", fgid[nd->fgid]);
 #endif
-		for(i = 0; i < nd->fg->nread; i++){
+		for(i = 0; i < fgi[nd->fgid].nread; i++){
 			int lb, ub;
-			rd = &nd->fg->rd[i];
+			rd = &rds[i];
 			lb = (from < rd->start)?rd->start:from;
 			ub = (to > rd->end)?rd->end:to;
 			for(j = lb; j < ub; j++)
@@ -703,7 +701,7 @@ void generate_sequence_model_slow(struct reference *ref, struct genealogy *G, in
 		setmatrix(G->pops[0].mmut, Pmut, dt);
 		mutate(G->pops[0].mmut, Pmut, seq, to - from);
 	}
-	genseq_model(G->pops[0].mmut, G->root, seq, from, to);
+	genseq_model(G, G->pops[0].mmut, G->root, seq, from, to);
 	free(seq);
 #ifdef DEBUG
 	fprintf(stderr, "Finishing function %s\n", __func__);
@@ -815,12 +813,20 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 	struct config *cfg;
 	int pop, ncell, nmap, lb, ub, i, j, p, r, nR, *R;
 	double dt, Pmut[SQNUCS];
-	struct read *rd;
+	struct read *rd, *rds;
 	char *seq;
-	struct frag *fgset;
+	struct read **rdset;
+	int *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+	struct sam_node **nds;
 
 	cfg = G->cfg;
-	fgset = cfg->prof->fgset;
+	fgstart = cfg->prof->fgstart;
+	fgid = cfg->prof->fgid;
+	fgi = cfg->prof->info;
+	rdset = cfg->prof->rdset;
+	nds = cfg->prof->nds;
+
 	R = G->R[G->curridx];
 	nR = G->nR[G->curridx];
 
@@ -844,12 +850,6 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 		seq[i] = ch;
 	}
 
-//	if(cfg->tdiv > 0){/* Generate mutated root sequence. */
-//		dt = cfg->tdiv;
-//		setmatrix(cfg->mmut[0], Pmut, dt);
-//		mutate(cfg->mmut[0], Pmut, seq, to - from);
-//	}
-
 	if(iscoalnode(G->root)){
 		struct list_head *fgl;
 		struct list stack;
@@ -858,24 +858,20 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 #endif
 		((struct coal_node *)G->root)->seq = seq;
 		((struct coal_node *)G->root)->mapped = malloc(sizeof(map_t) * nmap);
-//		((struct coal_node *)G->root)->mapped = malloc(sizeof(map_t) * ncell);
 		for(i = 0; i < nmap; i++)
 			((struct coal_node *)G->root)->mapped[i] = 0xFFFFFFFF;
 
 		list_init(&stack);
-//		fgl = G->r_list->front;
 		// Trace from leaf node upward until a root or coalescent node which is already mapped
-//		while(fgl){
 		for(i = 0; i < nR; i++){
 			struct frag *fg;
 			struct read *rd;
 
-//			fg = *((struct frag **)GET_OBJ(fgl));
-			fg = &fgset[R[i]];
-			for(r = 0; r < fg->nread; r++){	// Generate sequence for each read covering current region
+			rds = rdset[R[i]];
+			for(r = 0; r < fgi[R[i]].nread; r++){	// Generate sequence for each read covering current region
 				int lb, ub, j;
 
-				rd = &fg->rd[r];
+				rd = &rds[r];
 				lb = (from < rd->start)?rd->start:from;	// Start position is either segment left boundary or read start position
 				ub = (to > rd->end)?rd->end:to;	// End position is either segment right boundary or read end position
 
@@ -886,8 +882,8 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 
 					off_lb = lb - from;
 					off_ub = ub - from;
-					n1 = (struct node *)fg->nd;
-					n2 = (struct coal_node *)fg->nd->in;
+					n1 = (struct node *)nds[R[i]];
+					n2 = (struct coal_node *)n1->in;
 
 					// Find nearest coalescent node (the node right above leaf may be migration node)
 					while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in;
@@ -902,7 +898,6 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 						}
 
 						if(n2->mapped == NULL){
-//							n2->mapped = malloc(sizeof(map_t) * ncell);
 							n2->mapped = malloc(sizeof(map_t) * nmap);
 							memset(n2->mapped, 0, sizeof(map_t) * nmap);
 						}
@@ -930,27 +925,26 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 					}
 
 					// Evolve leaf node
-					dt = n2->t - fg->nd->t;
-					setmatrix(G->pops[fg->nd->pop].mmut, Pmut, dt);
+					dt = n2->t - nds[R[i]]->t;
+					setmatrix(G->pops[nds[R[i]]->pop].mmut, Pmut, dt);
 #ifdef DEBUG
-					fprintf(stderr, "%d: n2=%x, n=%x, rd->start=%d, lb=%d, rd->end=%d, ub=%d\n", __LINE__, n2, n, rd->start, lb, rd->end, ub);
+					fprintf(stderr, "%d: n2=%x, n1=%x, rd->start=%d, lb=%d, rd->end=%d, ub=%d\n", __LINE__, n2, n1, rd->start, lb, rd->end, ub);
 #endif
 					for(j = lb; j < ub; j++)
 						rd->seq[j - rd->start] = n2->seq[j - from];
-//					fprintf(stderr, "%d: n=0x%x\n", __LINE__, n);
-					mutate(G->pops[fg->nd->pop].mmut, Pmut, rd->seq + (lb - rd->start), ub - lb);
+					mutate(G->pops[nds[R[i]]->pop].mmut, Pmut, rd->seq + (lb - rd->start), ub - lb);
 				}
 			}
-//			fgl = fgl->next;
 		}
 
 	}else if(issamnode(G->root)){	// If root is a sample node, do the following operation (theoretically, you shouldn't go here)
 		struct sam_node *n;
 
 		n = (struct sam_node *)G->root;
-		for(r = 0; r < n->fg->nread; r++){
-			rd = &n->fg->rd[r];
-			rd = &n->fg->rd[r];
+		rds = rdset[n->fgid];
+		for(r = 0; r < fgi[n->fgid].nread; r++){
+			rd = &rds[r];
+			rd = &rds[r];
 			lb = (from < rd->start)?rd->start:from;
 			ub = (to > rd->end)?rd->end:to;
 			if(lb < ub){

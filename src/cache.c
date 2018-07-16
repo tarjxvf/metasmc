@@ -8,16 +8,17 @@ int n_resize = 0;
 void cache_resize(struct cache *nc, int add)
 {
 	int *pid, i, new_size;
-	struct list_head *l, *cl;
+	struct intlist *l;
+	struct ptrlist *cl;
 	char *obj, *objs;
 
 	n_resize++;
 
 	new_size = nc->cache_size + add;
 	objs = malloc((nc->obj_size + sizeof(int)) * add);
-	cl = malloc(sizeof(char *) + sizeof(struct list_head));
-	*( (char **) GET_OBJ(cl)) = objs;
-	__list_append(&nc->chunk_list, cl);
+	cl = malloc(sizeof(struct ptrlist));
+	cl->ptr = objs;
+	__list_append(&nc->chunk_list, GET_LIST(cl));
 
 	nc->objs = realloc(nc->objs, sizeof(void *) * new_size);
 	obj = objs;
@@ -29,8 +30,8 @@ void cache_resize(struct cache *nc, int add)
 	}
 
 	for(i = nc->cache_size; i < new_size; i++){
-		l = malloc(sizeof(struct list_head) + sizeof(int));
-		__list_append(&nc->id_list, l);
+		l = malloc(sizeof(struct intlist));
+		__list_append(&nc->id_list, GET_LIST(l));
 	}
 
 	nc->cache_size = new_size;
@@ -39,17 +40,16 @@ void cache_resize(struct cache *nc, int add)
 void *cache_alloc(struct cache *nc)
 {
 	struct list *queue;
-	struct list_head *l;
+	struct intlist *l;
 	int *ptr, id;
 
 	queue = &nc->free_list;
 
 	if(queue->front){
 		/* Get a existing empty node in binary indexed tree. */
-		l = __list_pop(queue);
-		ptr = (int *)GET_OBJ(l);
-		id = *ptr;
-		__list_append(&nc->id_list, l);
+		l = (struct intlist *)__list_pop(queue);
+		id = l->id;
+		__list_append(&nc->id_list, GET_LIST(l));
 		return nc->objs[id];
 
 	}else{
@@ -63,16 +63,15 @@ void *cache_alloc(struct cache *nc)
 
 void cache_free(struct cache *nc, void *obj)
 {
-	struct list_head *l;
-	int id, *pidx;
+	struct intlist *l;
+	int id;
 
 	id = *(int *)((char *)obj + nc->obj_size);
 
 	/* Add freed id to the queue. */
-	l = __list_pop(&nc->id_list);
-	pidx = (int *)GET_OBJ(l);
-	*pidx = id;
-	__list_append(&nc->free_list, l);
+	l = (struct intlist *)__list_pop(&nc->id_list);
+	l->id = id;
+	__list_append(&nc->free_list, GET_LIST(l));
 }
 
 /* Force all elements to be released.
@@ -92,10 +91,7 @@ void cache_clear(struct cache *nc)
 
 struct cache *cache_create(size_t obj_size, int cache_size)
 {
-	struct list_head *l;
 	struct cache *nc;
-	int i, *pid;
-	char *obj;
 
 	nc = malloc(sizeof(struct cache));
 
@@ -115,8 +111,7 @@ struct cache *cache_create(size_t obj_size, int cache_size)
 void cache_destroy(struct cache *nc)
 {
 	struct list_head *l;
-	char *obj;
-	int i;
+	struct ptrlist *pl;
 
 	cache_clear(nc);
 	l = nc->id_list.front;
@@ -126,10 +121,9 @@ void cache_destroy(struct cache *nc)
 	}
 
 	while(nc->chunk_list.front){
-		l = __list_pop(&nc->chunk_list);
-		obj = *((char **)GET_OBJ(l));
-		free(obj);
-		free(l);
+		pl = (struct ptrlist *)__list_pop(&nc->chunk_list);
+		free(pl->ptr);
+		free(pl);
 	}
 
 	free(nc->objs);

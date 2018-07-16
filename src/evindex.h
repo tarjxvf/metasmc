@@ -22,6 +22,20 @@ static inline void dn_add(int npop, int *x, int *y)
 		x[j] += y[j];
 }
 
+static inline void dn_add2(int npop, int *x, int *y, int *z)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] = y[j] + z[j];
+}
+
+static inline void dn_add3(int npop, int *w, int *x, int *y, int *z)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		w[j] = x[j] + y[j] + z[j];
+}
+
 static inline void dn_sub(int npop, int *x, int *y)
 {
 	int j;
@@ -110,6 +124,11 @@ static inline struct event *evindex_find(seq_traverser *it, struct evindex *evid
 	return rbindex_find(it, evidx->idx, key);
 }
 
+static inline void __evindex_s_delete(struct evindex *evidx, struct event *e)
+{
+	__rbindex_s_delete(evidx->idx, (void *)e);
+}
+
 static inline void evindex_s_delete(struct evindex *evidx, struct event *e)
 {
 	rbindex_s_delete(evidx->idx, (void *)e);
@@ -157,7 +176,9 @@ static inline void evindex_insert(struct evindex *evidx, struct event *ev)
 }
 
 void evindex_reset(struct genealogy *G, struct evindex *evidx);
+void __evindex_destroy(struct genealogy *G, struct evindex *evidx);
 void evindex_destroy(struct genealogy *G, struct evindex *evidx);
+void evindex_init(struct genealogy *G, struct config *cfg, struct evindex *evidx);
 struct evindex *evindex_create(struct genealogy *G, struct config *cfg);
 
 #endif

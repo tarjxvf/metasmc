@@ -6,13 +6,14 @@ struct list_head {
 	struct list_head **prev;
 };
 
-#define GET_LIST(obj)	((struct list_head *)((char *)(obj) - sizeof(struct list_head)))
-#define GET_OBJ(l)	((char *)(l) + sizeof(struct list_head))
+//#define GET_LIST(obj)	((struct list_head *)((char *)(obj) - sizeof(struct list_head)))
+//#define GET_OBJ(l)	((char *)(l) + sizeof(struct list_head))
+#define GET_LIST(obj)	((struct list_head *)((char *)(obj)))
+#define GET_OBJ(l)	((char *)(l))
 
 struct list {
 	struct list_head *front;
 	struct list_head **rear;
-//	int n;
 };
 
 void list_init(struct list *ls);
@@ -36,7 +37,6 @@ static inline void __list_add__(struct list *ls, struct list_head *l)
 	l->next = ls->front;
 	ls->front = l;
 	l->prev = &ls->front;
-//	ls->n++;
 }
 
 /* Insert an item before an item. */
@@ -84,8 +84,6 @@ static inline void __list_remove__(struct list *ls, struct list_head *l)
 		l->next->prev = l->prev;
 	else	// If the removed item is the last one
 		ls->rear = l->prev;
-//	l->next = NULL;
-//	l->prev = NULL;
 }
 
 static inline struct list_head *__list_prev__(struct list_head *l)

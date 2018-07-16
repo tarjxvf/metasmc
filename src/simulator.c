@@ -13,44 +13,6 @@
 
 #define NEXT_NOBLANK(fp, ch)    while(isblank((ch) = fgetc(fp)))
 
-/*int read_integer(FILE *filp, int *val)
-{
-	int ch;
-
-	NEXT_NOBLANK(filp, ch);
-	if(!isdigit(ch)){
-		fprintf(stderr, "Syntax error: invalid integer.\n");
-		return -1;
-	}
-	*val = (ch - '0');
-	while(isdigit(ch = fgetc(filp))) *val = *val * 10 + (ch - '0');
-	return ch;
-}
-
-int read_double(FILE *filp, double *val)
-{
-	int ch;
-
-	NEXT_NOBLANK(filp, ch);
-	if(!isdigit(ch)){
-		fprintf(stderr, "Syntax error: invalid real value.\n");
-		return -1;
-	}
-
-	*val = ch - '0';
-	while(isdigit(ch = fgetc(filp))) *val = *val * 10 + (ch - '0');
-	if(ch == '.'){
-		// There is fractional part, read it
-		double frac = 1. / 10;
-		while(isdigit(ch = fgetc(filp))){
-			*val += frac * (ch - '0');
-			frac /= 10;
-		}
-	}
-
-	return ch;
-}*/
-
 void usage(char *prog)
 {
 	fprintf(stderr, "Usage: %s -i read_profile -t theta [Other options]\n", prog);
@@ -208,7 +170,7 @@ int main(int argc, char *argv[])
 	if(filp == NULL)
 		filp = stdin;
 
-	prof = load_profile(filp);
+	prof = load_profile(filp, 1);
 	npop = prof->npop;
 	nfrag = prof->nfrag;
 
@@ -415,8 +377,7 @@ int main(int argc, char *argv[])
 			mmut[i].pi[j] = (double)1 / NUM_NUCS;
 	}
 
-	fgset = prof->fgset;
-	qsort((void *)fgset, (size_t)nfrag, sizeof(struct frag), fgcompar);
+//	fgset = prof->fgset;
 
 	// Fourth round: set up demographic model and additional parameters of mutation models
 	grate = malloc(sizeof(double) * npop);
@@ -728,7 +689,7 @@ int main(int argc, char *argv[])
 	G = alloc_genealogy(cfg, prof);
 
 	/* Sort fragments according to start positions. */
-	qsort((void *)fgset, (size_t)nfrag, sizeof(struct frag), fgcompar);
+//	qsort((void *)fgset, (size_t)nfrag, sizeof(struct frag), fgcompar);
 
 //	fprintf(stderr, "seed=%d\n", sd);
 	init_rand(sd);
@@ -739,7 +700,7 @@ int main(int argc, char *argv[])
 
 	/* Print reads */
 	for(i = 0; i < prof->nfrag; i++){
-//		print_fragment(stdout, &prof->fgset[i]);
+//		print_fragment(stdout, &prof->fgset[i], &prof->rdset[i]);
 	}
 
 	free(mmut);

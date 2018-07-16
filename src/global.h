@@ -2,6 +2,9 @@
 #define GLOBAL_H
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "list.h"
 #include "cache.h"
 
@@ -21,126 +24,171 @@
 #define EVENT_DXVR	11	/* Recombination on dummy lineages. */
 #define EVENT_SAMP	12	/* Add new sample. */
 
-//#define EVENT_MMUT	10	/* Change of mutation model */
-
-//#define MAX(a, b) ((a) > (b))?(a):(b)
-
 struct config;
 struct genealogy;
 struct mutation;
 
+struct ptrlist{
+	struct list_head l;
+	char *ptr;
+};
+
+struct intlist{
+	struct list_head l;
+	int id;
+};
+
+struct coal_node;
+struct node;
+
+struct node_set {
+	int maxn;
+	int n;
+	struct node **nodes;
+};
+
 struct event {
-	int type;
+	struct list_head l;
+	// dn: Change of the number of lineages in affected populations. sumdn: Sum of dn values of the (red-black tree) nodes below this event
 	double t;
-	int *dn;	// Change of the number of lineages in affected populations
-	int *sumdn;	// Sum of dn values of the (red-black tree) nodes below this event
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
 };
 
 struct coal_event {
-	int type;	// type==EVENT_COAL
+	struct list_head l;
+	// type==EVENT_COAL,  dn[pop] == -1 and dn[i] == 0 for other i
 	double t;
-	int *dn;	// dn[pop] == -1 and dn[i] == 0 for other i
-	int *sumdn;
-	int pop;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
+	unsigned char pop;
 	struct coal_node *nd;
 };
 
 struct migr_event {
-	int type;	// type==EVENT_MIGR
+	struct list_head l;
+	// type==EVENT_MIGR, dn[dpop] == +1 and dn[spop] == -1
 	double t;
-	int *dn;	// dn[dpop] == +1 and dn[spop] == -1
-	int *sumdn;
-	int spop;
-	int dpop;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
+	unsigned char spop;
+	unsigned char dpop;
 	struct migr_node *nd;
 };
 
 struct grow_event {
-	int type;	// type==EVENT_GROW
+	struct list_head l;
+	// type==EVENT_GROW and dn Must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
-	int pop;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
+	unsigned char pop;
 	double alpha;
 };
 
 struct size_event {
-	int type;	// type==EVENT_SIZE
+	struct list_head l;
+	// type==EVENT_SIZE and dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
-	int pop;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
+	unsigned char pop;
 	double size;
 };
 
 struct gmig_event {
-	int type;
+	struct list_head l;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	double rmig;
 };
 
 struct rmig_event {
-	int type;
+	struct list_head l;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
-	int popi;
-	int popj;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
+	unsigned char popi;
+	unsigned char popj;
 	double rmig;
 };
 
 struct gsiz_event {
-	int type;
+	struct list_head l;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	double size;
 };
 
 struct ggro_event {
-	int type;
+	struct list_head l;
+	// dn must be zero
 	double t;
-	int *dn;	// Must be zero
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
 	double alpha;	// Growth rate of all subpopulations
 };
 
 struct join_event {
-	int type;
+	struct list_head l;
+	// dn[0] depends on the number of lineages in source population. dn[1] = -dn[0]
 	double t;
-	int *dn;	// Depends on the number of lineages in source population. dn[1] = -dn[0]
-	int *sumdn;
-	int popi;	// Subpopulation to be absorbed
-	int popj;
-	struct list ndls;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
+	unsigned char popi;	// Subpopulation to be absorbed
+	unsigned char popj;
+	struct node_set ndls;
 };
 
 struct splt_event {
-	int type;
+	struct list_head l;
+	// dn[0] depend on the number of migrated lineages. dn[1] = -dn[0]
 	double t;
-	int *dn;	// Depend on the number of migrated lineages. dn[1] = -dn[0]
-	int *sumdn;
-	int pop;	// Subpopulation to be splitted
-	int newpop;	// New subpopulation
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
+
+	unsigned char pop;	// Subpopulation to be splitted
+	unsigned char newpop;	// New subpopulation
 	double prop;	// proportion is probability that each lineage stays in pop-i. (p, 1-p are admixt. proport.
-	struct list ndls;
+	struct node_set ndls;
 };
 
 struct samp_event {
-	int type;
+	struct list_head l;
+	// Equals to the number of samples of each population added at time t
 	double t;
-	int *dn;	// Equals to the number of samples of each population added at time t
-	int *sumdn;
+	unsigned char type;
+	unsigned char dn_off;
+	unsigned char sumdn_off;
 };
 
-/*struct mmut_event {
-	int type;
-	double t;
-	int pop;
-	struct mutation *mmut;
-};*/
+#define GET_DN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->dn_off))
+#define GET_SUMDN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->sumdn_off))
 
 struct event *alloc_event(struct config *, int, double);
 void free_event(struct config *cfg, struct event *ev);
@@ -154,21 +202,11 @@ struct read{
 	char *qual;
 };
 
-struct sam_node;
-
-/* Fragment of paired-end reads. */
-struct frag{
-	int id;
-//	int chr;	// Chromosome number
-//	double start;
-//	double end;
-	int start;	// Chromosome start position
+struct fginfo{
 	int end;
-	int pop;
-	int nread;
-	struct read *rd;
-	int trunk;
-	struct sam_node *nd;
+	unsigned int pop:8;
+	unsigned int nread:8;
+	unsigned int trunk:1;
 };
 
 struct reference {
@@ -190,44 +228,48 @@ void load_chr(struct reference *ref, int chrnum, char **strp);
 
 struct profile {
 	int npop;
-//	double *popsize;
 
 	char *reffile;
-//	int nchr;
-//	int reflen;
 	struct reference *ref;
 	int chrnum;	// Index of chromosome in the reference;
 
 	int *nfrag_pop;
 	int *ntrunks;
 	int nfrag;
-	struct frag *fgset;
+
+	int *fgstart;
+	int *fgid;
+	struct fginfo *info;
+	struct sam_node **nds;
+	struct read **rdset;
 };
 
 int fgcompar(const void *a, const void *b);
 void print_profile(struct profile *prof, FILE *outfp);
 struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrags, int fraglen, int paired, int rdlen, int *ntrunks);
-struct profile *load_profile(FILE *filp);
+struct profile *load_profile(FILE *filp, int genseq);
 void unload_profile(struct profile *prof);
 
 struct mutation;
 struct config {
-	struct profile *prof;
-	unsigned char seed;
-	int print_tree;	// 1 if you wish to print trees
-	int gensam;	// 1 if you wish to generate sequences
-	FILE *treefp;	// If print_tree is set to 1, this points to file object of tree output
-	FILE *readfp;	// Output file for simulated reads
+	unsigned char npop;
+	unsigned char nsplt;
+	unsigned int npop_all:14;
+	unsigned int print_tree:1;	// 1 if you wish to print trees
+	unsigned int gensam:1;		// 1 if you wish to generate sequences
+	int maxfrag;
+
+	/*** Caches of frequently-used objects ***/
+	struct cache *event_cache[13];
 
 	/*** Basic parameters. ***/
 	double rho;
 	double tdiv;	// Divergence time
 
 	/*** Demographic model. ***/
-	int npop;	// Number of initial subpopulations
-//	int *nsams;	// Number of samples in each population
-	int nsplt;	// Number of subpopulations created by splitting events.
-	int npop_all;	// Maximum number of populations, including those created by splitting events
+//	int npop;	// Number of initial subpopulations
+//	int nsplt;	// Number of subpopulations created by splitting events.
+//	int npop_all;	// Maximum number of populations, including those created by splitting events
 
 	double *size;	// Initial subpopulation size (at time 0)
 	double **mmig;	// Initial migration matrix(at time 0)
@@ -237,16 +279,15 @@ struct config {
 	struct mutation **mmut;
 
 	struct list evlist;
-	int ndevents;		// Number of demographic events
 	struct event **devents;	// Array of demographic events
+	int ndevents;		// Number of demographic events
+	unsigned int seed;
 
-	/*** Caches of frequently-used objects ***/
-	struct cache *node_cache[6];
-	struct cache *event_cache[13];
-	struct cache *frag_cache;
+	struct profile *prof;
+	FILE *treefp;	// If print_tree is set to 1, this points to file object of tree output
+	FILE *readfp;	// Output file for simulated reads
 
-	int maxfrag;
-int debug;
+//	int debug;
 };
 
 struct config *create_config(int seed, int print_tree, int gensam, FILE *, FILE *, int maxfrag, struct profile *prof, double rho);
@@ -255,7 +296,8 @@ void dump_config(struct config *cfg);
 
 int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut);
 
-void print_fragment(FILE *outfp, struct frag *fg);	
+//void print_fragment(FILE *outfp, struct frag *fg, struct read *rd);
+void print_fragment(FILE *outfp, int fgstart, int fgid, struct fginfo *fgi, struct read *rdset);
 
 int set_growth_rates(struct config *cfg, double *grate);
 int set_migration_matrix(struct config *cfg, double *mmig);
@@ -268,23 +310,10 @@ int add_event_gsiz(struct config *cfg, double t, double size);
 int add_event_join(struct config *cfg, double t, int popi, int popj);
 int add_event_splt(struct config *cfg, double t, int pop, double prop);
 int add_event_size(struct config *cfg, double t, int pop, double size);
-//int add_event_mmut(struct config *cfg, double t, int pop, double theta, int model, double *pars, double *pi);
 int add_event_samp(struct config *cfg, double t, int pop, double size);
 
 extern char nucl[];
 int nucl_index(int ch);
-
-//double dunif01();
-//double dexp();
-//unsigned char dunif(unsigned char max);
-//int poisso(double u);
-//void seedit( char *flag );
-//void init_rand();
-//void init_rand(unsigned char s);
-//void finish_rand();
-//void seed();
-
-struct node;
 
 typedef size_t map_t;
 #define CELLSIZE 32
@@ -293,9 +322,9 @@ typedef size_t map_t;
 struct node {
 	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -312,9 +341,9 @@ struct node {
 struct coal_node {
 	// type==NODE_COAL
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -333,9 +362,9 @@ struct coal_node {
 struct xover_node {
 	// type==NODE_XOVER
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -353,9 +382,9 @@ struct xover_node {
 struct migr_node {
 	// type==NODE_MIGR
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -366,15 +395,16 @@ struct migr_node {
 	struct migr_event *ev;
 	struct node *in;
 	struct node *out;
+	int mgid;
 };
 
 // Node representing sample.
 struct sam_node {
 	// type==NODE_SAM
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -384,16 +414,16 @@ struct sam_node {
 	};
 	struct event *ev;
 	struct node *in;
-	struct frag *fg;	// pointer to corresponding fragment
+	int fgid;
 };
 
 // Node representing tip of dummy lineage which represents trapped ancestral material. Recombination is allowed on this type of lineage but take no effect.
 struct dummy_node {
 	// type==NODE_DUMMY of type==NODE_FLOAT
 	double t;
-	int set_id;
 	int xtid;
 	int idx;
+	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -408,5 +438,182 @@ struct dummy_node {
 
 #define NODE_FLAG_VISITED_LEFT 0x1
 #define NODE_FLAG_VISITED_RIGHT 0x2
+
+#define NODE_COAL	0
+#define NODE_MIGR	1
+#define NODE_XOVER	2
+#define NODE_SAM	3
+#define NODE_FLOAT	4
+#define NODE_DUMMY	5
+
+#define AS_COAL_NODE(n)	((struct coal_node *)(n))
+#define AS_MIGR_NODE(n)	((struct migr_node *)(n))
+#define AS_XOVER_NODE(n)	((struct xover_node *)(n))
+#define AS_SAM_NODE(n)	((struct sam_node *)(n))
+#define AS_FLOAT_NODE(n)	((struct dummy_node *)(n))
+#define AS_DUMMY_NODE(n)	((struct dummy_node *)(n))
+
+static inline int iscoalnode(struct node *nd)
+{
+	return nd->type == NODE_COAL;
+}
+
+static inline int isxovernode(struct node *nd)
+{
+	return nd->type == NODE_XOVER;
+}
+
+static inline int ismigrnode(struct node *nd)
+{
+	return nd->type == NODE_MIGR;
+}
+
+static inline int issamnode(struct node *nd)
+{
+	return nd->type == NODE_SAM;
+}
+
+static inline int isfloatnode(struct node *nd)
+{
+	return nd->type == NODE_FLOAT;
+}
+
+static inline int isdummynode(struct node *nd)
+{
+	return nd->type == NODE_DUMMY;
+}
+
+static int node_flag_gettype(struct node *nd)
+{
+	return nd->type;
+}
+
+static void edge_flag_settype(struct node *nd, char type)
+{
+	nd->type = type;
+}
+
+static inline char isdeleted(struct node *e)
+{
+	return e->deleted;
+}
+
+static inline void edge_flag_delete(struct node *e)
+{
+	e->deleted = 1;
+}
+
+static inline void edge_flag_undelete(struct node *e)
+{
+	e->deleted = 0;
+}
+
+static inline void edge_flag_setdeleted(struct node *e, char flag)
+{
+	e->deleted = flag;
+}
+
+static inline int edge_flag_getitop(struct node *e)
+{
+	return e->itop;
+}
+
+static inline void edge_flag_setleft(struct node *e)
+{
+	e->itop = 0;
+}
+
+static inline void edge_flag_setright(struct node *e)
+{
+	e->itop = 1;
+}
+
+static inline void edge_flag_setitop(struct node *e, char flag)
+{
+	e->itop = flag;
+}
+
+//void free_node(struct genealogy *G, struct node *nd);
+//void free_node(struct config *cfg, struct node *nd);
+//struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
+//struct node *alloc_node(struct config *cfg, int type, int pop, double t);
+
+static inline void migr_set_add(struct node_set *set, struct node *e)
+{
+	if(set->n >= set->maxn){
+		set->maxn *= 2;
+		set->nodes = realloc(set->nodes, sizeof(struct node *) * set->maxn);
+	}
+	AS_MIGR_NODE(e)->mgid = set->n;
+	set->nodes[set->n++] = e;
+}
+
+static inline void migr_set_remove(struct node_set *set, struct node *e)
+{
+	int i;
+	i = AS_MIGR_NODE(e)->mgid;
+	set->nodes[i] = set->nodes[--(set->n)];
+	AS_MIGR_NODE(set->nodes[i])->mgid = i;
+}
+
+static inline void node_set_init(struct node_set *set, int maxn)
+{
+	set->n = 0;
+	set->maxn = maxn;
+	set->nodes = malloc(sizeof(struct node *) * maxn);
+}
+
+static inline void node_set_resize(struct node_set *set, int maxn)
+{
+	if(maxn > set->maxn){
+		set->maxn = maxn;
+		set->nodes = realloc(set->nodes, sizeof(struct node *) * maxn);
+	}
+}
+
+static inline void node_set_clear(struct node_set *set)
+{
+	set->n = 0;
+}
+
+static inline void node_set_destroy(struct node_set *set)
+{
+	set->maxn = set->n = 0;
+	free(set->nodes);
+}
+
+static inline void node_set_add(struct node_set *set, struct node *e)
+{
+	e->set_id = set->n;
+	set->nodes[set->n++] = e;
+}
+
+static inline struct node *node_set_get(struct node_set *set, int i)
+{
+	return set->nodes[i];
+}
+
+static inline void node_set_replace(struct node_set *set, int i, struct node *e)
+{
+	e->set_id = i;
+	set->nodes[i] = e;
+}
+
+static inline void __node_set_remove(struct node_set *set, int i)
+{
+	set->nodes[i] = set->nodes[--(set->n)];
+	set->nodes[i]->set_id = i;
+}
+
+static inline struct node *node_set_remove(struct node_set *set, int i)
+{
+	struct node *e;
+
+	e = set->nodes[i];
+	set->nodes[i] = set->nodes[--(set->n)];
+	set->nodes[i]->set_id = i;
+
+	return e;
+}
 
 #endif

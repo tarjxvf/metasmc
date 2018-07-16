@@ -31,11 +31,11 @@ __print_event_tree(const struct evindex *evidx, struct rb_node *node, int level)
   fprintf (stderr, "[%.6f, %d, dn=(", ev->t, ev->type);
 
   for(i = 0; i < evidx->npop_all; i++)
-	  fprintf(stderr, "%d, ", ev->dn[i]);
+	  fprintf(stderr, "%d, ", GET_DN(ev)[i]);
   fprintf(stderr, "), sumdn=(");
 
   for(i = 0; i < evidx->npop_all; i++)
-	  fprintf(stderr, "%d, ", ev->sumdn[i]);
+	  fprintf(stderr, "%d, ", GET_SUMDN(ev)[i]);
   fprintf(stderr, ")](");
 
   for (i = 0; i <= 1; i++)
@@ -80,45 +80,126 @@ int evindex_compar(struct event *a, struct event *b)
 	}
 }
 
+// Rebuild tree index from sorted list
+void evindex_rebuild_tree(struct evindex *evidx)
+{
+	int i, j, nnodes, h, half, *tree;
+	struct rb_node **nodes;
+	struct list_head *l;
+	struct event *ev, *left, *right;
+	struct rbindex *eidx;
+	void **objs;
+
+	eidx = evidx->idx;
+	nnodes = eidx->n;
+	rbindex_rb_clear(eidx);
+	if(nnodes >= eidx->nc->cache_size)
+		cache_resize(eidx->nc, nnodes - eidx->nc->cache_size);
+	nodes = (struct rb_node **)eidx->nc->objs;
+
+	objs = malloc(sizeof(void *) * nnodes);
+	l = eidx->ls.front;
+	for(i = 0; i < nnodes; i++){
+		objs[i] = GET_OBJ(l);
+		l = l->next;
+	}
+
+	// Build complete binary tree
+	tree = malloc(sizeof(int) * nnodes);
+	complete_binary_tree(nnodes, tree);
+	h = 0;
+	while(1 << h <= nnodes) h++;
+	half = 1 << (h - 1);
+
+	for(j = nnodes - 1; j >= half - 1; j--){
+		nodes[j]->rb_color = RB_RED;
+		nodes[j]->rb_data = ev = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
+		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+	}
+
+	for(; j > (nnodes - 1) / 2; j--){
+		nodes[j]->rb_color = RB_BLACK;
+		nodes[j]->rb_data = ev = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
+		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+	}
+
+	nodes[j]->rb_color = RB_BLACK;
+	nodes[j]->rb_data = ev = objs[tree[j]];
+	if(j == nnodes / 2){
+		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
+		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+
+	}else{
+		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
+		nodes[j]->rb_link[1] = NULL;
+		left = nodes[(j << 1) + 1]->rb_data;
+		dn_add2(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
+	}
+	j--;
+
+	for(; j >= 0; j--){
+		nodes[j]->rb_color = RB_BLACK;
+		nodes[j]->rb_data = ev = objs[tree[j]];
+		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
+		nodes[j]->rb_link[1] = nodes[(j << 1) + 2];
+		left = nodes[(j << 1) + 1]->rb_data;
+		right = nodes[(j << 1) + 2]->rb_data;
+		dn_add3(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
+	}
+
+	eidx->tree->rb_root = nodes[0];
+	nodes[0]->rb_color = RB_BLACK;
+	eidx->nc->maxnodes = nnodes;
+
+	free(objs);
+	free(tree);
+}
+
 void evindex_seq_off(struct evindex *evidx)
 {
-	struct rb_node **nodes;
-	int nnodes, i, j;
+//	struct event *ev, *left, *right;
+//	struct rb_node **nodes;
+//	int nnodes, i, j;
 
 //	struct timespec beg, end;
 //	int nsec;
-
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	nnodes = evidx->idx->n;
+//	nnodes = evidx->idx->n;
 	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
-	rbindex_rebuild_tree(evidx->idx);
+	evindex_rebuild_tree(evidx);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_ev_tree += nsec;
 
-	nodes = (struct rb_node **)evidx->idx->nc->objs;
+//	nodes = (struct rb_node **)evidx->idx->nc->objs;
 
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-	for(i = nnodes - 1; i >= 0; i--){
-		struct event *ev, *left, *right;
-
+/*	for(i = nnodes - 1; i > (nnodes - 1) / 2; i--){
 		ev = nodes[i]->rb_data;
-		dn_set(evidx->npop_all, ev->sumdn, ev->dn);
-
-		// Link nodes
-		if(i * 2 + 1 < nnodes){
-			left = nodes[i * 2 + 1]->rb_data;
-			dn_add(evidx->npop_all, ev->sumdn, left->sumdn);
-		}
-
-		if(i * 2 + 2 < nnodes){
-			right = nodes[i * 2 + 2]->rb_data;
-			dn_add(evidx->npop_all, ev->sumdn, right->sumdn);
-		}
+		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
 	}
+
+	ev = nodes[i]->rb_data;
+	if(i == nnodes / 2){
+		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+
+	}else{
+		left = nodes[(i << 1) + 1]->rb_data;
+		dn_add2(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
+	}
+	i--;
+
+	for(; i >= 0; i--){
+		ev = nodes[i]->rb_data;
+		left = nodes[(i << 1) + 1]->rb_data;
+		right = nodes[(i << 1) + 2]->rb_data;
+		dn_add3(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
+	}*/
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
@@ -140,12 +221,12 @@ struct event *evindex_query(struct evindex *evidx, double t, int *n)
 		cmp = t >= ev->t;
 		if(cmp){
 			for(j = 0; j < npop; j++)
-				n[j] += ev->dn[j];
+				n[j] += GET_DN(ev)[j];
 
 			if(p->rb_link[0]){
 				evleft = (struct event *)p->rb_link[0]->rb_data;
 				for(j = 0; j < npop; j++)
-					n[j] += evleft->sumdn[j];
+					n[j] += GET_SUMDN(evleft)[j];
 			}
 			p = p->rb_link[1];
 
@@ -171,7 +252,7 @@ void evindex_propagate_add(int height, struct rb_node **stack, int npop, int *dn
 	// Backtrack and update summary statistics
 	for(i = height - 1; i >= 0; i--){
 		ev = stack[i]->rb_data;
-		dn_add(npop, ev->sumdn, dn);
+		dn_add(npop, GET_SUMDN(ev), dn);
 	}
 }
 
@@ -183,7 +264,7 @@ void evindex_propagate_sub(int height, struct rb_node **stack, int npop, int *dn
 	// Backtrack and update summary statistics
 	for(i = height - 1; i >= 0; i--){
 		ev = stack[i]->rb_data;
-		dn_sub(npop, ev->sumdn, dn);
+		dn_sub(npop, GET_SUMDN(ev), dn);
 	}
 }
 
@@ -223,7 +304,7 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
 	  rbindex_forward(evidx->idx);
   list_remove(&evidx->idx->ls, ev);
   evidx->idx->n--;
-  evindex_propagate_sub(k - 1, pa + 1, evidx->npop_all, ev->dn);
+  evindex_propagate_sub(k - 1, pa + 1, evidx->npop_all, GET_DN(ev));
 
   if (p->rb_link[1] == NULL)
     pa[k - 1]->rb_link[da[k - 1]] = p->rb_link[0];
@@ -236,7 +317,7 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
         {
           r->rb_link[0] = p->rb_link[0];
 	  if(p->rb_link[0])
-		  dn_add(evidx->npop_all, ((struct event *)r->rb_data)->sumdn, ((struct event *)p->rb_link[0]->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(r->rb_data), GET_SUMDN(p->rb_link[0]->rb_data));
           t = r->rb_color;
           r->rb_color = p->rb_color;
           p->rb_color = t;
@@ -262,8 +343,8 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
             }
 
 	  ev = s->rb_data;
-	  evindex_propagate_sub(k - j - 1, pa + j + 1, evidx->npop_all, ev->dn);
-	  dn_set(evidx->npop_all, ev->sumdn, ev->dn);
+	  evindex_propagate_sub(k - j - 1, pa + j + 1, evidx->npop_all, GET_DN(ev));
+	  dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
 
           da[j] = 1;
           pa[j] = s;
@@ -272,13 +353,13 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
           s->rb_link[0] = p->rb_link[0];
 
 	  if(p->rb_link[0])
-		  dn_add(evidx->npop_all, ev->sumdn, ((struct event *)p->rb_link[0]->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(ev), GET_SUMDN(p->rb_link[0]->rb_data));
 
           r->rb_link[0] = s->rb_link[1];
           s->rb_link[1] = p->rb_link[1];
 
 	  if(p->rb_link[1])
-		  dn_add(evidx->npop_all, ev->sumdn, ((struct event *)p->rb_link[1]->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(ev), GET_SUMDN(p->rb_link[1]->rb_data));
 
           t = s->rb_color;
           s->rb_color = p->rb_color;
@@ -309,18 +390,18 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
                   w->rb_color = RB_BLACK;
                   pa[k - 1]->rb_color = RB_RED;
 
-		  dn_sub(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_data)->sumdn);
+		  dn_sub(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_data));
 		  if(w->rb_link[0])
-			  dn_sub(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)w->rb_link[0]->rb_data)->sumdn);
+			  dn_sub(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(w->rb_link[0]->rb_data));
 
                   pa[k - 1]->rb_link[1] = w->rb_link[0];
 
 		  if(w->rb_link[0])
-			  dn_add(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_link[0]->rb_data)->sumdn);
+			  dn_add(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_link[0]->rb_data));
 
                   w->rb_link[0] = pa[k - 1];
 
-		  dn_add(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)pa[k - 1]->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(pa[k - 1]->rb_data));
 
                   pa[k - 2]->rb_link[da[k - 2]] = w;
 
@@ -346,18 +427,18 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
                       y->rb_color = RB_BLACK;
                       w->rb_color = RB_RED;
 
-		      dn_sub(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)y->rb_data)->sumdn);
+		      dn_sub(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(y->rb_data));
 		      if(y->rb_link[1])
-			      dn_sub(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)y->rb_link[1]->rb_data)->sumdn);
+			      dn_sub(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(y->rb_link[1]->rb_data));
 
                       w->rb_link[0] = y->rb_link[1];
 
 		      if(y->rb_link[1])
-			      dn_add(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)y->rb_link[1]->rb_data)->sumdn);
+			      dn_add(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(y->rb_link[1]->rb_data));
 
                       y->rb_link[1] = w;
 
-		      dn_add(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)w->rb_data)->sumdn);
+		      dn_add(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(w->rb_data));
 
                       w = pa[k - 1]->rb_link[1] = y;
                     }
@@ -366,18 +447,18 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
                   pa[k - 1]->rb_color = RB_BLACK;
                   w->rb_link[1]->rb_color = RB_BLACK;
 
-		  dn_sub(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_data)->sumdn);
+		  dn_sub(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_data));
 		  if(w->rb_link[0])
-			  dn_sub(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)w->rb_link[0]->rb_data)->sumdn);
+			  dn_sub(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(w->rb_link[0]->rb_data));
 
                   pa[k - 1]->rb_link[1] = w->rb_link[0];
 
 		  if(w->rb_link[0])
-			  dn_add(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_link[0]->rb_data)->sumdn);
+			  dn_add(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_link[0]->rb_data));
 
                   w->rb_link[0] = pa[k - 1];
 
-		  dn_add(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)pa[k - 1]->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(pa[k - 1]->rb_data));
 
                   pa[k - 2]->rb_link[da[k - 2]] = w;
                   break;
@@ -392,18 +473,18 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
                   w->rb_color = RB_BLACK;
                   pa[k - 1]->rb_color = RB_RED;
 
-		  dn_sub(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_data)->sumdn);
+		  dn_sub(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_data));
 		  if(w->rb_link[1])
-			  dn_sub(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)w->rb_link[1]->rb_data)->sumdn);
+			  dn_sub(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(w->rb_link[1]->rb_data));
 
                   pa[k - 1]->rb_link[0] = w->rb_link[1];
 
 		  if(w->rb_link[1])
-			  dn_add(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_link[1]->rb_data)->sumdn);
+			  dn_add(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_link[1]->rb_data));
 
                   w->rb_link[1] = pa[k - 1];
 
-		  dn_add(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)pa[k - 1]->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(pa[k - 1]->rb_data));
 
                   pa[k - 2]->rb_link[da[k - 2]] = w;
 
@@ -429,18 +510,18 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
                       y->rb_color = RB_BLACK;
                       w->rb_color = RB_RED;
 
-		      dn_sub(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)y->rb_data)->sumdn);
+		      dn_sub(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(y->rb_data));
 		      if(y->rb_link[0])
-			      dn_sub(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)y->rb_link[0]->rb_data)->sumdn);
+			      dn_sub(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(y->rb_link[0]->rb_data));
 
                       w->rb_link[1] = y->rb_link[0];
 
 		      if(y->rb_link[0])
-			      dn_add(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)y->rb_link[0]->rb_data)->sumdn);
+			      dn_add(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(y->rb_link[0]->rb_data));
 
                       y->rb_link[0] = w;
 
-		      dn_add(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)w->rb_data)->sumdn);
+		      dn_add(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(w->rb_data));
 
                       w = pa[k - 1]->rb_link[0] = y;
                     }
@@ -449,18 +530,18 @@ void evindex_rb_delete(struct evindex *evidx, const void *item)
                   pa[k - 1]->rb_color = RB_BLACK;
                   w->rb_link[0]->rb_color = RB_BLACK;
 
-		  dn_sub(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_data)->sumdn);
+		  dn_sub(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_data));
 		  if(w->rb_link[1])
-			  dn_sub(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)w->rb_link[1]->rb_data)->sumdn);
+			  dn_sub(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(w->rb_link[1]->rb_data));
 
                   pa[k - 1]->rb_link[0] = w->rb_link[1];
 
 		  if(w->rb_link[1])
-			  dn_add(evidx->npop_all, ((struct event *)pa[k - 1]->rb_data)->sumdn, ((struct event *)w->rb_link[1]->rb_data)->sumdn);
+			  dn_add(evidx->npop_all, GET_SUMDN(pa[k - 1]->rb_data), GET_SUMDN(w->rb_link[1]->rb_data));
 
                   w->rb_link[1] = pa[k - 1];
 
-		  dn_add(evidx->npop_all, ((struct event *)w->rb_data)->sumdn, ((struct event *)pa[k - 1]->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(w->rb_data), GET_SUMDN(pa[k - 1]->rb_data));
 
                   pa[k - 2]->rb_link[da[k - 2]] = w;
                   break;
@@ -525,8 +606,8 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
   evidx->idx->n++;
 
   // Propagating change of summary statistics toward root
-  dn_set(evidx->npop_all, ev->sumdn, ev->dn);
-  evindex_propagate_add(k - 1, pa + 1, evidx->npop_all, ev->dn);
+  dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+  evindex_propagate_add(k - 1, pa + 1, evidx->npop_all, GET_DN(ev));
 
   while (k >= 3 && pa[k - 1]->rb_color == RB_RED)
     {
@@ -549,18 +630,18 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
                 {
                   x = pa[k - 1];
                   y = x->rb_link[1];
-		  dn_sub(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_data)->sumdn);
+		  dn_sub(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_data));
 		  if(y->rb_link[0])
-			  dn_sub(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)y->rb_link[0]->rb_data)->sumdn);
+			  dn_sub(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(y->rb_link[0]->rb_data));
 
                   x->rb_link[1] = y->rb_link[0];
 
 		  if(y->rb_link[0])
-			  dn_add(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_link[0]->rb_data)->sumdn);
+			  dn_add(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_link[0]->rb_data));
 
                   y->rb_link[0] = x;
 
-		  dn_add(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)x->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(x->rb_data));
 
                   pa[k - 2]->rb_link[0] = y;
                 }
@@ -569,18 +650,18 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
               x->rb_color = RB_RED;
               y->rb_color = RB_BLACK;
 
-	      dn_sub(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_data)->sumdn);
+	      dn_sub(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_data));
 	      if(y->rb_link[1])
-		      dn_sub(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)y->rb_link[1]->rb_data)->sumdn);
+		      dn_sub(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(y->rb_link[1]->rb_data));
 
               x->rb_link[0] = y->rb_link[1];
 
 	      if(y->rb_link[1])
-		      dn_add(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_link[1]->rb_data)->sumdn);
+		      dn_add(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_link[1]->rb_data));
 
               y->rb_link[1] = x;
 
-	      dn_add(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)x->rb_data)->sumdn);
+	      dn_add(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(x->rb_data));
 
               pa[k - 3]->rb_link[da[k - 3]] = y;
               break;
@@ -606,18 +687,18 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
                   x = pa[k - 1];
                   y = x->rb_link[0];
 
-		  dn_sub(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_data)->sumdn);
+		  dn_sub(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_data));
 		  if(y->rb_link[1])
-			  dn_sub(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)y->rb_link[1]->rb_data)->sumdn);
+			  dn_sub(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(y->rb_link[1]->rb_data));
 
                   x->rb_link[0] = y->rb_link[1];
 
 		  if(y->rb_link[1])
-			  dn_add(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_link[1]->rb_data)->sumdn);
+			  dn_add(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_link[1]->rb_data));
 
                   y->rb_link[1] = x;
 
-		  dn_add(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)x->rb_data)->sumdn);
+		  dn_add(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(x->rb_data));
 
                   pa[k - 2]->rb_link[1] = y;
                 }
@@ -626,18 +707,18 @@ void evindex_rb_insert(struct evindex *evidx, struct event *ev)
               x->rb_color = RB_RED;
               y->rb_color = RB_BLACK;
 
-	      dn_sub(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_data)->sumdn);
+	      dn_sub(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_data));
 	      if(y->rb_link[0])
-		      dn_sub(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)y->rb_link[0]->rb_data)->sumdn);
+		      dn_sub(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(y->rb_link[0]->rb_data));
 
               x->rb_link[1] = y->rb_link[0];
 
 	      if(y->rb_link[0])
-		      dn_add(evidx->npop_all, ((struct event *)x->rb_data)->sumdn, ((struct event *)y->rb_link[0]->rb_data)->sumdn);
+		      dn_add(evidx->npop_all, GET_SUMDN(x->rb_data), GET_SUMDN(y->rb_link[0]->rb_data));
 
               y->rb_link[0] = x;
 
-	      dn_add(evidx->npop_all, ((struct event *)y->rb_data)->sumdn, ((struct event *)x->rb_data)->sumdn);
+	      dn_add(evidx->npop_all, GET_SUMDN(y->rb_data), GET_SUMDN(x->rb_data));
 
               pa[k - 3]->rb_link[da[k - 3]] = y;
               break;
@@ -658,7 +739,7 @@ void evindex_reset(struct genealogy *G, struct evindex *evidx)
 	rbindex_rb_clear(evidx->idx);
 }
 
-void evindex_destroy(struct genealogy *G, struct evindex *evidx)
+void __evindex_destroy(struct genealogy *G, struct evindex *evidx)
 {
 	struct event *ev;
 
@@ -669,6 +750,11 @@ void evindex_destroy(struct genealogy *G, struct evindex *evidx)
 
 	rbindex_destroy(evidx->idx);
 	free(evidx->dn);
+}
+
+void evindex_destroy(struct genealogy *G, struct evindex *evidx)
+{
+	__evindex_destroy(G, evidx);
 	free(evidx);
 }
 
@@ -689,13 +775,11 @@ void evindex_s_seek(struct evindex *evidx, double t)
 	}
 }
 
-struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
+void evindex_init(struct genealogy *G, struct config *cfg, struct evindex *evidx)
 {
-	struct evindex *evidx;
 	struct event *ev;
 	int npop;
 
-	evidx = malloc(sizeof(struct evindex));
 	evidx->idx = rbindex_create(evindex_compar, cfg->maxfrag * 2);
 	evidx->npop_all = npop = cfg->npop_all;
 	evidx->dn = malloc(sizeof(int) * npop);
@@ -713,6 +797,14 @@ struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
 
 	list_append(&evidx->idx->ls, ev);
 	evidx->idx->n++;
+}
+
+struct evindex *evindex_create(struct genealogy *G, struct config *cfg)
+{
+	struct evindex *evidx;
+
+	evidx = malloc(sizeof(struct evindex));
+	evindex_init(G, cfg, evidx);
 
 	return evidx;
 }

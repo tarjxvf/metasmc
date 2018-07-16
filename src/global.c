@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +12,7 @@
 #include "mutation.h"
 #include "evindex.h"
 
-size_t evsize[] = {sizeof(struct list_head) + sizeof(struct coal_event), sizeof(struct list_head) + sizeof(struct migr_event), sizeof(struct list_head) + sizeof(struct grow_event), sizeof(struct list_head) + sizeof(struct size_event), sizeof(struct list_head) + sizeof(struct rmig_event), sizeof(struct list_head) + sizeof(struct gmig_event), sizeof(struct list_head) + sizeof(struct gsiz_event), sizeof(struct list_head) + sizeof(struct ggro_event), sizeof(struct list_head) + sizeof(struct join_event), sizeof(struct list_head) + sizeof(struct splt_event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct event), sizeof(struct list_head) + sizeof(struct samp_event)};
+static size_t evsize[] = {sizeof(struct coal_event), sizeof(struct migr_event), sizeof(struct grow_event), sizeof(struct size_event), sizeof(struct rmig_event), sizeof(struct gmig_event), sizeof(struct gsiz_event), sizeof(struct ggro_event), sizeof(struct join_event), sizeof(struct splt_event), sizeof(struct event), sizeof(struct event), sizeof(struct samp_event)};
 
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
 struct event *alloc_event(struct config *cfg, int type, double t)
@@ -25,17 +26,15 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 	if(type == EVENT_COAL || type == EVENT_MIGR)
-		l = cache_alloc(cfg->event_cache[type]);
+		ev = cache_alloc(cfg->event_cache[type]);
 	else
-		l = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
+		ev = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
 
-	ev = (struct event *)GET_OBJ(l);
 	ev->type = type;
 	ev->t = t;
-	ev->dn = (int *)((char *)l + evsize[type]);
-	ev->sumdn = (int *)((char *)l + evsize[type] + sizeof(int) * npop_all);
-//	memset(ev->dn, 0, sizeof(int) * 2 * npop_all);
-	dn_clear(npop_all, ev->dn);
+	ev->dn_off = evsize[type];
+	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
+	dn_clear(npop_all, GET_DN(ev));
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
@@ -59,7 +58,7 @@ void print_event(struct config *cfg, struct event *ev)
 	l = GET_LIST(ev);
 	fprintf(stderr, "(%x, %x)[type=%d, t=%.6f, dn=(", l, ev, ev->type, ev->t);
 	for(i = 0; i < cfg->npop_all; i++)
-		fprintf(stderr, "%d, ", ev->dn[i]);
+		fprintf(stderr, "%d, ", GET_DN(ev)[i]);
 	fprintf(stderr, ")");
 	if(ev->type == EVENT_COAL){
 		fprintf(stderr, ", pop=%d", ((struct coal_event *)ev)->pop);
@@ -81,9 +80,6 @@ void print_event(struct config *cfg, struct event *ev)
 		fprintf(stderr, ", popi=%d, popj=%d", ((struct join_event *)ev)->popi, ((struct join_event *)ev)->popj);
 	}else if(ev->type == EVENT_SPLT){
 		fprintf(stderr, ", pop=%d, newpop=%d", ((struct splt_event *)ev)->pop, ((struct splt_event *)ev)->newpop);
-/*	}else if(ev->type == EVENT_MMUT){
-		fprintf(stderr, ", pop=%d", ((struct mmut_event *)ev)->pop);
-		dump_mutation_model(((struct mmut_event *)ev)->mmut);*/
 	}else if(ev->type == EVENT_SAMP){
 	}
 
@@ -108,14 +104,19 @@ int nucl_index(int ch)
 	}
 }
 
-int fgcompar(const void *a, const void *b)
+int fgcompar_r(const void *a, const void *b, int *fgstart)
 {
-	return ((struct frag *)a)->start - ((struct frag *)b)->start;
+	return fgstart[*(int *)a] - fgstart[*(int *)b];
 }
 
 void print_profile(struct profile *prof, FILE *outfp)
 {
-	int i, j;
+	int i, j, *fgstart, *fgend, *fgid;
+	struct fginfo *fgi;
+
+	fgstart = prof->fgstart;
+	fgid = prof->fgid;
+	fgi = prof->info;
 
 	fprintf(outfp, "%s,%d\n", prof->reffile, prof->chrnum);
 
@@ -125,9 +126,9 @@ void print_profile(struct profile *prof, FILE *outfp)
 	fprintf(outfp, "\n");
 
 	for(i = 0; i < prof->nfrag; i++){
-		fprintf(outfp, "%d\t%d\t%d\t%d\t%d", prof->fgset[i].id, prof->fgset[i].pop, prof->fgset[i].start, prof->fgset[i].end, prof->fgset[i].nread);
-		for(j = 0; j < prof->fgset[i].nread; j++){
-			fprintf(outfp, "\t%d\t%d", prof->fgset[i].rd[j].start, prof->fgset[i].rd[j].end);
+		fprintf(outfp, "%d\t%d\t%d\t%d\t%d", fgid[i], fgi[i].pop, fgstart[i], fgi[i].end, fgi[i].nread);
+		for(j = 0; j < fgi[i].nread; j++){
+			fprintf(outfp, "\t%d\t%d", prof->rdset[i][j].start, prof->rdset[i][j].end);
 		}
 		fprintf(outfp, "\n");
 	}
@@ -138,6 +139,8 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	struct reference *ref;
 	struct profile *prof;
 	int len, reflen, nfrag, nread, i, j;
+	int *fgstart, *fgend, *fgid, *fgorder;
+	struct fginfo *fgi;
 
 	if(paired == 0)
 		nread = 1;
@@ -164,56 +167,72 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	nfrag = 0;
 	for(i = 0; i < npop; i++)
 		nfrag += nfrags[i] + ntrunks[i];
-	prof->fgset = malloc(sizeof(struct frag) * nfrag);
+
+	fgstart = malloc(sizeof(int) * nfrag);
+	fgi = malloc(sizeof(struct fginfo) * nfrag);
 
 	reflen = prof->ref->chrlen[chrnum];
 
 	for(i = nfrag = 0; i < npop; i++){
 		for(j = 0; j < ntrunks[i]; j++, nfrag++){
-			prof->fgset[nfrag].pop = i;
-			prof->fgset[nfrag].start = 0;
-			prof->fgset[nfrag].end = reflen;
-			prof->fgset[nfrag].nread = 1;
-			prof->fgset[nfrag].rd = malloc(sizeof(struct read) * 1);
-			prof->fgset[nfrag].trunk = 0;
-
-			prof->fgset[nfrag].rd[0].start = 0;
-			prof->fgset[nfrag].rd[0].end = reflen;
-			prof->fgset[nfrag].rd[0].seq = NULL;
-			prof->fgset[nfrag].rd[0].qual = NULL;
+			fgi[nfrag].pop = i;
+			fgstart[nfrag] = 0;
+			fgi[nfrag].end = reflen;
+			fgi[nfrag].nread = 1;
+			fgi[nfrag].trunk = 0;
 		}
 	}
 
 	for(i = 0; i < npop; i++){
 		for(j = 0; j < nfrags[i]; j++, nfrag++){
-			int fragpos, readpos, k;
+			int readpos, fragpos;
 
 			fragpos = dunif(reflen - fraglen);
 			readpos = fragpos;
-			prof->fgset[nfrag].pop = i;
-			prof->fgset[nfrag].start = fragpos;
-			prof->fgset[nfrag].end = fragpos + fraglen;
-			prof->fgset[nfrag].nread = nread;
-			prof->fgset[nfrag].rd = malloc(sizeof(struct read) * nread);
-			prof->fgset[nfrag].trunk = 0;
-
-			readpos = fragpos;
-			for(k = 0; k < nread; k++){
-				prof->fgset[nfrag].rd[k].start = readpos;
-				prof->fgset[nfrag].rd[k].end = readpos + rdlen;
-				readpos = fragpos + fraglen - rdlen;
-				prof->fgset[nfrag].rd[k].seq = NULL;
-				prof->fgset[nfrag].rd[k].qual = NULL;
-			}
+			fgi[nfrag].pop = i;
+			fgstart[nfrag] = fragpos;
+			fgi[nfrag].end = fragpos + fraglen;
+			fgi[nfrag].nread = nread;
+			fgi[nfrag].trunk = 0;
 		}
 	}
 	prof->nfrag = nfrag;
 
-	// Sort fragments by position
-	qsort(prof->fgset, nfrag, sizeof(struct frag), fgcompar);
+	fgorder = malloc(sizeof(int) * nfrag);
 	for(i = 0; i < nfrag; i++)
-		prof->fgset[i].id = i + 1;
-//	unload_reference(prof->ref);
+		fgorder[i] = i;
+
+	// Sort fragments by position
+	qsort_r(fgorder, nfrag, sizeof(int), fgcompar_r, prof->fgstart);
+
+	prof->fgstart = malloc(sizeof(int) * nfrag);
+	prof->fgid = malloc(sizeof(int) * nfrag);
+	prof->info = malloc(sizeof(struct fginfo) * nfrag);
+	prof->nds = malloc(sizeof(struct sam_node *) * nfrag);
+
+	for(i = 0; i < nfrag; i++){
+		int fragpos, readpos, k, nread;
+
+		prof->fgid[i] = i + 1;
+		prof->fgstart[i] = fgstart[fgorder[i]];
+		prof->info[i] = fgi[fgorder[i]];
+
+		readpos = fragpos = prof->fgstart[i];
+		nread = prof->info[i].nread;
+
+		prof->rdset[i] = malloc(nread * sizeof(struct read));
+		for(k = 0; k < nread; k++){
+			prof->rdset[i][k].start = readpos;
+			prof->rdset[i][k].end = readpos + rdlen;
+			readpos = fragpos + fraglen - rdlen;
+			prof->rdset[i][k].seq = NULL;
+			prof->rdset[i][k].qual = NULL;
+		}
+	}
+
+	free(fgstart);
+	free(fgi);
+	free(fgorder);
 
 	return prof;
 }
@@ -223,34 +242,40 @@ void unload_profile(struct profile *prof)
 {
 	int i;
 
-	for(i = 0; i < prof->nfrag; i++){
-		int j;
-		for(j = 0; j < prof->fgset[i].nread; j++){
-			if(prof->fgset[i].rd[j].seq)
-				free(prof->fgset[i].rd[j].seq);
+	if(prof->rdset){
+		for(i = 0; i < prof->nfrag; i++){
+			int j;
+			for(j = 0; j < prof->info[i].nread; j++){
+				if(prof->rdset[i][j].seq)
+					free(prof->rdset[i][j].seq);
 
-			if(prof->fgset[i].rd[j].qual)
-				free(prof->fgset[i].rd[j].qual);
+				if(prof->rdset[i][j].qual)
+					free(prof->rdset[i][j].qual);
+			}
+
+			free(prof->rdset[i]);
 		}
-
-		free(prof->fgset[i].rd);
+		free(prof->rdset);
 	}
+
 	unload_reference(prof->ref);
 	free(prof->ntrunks);
 	free(prof->nfrag_pop);
-//	free(prof->reflen);
-	free(prof->fgset);
+	free(prof->fgstart);
+	free(prof->fgid);
+	free(prof->info);
+	free(prof->nds);
 	free(prof->reffile);
-//	free(prof->popsize);
 	free(prof);
 }
 
 /* Load read profile. */
-struct profile *load_profile(FILE *filp)
+struct profile *load_profile(FILE *filp, int genseq)
 {
-	int npop, nfrag, maxfrag, i, ch;
+	int npop, nfrag, maxfrag, i, ch, *fgorder, *fgstart, *fgend, *fgid;
 	struct profile *prof;
-	struct frag *fgset;
+	struct fginfo *fgi;
+	struct read **rdset;
 	char file[1000];
 
 	/***** Load read profile *****/
@@ -265,13 +290,6 @@ struct profile *load_profile(FILE *filp)
 	strncpy(prof->reffile, (char *)file, (size_t)(i + 1));
 	prof->ref = load_reference(prof->reffile);
 	ch = read_integer(filp, &prof->chrnum);
-
-	/* Read length of reference genome. */
-/*	ch = read_integer(filp, &prof->reflen);
-	if(ch != ','){
-		fprintf(stderr, "Expect for , after reference genome length.\n");
-		goto abnormal;
-	}*/
 
 	/* Read number of subpopulations. */
 	ch = read_integer(filp, &npop);
@@ -299,60 +317,84 @@ struct profile *load_profile(FILE *filp)
 	prof->nfrag = nfrag;
 	while(ch != '\n') ch = fgetc(filp);
 
-	/* Read number of subpopulations. */
-//	ch = read_integer(filp, &npop);
-//	prof->npop = npop;
-
-	/* Read default population size. */
-//	prof->popsize = malloc(sizeof(double) * npop);
-//	prof->popsize[0] = 1;
-//	for(i = 1; i < npop; i++)
-//	for(i = 0; i < npop; i++)
-//		ch = read_double(filp, &prof->popsize[i]);
-
 	if(ch != '\n'){
 		fprintf(stderr, "Expect for , after read numbers.\n");
 		goto abnormal;
 	}
 
 	/* Load fragment information from input file. */
-	fgset = malloc(sizeof(struct frag) * (nfrag + 1));
-	memset(fgset, 0, sizeof(struct frag) * (nfrag + 1));
+	fgstart = malloc(sizeof(int) * (nfrag + 1));
+	fgid = malloc(sizeof(int) * (nfrag + 1));
+	fgi = malloc(sizeof(struct fginfo) * (nfrag + 1));
+
+	if(genseq)
+		rdset = malloc(sizeof(struct read *) * (nfrag + 1));
+	fgorder = malloc(sizeof(int) * (nfrag + 1));
+
 	for(i = 0; i < nfrag; i++){
 		struct frag *fg;
-		int j;
+		int j, pop, nread, seqlen, intbuf;
 
-		fg = &fgset[i];
+		fgorder[i] = i;
 
-		ch = read_integer(filp, &fg->id);
-		ch = read_integer(filp, &fg->pop);
-//		ch = read_integer(filp, &fg->chr);
-//		ch = read_double(filp, &fg->start);
-//		ch = read_double(filp, &fg->end);
-		ch = read_integer(filp, &fg->start);
-		ch = read_integer(filp, &fg->end);
-		ch = read_integer(filp, &fg->nread);
+		ch = read_integer(filp, &fgid[i]);
+		ch = read_integer(filp, &pop);
+		ch = read_integer(filp, &fgstart[i]);
+		ch = read_integer(filp, &fgi[i].end);
+		ch = read_integer(filp, &nread);
+		fgi[i].pop = pop;
+		fgi[i].nread = nread;
+		fgi[i].trunk = 0;
 
-		fg->rd = malloc(sizeof(struct read) * fg->nread);
-		memset(fg->rd, 0, sizeof(struct read) * fg->nread);
-		fg->trunk = 0;
+		if(genseq){
+			rdset[i] = malloc(sizeof(struct read) * fgi[i].nread);
 
-		for(j = 0; j < fg->nread; j++){
-			int seqlen;
+			for(j = 0; j < fgi[i].nread; j++){
+				ch = read_integer(filp, &rdset[i][j].start);
+				ch = read_integer(filp, &rdset[i][j].end);
 
-			ch = read_integer(filp, &fg->rd[j].start);
-			ch = read_integer(filp, &fg->rd[j].end);
-
-			seqlen = fg->rd[j].end - fg->rd[j].start;
-			fg->rd[j].seq = malloc(sizeof(char) * (seqlen + 1));
-			memset(fg->rd[j].seq, 0, sizeof(char) * (seqlen + 1));
+				seqlen = rdset[i][j].end - rdset[i][j].start;
+				rdset[i][j].seq = malloc(sizeof(char) * (seqlen + 1));
+				memset(rdset[i][j].seq, 0, sizeof(char) * (seqlen + 1));
+				rdset[i][j].qual = NULL;
+			}
+		}else{
+			for(j = 0; j < fgi[i].nread; j++){
+				ch = read_integer(filp, &intbuf);
+				ch = read_integer(filp, &intbuf);
+			}
 		}
 
 		while(ch != '\n') ch = fgetc(filp);
 	}
 
-	fgset[nfrag].start = fgset[nfrag].end = INT_MAX;
-	prof->fgset = fgset;
+	fgstart[nfrag] = fgi[nfrag].end = INT_MAX;
+	qsort_r((void *)fgorder, (size_t)nfrag, sizeof(int), fgcompar_r, fgstart);
+	prof->fgstart = malloc(sizeof(int) * (nfrag + 1));
+	prof->fgid = malloc(sizeof(int) * (nfrag + 1));
+	prof->info = malloc(sizeof(struct fginfo) * (nfrag + 1));
+
+	for(i = 0; i < nfrag; i++){
+		prof->fgstart[i] = fgstart[fgorder[i]];
+		prof->fgid[i] = fgid[fgorder[i]];
+		prof->info[i] = fgi[fgorder[i]];
+	}
+
+	if(genseq){
+		prof->rdset = malloc(sizeof(struct read *) * (nfrag + 1));
+		for(i = 0; i < nfrag; i++)
+			prof->rdset[i] = rdset[fgorder[i]];
+	}
+
+	prof->nds = malloc(sizeof(struct sam_node *) * (nfrag + 1));
+
+	free(fgstart);
+	free(fgid);
+	free(fgi);
+
+	if(genseq)
+		free(rdset);
+	free(fgorder);
 
 finish:
 	return prof;
@@ -366,25 +408,22 @@ abnormal:
 
 	if(prof->nfrag_pop)
 		free(prof->nfrag_pop);
-//	if(prof->popsize)
-//		free(prof->popsize);
 
 	free(prof);
 	prof = NULL;
 	goto finish;
 }
 
-void print_fragment(FILE *outfp, struct frag *fg)
+void print_fragment(FILE *outfp, int fgstart, int fgid, struct fginfo *fgi, struct read *rdset)
 {
+	struct read *rd;
 	int i;
 #ifdef DEBUG
-	fprintf(stderr, "Entering %s: fg=%x, nread=%d\n", __func__, fg, fg->nread);
+	fprintf(stderr, "Entering %s: fgid=%x, nread=%d\n", __func__, fgid, fgi->nread);
 #endif
-	for(i = 0; i < fg->nread; i++){
-		struct read *rd;
-
-		rd = &fg->rd[i];
-		fprintf(outfp, ">%d:%d %d %d-%d %d-%d\n", fg->id, i + 1, fg->pop, fg->start, fg->end, rd->start, rd->end);
+	for(i = 0; i < fgi->nread; i++){
+		rd = &rdset[i];
+		fprintf(outfp, ">%d:%d %d %d-%d %d-%d\n", fgid, i + 1, fgi->pop, fgstart, fgi->end, rd->start, rd->end);
 		fprintf(outfp, "%s\n", rd->seq);
 	}
 #ifdef DEBUG
@@ -405,7 +444,7 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	struct event *ev;
 	int npop, nsplt;
 	double *mmig;
-	int i, j;
+	int i, j, reflen;
 
 	cfg = malloc(sizeof(struct config));
 	memset(cfg, 0, sizeof(struct config));
@@ -430,7 +469,6 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 	cfg->size = malloc(prof->npop * sizeof(double));
 	for(i = 0; i < prof->npop; i++)
 		cfg->size[i] = 1;
-//	memcpy(cfg->size, prof->popsize, prof->npop * sizeof(double));
 
 	cfg->grate = malloc(sizeof(double) * npop);
 	memset(cfg->grate, 0, sizeof(double) * npop);
@@ -453,29 +491,6 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 		cfg->mmig[0][0] = 0;
 	}
 
-	/* Initialize object caches. */
-/*	cfg->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node), maxfrag * 4);
-	cfg->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node), maxfrag * 4);
-	cfg->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), maxfrag * 4);
-	cfg->node_cache[NODE_SAM] = cache_create(sizeof(struct list_head) + sizeof(struct sam_node), maxfrag * 4);
-	cfg->node_cache[NODE_FLOAT] = cfg->node_cache[NODE_MIGR];
-	cfg->node_cache[NODE_DUMMY] = cfg->node_cache[NODE_FLOAT];*/
-
-//	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct list_head) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
-//	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct list_head) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, maxfrag * 4);
-/*	cfg->event_cache[EVENT_JOIN] = cfg->event_cache[NODE_MIGR];
-	cfg->event_cache[EVENT_GROW] = cache_create(sizeof(struct list_head) + sizeof(struct grow_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_SIZE] = cfg->event_cache[EVENT_GROW];
-	cfg->event_cache[EVENT_RMIG] = cache_create(sizeof(struct list_head) + sizeof(struct rmig_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_GMIG] = cache_create(sizeof(struct list_head) + sizeof(struct gmig_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_GSIZ] = cfg->event_cache[EVENT_GGRO] = cfg->event_cache[EVENT_GMIG];
-	cfg->event_cache[EVENT_SPLT] = cache_create(sizeof(struct list_head) + sizeof(struct splt_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_DUMY] = cache_create(sizeof(struct list_head) + sizeof(struct dumy_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_DXVR] = cache_create(sizeof(struct list_head) + sizeof(struct dxvr_event) + sizeof(int) * 2 * npop_all, 10);
-	cfg->event_cache[EVENT_SAMP] = cache_create(sizeof(struct list_head) + sizeof(struct samp_event) + sizeof(int) * 2 * npop_all, 10);*/
-
-//	cfg->frag_cache = cache_create(sizeof(struct list_head) + sizeof(struct frag *), maxfrag);
-
 	/* Set up empty event list (contains only one dummy event) */
 	ev = alloc_event(cfg, EVENT_GSIZ, INFINITY);
 
@@ -485,6 +500,8 @@ struct config *create_config(int seed, int print_tree, int gensam, FILE *treefp,
 
 	list_append(&cfg->evlist, ev);
 	((struct gsiz_event *)ev)->size = 1;
+
+	reflen = prof->ref->chrlen[prof->chrnum];
 
 	return cfg;
 }
@@ -551,39 +568,17 @@ void destroy_config(struct config *cfg)
 	struct event *ev;
 	int i;
 
-	// Release space of event list
-//	l = cfg->evlist.front;
-/*	while(l){
-		tmp = l;
-		ev = (struct event *)GET_OBJ(l);
-		l = l->next;
-//		if(ev->type == EVENT_MMUT)
-//			free(((struct mmut_event *)ev)->mmut);
-		free(tmp);
-	}*/
 	free(cfg->evlist.front);
 	list_init(&cfg->evlist);
+
 	for(i = 0; i < cfg->ndevents; i++){
+		if(cfg->devents[i]->type == EVENT_SPLT)
+			node_set_destroy(&((struct splt_event *)cfg->devents[i])->ndls);
+		else if(cfg->devents[i]->type == EVENT_JOIN)
+			node_set_destroy(&((struct join_event *)cfg->devents[i])->ndls);
 		l = GET_LIST(cfg->devents[i]);
 		free(l);
 	}
-
-/*	cache_destroy(cfg->node_cache[NODE_COAL]);
-	cache_destroy(cfg->node_cache[NODE_MIGR]);
-	cache_destroy(cfg->node_cache[NODE_XOVER]);
-	cache_destroy(cfg->node_cache[NODE_SAM]);
-
-	cache_destroy(cfg->frag_cache);*/
-
-//	cache_destroy(cfg->event_cache[EVENT_COAL]);
-//	cache_destroy(cfg->event_cache[EVENT_MIGR]);
-/*	cache_destroy(cfg->event_cache[EVENT_GROW]);
-	cache_destroy(cfg->event_cache[EVENT_RMIG]);
-	cache_destroy(cfg->event_cache[EVENT_GMIG]);
-	cache_destroy(cfg->event_cache[EVENT_SPLT]);
-	cache_destroy(cfg->event_cache[EVENT_DUMY]);
-	cache_destroy(cfg->event_cache[EVENT_DXVR]);
-	cache_destroy(cfg->event_cache[EVENT_SAMP]);*/
 
 	free(cfg->devents);
 	free(cfg->mmut);
@@ -599,7 +594,6 @@ int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut)
 {
 	int i;
 
-//	for(i = 0; i < cfg->npop; i++)
 	cfg->mmut[pop] = mmut;
 
 	return 0;
@@ -729,7 +723,7 @@ int add_event_join(struct config *cfg, double t, int popi, int popj)
 	ev = alloc_event(cfg, EVENT_JOIN, t);
 	((struct join_event *)ev)->popi = popi;
 	((struct join_event *)ev)->popj = popj;
-	list_init(&((struct join_event *)ev)->ndls);
+	node_set_init(&((struct join_event *)ev)->ndls, cfg->maxfrag);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
@@ -749,9 +743,8 @@ int add_event_splt(struct config *cfg, double t, int pop, double prop)
 	ev = alloc_event(cfg, EVENT_SPLT, t);
 	((struct splt_event *)ev)->pop = pop;
 	((struct splt_event *)ev)->newpop = cfg->npop_all++;
-///	cfg->nsplt++;
 	((struct splt_event *)ev)->prop = prop;
-	list_init(&((struct splt_event *)ev)->ndls);
+	node_set_init(&((struct splt_event *)ev)->ndls, cfg->maxfrag);
 
 	evl = cfg->evlist.front;
 	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
@@ -799,30 +792,6 @@ int add_event_samp(struct config *cfg, double t, int pop, double size)
 	return 0;
 }
 
-/*int add_event_mmut(struct config *cfg, double t, int pop, double theta, int model, double *pars, double *pi)
-{
-	struct list_head *evl;
-	struct mmut_event *mev;
-	struct event *ev;
-
-	ev = alloc_event(cfg, EVENT_MMUT, t);
-	mev = (struct mmut_event *)ev;
-	mev->pop = pop;
-
-	evl = cfg->evlist.front;
-	while(evl && ((struct event *)GET_OBJ(evl))->t < t) evl = evl->next;
-	list_insbefore(evl, ev);
-
-	mev->mmut = malloc(sizeof(struct mutation));
-	mev->mmut->theta = theta;
-	mev->mmut->model = model;
-	memcpy(mev->mmut->mpar, pars, sizeof(double) * npar[model]);
-	memcpy(mev->mmut->pi, pi, sizeof(double) * NUM_NUCS);
-	init_mutation_model(((struct mmut_event *)ev)->mmut);
-
-	return 0;
-}*/
-
 struct reference *load_reference(char *file)
 {
 	struct reference *ref;
@@ -850,7 +819,6 @@ struct reference *load_reference(char *file)
 		// Load chromosome sequence
 		ref->seq_start[nchr] = ftell(ref->filp);
 		chrlen = 0;
-//		ref->curr = 0;
 		ch = fgetc(ref->filp);
 		while(ch != EOF && ch != '>'){
 			chrlen++;

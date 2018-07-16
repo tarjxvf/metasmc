@@ -38,7 +38,7 @@ static inline double dunif01()
 
 static inline double dexp(double lambda)
 {
-	return -log(1 - dunif01()) / lambda;
+	return -log1p(-dunif01()) / lambda;
 }
 
 /* Generating discrete uniform random variable ranging from 0 to max - 1. */

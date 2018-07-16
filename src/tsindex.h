@@ -76,15 +76,16 @@ static inline void tsindex_update(struct tsindex *tr, struct node *e, double dif
 
 double tsindex_size(struct tsindex *tr);
 void tsindex_rebuild(struct tsindex *tr);
-struct tsindex *tsindex_alloc(int nedges);
+void tsindex_init(struct tsindex *tr, int maxedges);
+struct tsindex *tsindex_alloc(int maxedges);
 void tsindex_reset(struct tsindex *tr);
-void tsindex_replace_r(struct tsindex *tr, int id, struct node *e);
 void tsindex_replace(struct tsindex *tr, int id, struct node *e);
 void tsindex_add_r(struct tsindex *tr, struct node *e);
 void tsindex_add(struct tsindex *tr, struct node *e);
 void tsindex_clear_r(struct tsindex *tr, struct node *e);
 void tsindex_clear(struct tsindex *tr, struct node *e);
-void tsindex_free(struct tsindex *tr);
+void tsindex_destroy(struct tsindex *tr);	// Destroy tr and do not free tr itself.
+void tsindex_free(struct tsindex *tr);	// Destroy and free tr.
 void tsindex_dump(struct tsindex *tr);
 struct node *tsindex_search(struct tsindex *tr, double g, double *cum);
 

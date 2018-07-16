@@ -53,30 +53,15 @@ double tsindex_size(struct tsindex *tr)
 void tsindex_rebuild(struct tsindex *tr)
 {
 	double *weights;
-	int i;
-
-	struct timespec beg, end;
-	int nsec;
-
-	clock_gettime(CLOCK_MONOTONIC, &beg);
 
 	weights = tr->weights + 1;
 	__bit_build(tr->index, tr->maxnodes, weights);
 	tsindex_clearflag(tr, TSINDEX_DIRTY);
 	tsindex_clearflag(tr, TSINDEX_REBUILD);
-
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-	t_ts_rebuild += nsec;
 }
 
-struct tsindex *tsindex_alloc(int maxedges)
+void tsindex_init(struct tsindex *tr, int maxedges)
 {
-	struct list_head *l;
-	struct tsindex *tr;
-	int i;
-
-	tr = malloc(sizeof(struct tsindex));
 	tr->flags = 0;
 	tr->index = bit_alloc(maxedges);
 	tr->maxedges = 1;
@@ -89,6 +74,15 @@ struct tsindex *tsindex_alloc(int maxedges)
 	list_init(&tr->id_list);
 
 	tsindex_resize(tr, maxedges);
+}
+
+struct tsindex *tsindex_alloc(int maxedges)
+{
+	struct list_head *l;
+	struct tsindex *tr;
+
+	tr = malloc(sizeof(struct tsindex));
+	tsindex_init(tr, maxedges);
 
 	return tr;
 }
@@ -123,16 +117,15 @@ void tsindex_replace(struct tsindex *tr, int id, struct node *e)
 	tr->weights[id] = wnew = e->in->t - e->t;
 	tr->edges[id] = e;
 	e->xtid = id;
-	if(!tsindex_isrebuild(tr))
+//	if(!tsindex_isrebuild(tr))
 		bit_update(tr->index, id, wnew - wold);
 
 }
 
 void tsindex_add_r(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
-	double diff;
-	int id, *ptr, i;
+	struct intlist *l;
+	int id;
 
 
 #ifdef DEBUG
@@ -147,12 +140,11 @@ void tsindex_add_r(struct tsindex *tr, struct node *e)
 
 	}else{
 		/* Get a existing empty node in binary indexed tree. */
-//		l = __list_pop(queue);
-		l = tr->free_list.front;
-		ptr = (int *)GET_OBJ(l);
-		id = *ptr;
-		__list_remove(&tr->free_list, l);
-		__list_append(&tr->id_list, l);
+		l = (struct intlist *)__list_pop(&tr->free_list);
+//		l = tr->free_list.front;
+		id = l->id;
+//		__list_remove(&tr->free_list, GET_LIST(l));
+		__list_append(&tr->id_list, GET_LIST(l));
 	}
 
 	e->xtid = id;
@@ -163,14 +155,9 @@ void tsindex_add_r(struct tsindex *tr, struct node *e)
 
 void tsindex_add(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
+	struct intlist *l;
 	double diff;
-	int id, *ptr, i;
-
-
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->in->t, e->t, e->xtid);
-#endif
+	int id;
 
 	diff = e->in->t - e->t;
 
@@ -188,12 +175,11 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 
 	}else{
 		/* Get a existing empty node in binary indexed tree. */
-//		l = __list_pop(queue);
-		l = tr->free_list.front;
-		ptr = (int *)GET_OBJ(l);
-		id = *ptr;
-		__list_remove(&tr->free_list, l);
-		__list_append(&tr->id_list, l);
+		l = (struct intlist *)__list_pop(&tr->free_list);
+//		l = tr->free_list.front;
+		id = l->id;
+//		__list_remove(&tr->free_list, GET_LIST(l));
+		__list_append(&tr->id_list, GET_LIST(l));
 
 		if(!tsindex_isrebuild(tr)){
 			bit_update(tr->index, id, diff);
@@ -201,6 +187,11 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 	}
 
 	e->xtid = id;
+
+#ifdef DEBUG
+	fprintf(stderr, "%s: %d: e=%x(%.6f, %.6f, xtid=%d)\n", __func__, __LINE__, e, e->in->t, e->t, e->xtid);
+#endif
+
 	tr->edges[id] = e;
 	tr->weights[id] = e->in->t - e->t;
 	tr->nedges++;
@@ -209,53 +200,43 @@ void tsindex_add(struct tsindex *tr, struct node *e)
 /* Clear a node in binary indexed tree. */
 void tsindex_clear_r(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
-	int *pidx, id;
-	double diff;
+	struct intlist *l;
+	int id;
 
 	id = e->xtid;
 	tr->edges[id] = NULL;
 	tr->weights[id] = 0;
-	e->xtid = 0;
+//	e->xtid = 0;
 
 	/* Add freed id to the queue. */
-	l = __list_pop(&tr->id_list);
-	pidx = (int *)GET_OBJ(l);
-	*pidx = id;
-	__list_append(&tr->free_list, l);
+	l = (struct intlist *)__list_pop(&tr->id_list);
+	l->id = id;
+	__list_append(&tr->free_list, GET_LIST(l));
 	tr->nedges--;
 }
 
 /* Clear a node in binary indexed tree. */
 void tsindex_clear(struct tsindex *tr, struct node *e)
 {
-	struct list_head *l;
+	struct intlist *l;
 	int *pidx, id;
-	double diff;
 
 	id = e->xtid;
-#ifdef DEBUG
-	fprintf(stderr, "%s: %d: id=%d\n", __func__, __LINE__, id);
-#endif
-	if(!tsindex_isrebuild(tr)){
-		diff = tr->weights[id];
-//		diff = tr->edges[id]->in->t - tr->edges[id]->t;
-		bit_update(tr->index, id, -diff);
-	}
+	if(!tsindex_isrebuild(tr))
+		bit_update(tr->index, id, -tr->weights[id]);
 
 	tr->edges[id] = NULL;
 	tr->weights[id] = 0;
-	e->xtid = 0;
+//	e->xtid = 0;
 
 	/* Add freed id to the queue. */
-	l = __list_pop(&tr->id_list);
-	pidx = (int *)GET_OBJ(l);
-	*pidx = id;
-	__list_append(&tr->free_list, l);
+	l = (struct intlist *)__list_pop(&tr->id_list);
+	l->id = id;
+	__list_append(&tr->free_list, GET_LIST(l));
 	tr->nedges--;
 }
 
-void tsindex_free(struct tsindex *tr)
+void tsindex_destroy(struct tsindex *tr)
 {
 	struct list_head *l;
 
@@ -272,14 +253,19 @@ void tsindex_free(struct tsindex *tr)
 	free(tr->edges);
 	free(tr->weights);
 	bit_free(tr->index);
+}
+
+void tsindex_free(struct tsindex *tr)
+{
+	tsindex_destroy(tr);
 	free(tr);
 }
 
 void tsindex_dump(struct tsindex *tr)
 {
-	struct list_head *l;
+	struct intlist *l;
 	struct node *e;
-	int i;
+	int i, pidx;
 
 	fprintf(stderr, "tr->flags=%d, tr->nedges=%d, tr->maxnodes=%d, tr->maxedges=%d, G->tr_xoveredges=", tr->flags, tr->nedges, tr->maxnodes, tr->maxedges);
 	for(i = 1; i <= tr->maxnodes; i++){
@@ -297,12 +283,11 @@ void tsindex_dump(struct tsindex *tr)
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "free_list=");
-	l = tr->free_list.front;
+	l = (struct intlist *)tr->free_list.front;
 	while(l){
-		int *pidx;
-		pidx = (int *)GET_OBJ(l);
-		fprintf(stderr, "%d->", *pidx);
-		l = l->next;
+		pidx = l->id;
+		fprintf(stderr, "%d->", pidx);
+		l = l->l.next;
 	}
 	fprintf(stderr, "\n");
 
