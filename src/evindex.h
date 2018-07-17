@@ -15,48 +15,6 @@ struct evindex {
 	int *dn;
 };
 
-static inline void dn_add(int npop, int *x, int *y)
-{
-	int j;
-	for(j = 0; j < npop; j++)
-		x[j] += y[j];
-}
-
-static inline void dn_add2(int npop, int *x, int *y, int *z)
-{
-	int j;
-	for(j = 0; j < npop; j++)
-		x[j] = y[j] + z[j];
-}
-
-static inline void dn_add3(int npop, int *w, int *x, int *y, int *z)
-{
-	int j;
-	for(j = 0; j < npop; j++)
-		w[j] = x[j] + y[j] + z[j];
-}
-
-static inline void dn_sub(int npop, int *x, int *y)
-{
-	int j;
-	for(j = 0; j < npop; j++)
-		x[j] -= y[j];
-}
-
-static inline void dn_set(int npop, int *x, int *y)
-{
-	int j;
-	for(j = 0; j < npop; j++)
-		x[j] = y[j];
-}
-
-static inline void dn_clear(int npop, int *x)
-{
-	int j;
-	for(j = 0; j < npop; j++)
-		x[j] = 0;
-}
-
 void
 print_event_tree (const struct evindex *evidx, const char *title);
 

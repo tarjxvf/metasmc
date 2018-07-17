@@ -10,6 +10,48 @@
 
 #define NUM_THREADS 4
 
+static inline void dn_add(int npop, int *x, int *y)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] += y[j];
+}
+
+static inline void dn_add2(int npop, int *x, int *y, int *z)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] = y[j] + z[j];
+}
+
+static inline void dn_add3(int npop, int *w, int *x, int *y, int *z)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		w[j] = x[j] + y[j] + z[j];
+}
+
+static inline void dn_sub(int npop, int *x, int *y)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] -= y[j];
+}
+
+static inline void dn_set(int npop, int *x, int *y)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] = y[j];
+}
+
+static inline void dn_clear(int npop, int *x)
+{
+	int j;
+	for(j = 0; j < npop; j++)
+		x[j] = 0;
+}
+
 #define EVENT_COAL	0	/* Coalescent */
 #define EVENT_MIGR	1	/* Migration */
 #define EVENT_GROW	2	/* Change growth rate of a subpopulation. */
@@ -188,7 +230,7 @@ struct samp_event {
 #define GET_DN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->dn_off))
 #define GET_SUMDN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->sumdn_off))
 
-void init_event(struct config *cfg, struct event *ev, int type, double t);
+//void init_event(struct config *cfg, struct event *ev, int type, double t);
 struct event *alloc_event(struct config *, int, double);
 void free_event(struct config *cfg, struct event *ev);
 void print_event(struct config *cfg, struct event *ev);
@@ -297,6 +339,20 @@ void print_fragment(FILE *outfp, int fgstart, int fgid, struct fginfo *fgi, stru
 
 int set_growth_rates(struct config *cfg, double *grate);
 int set_migration_matrix(struct config *cfg, double *mmig);
+
+static inline void init_event(struct config *cfg, struct event *ev, int type, double t)
+{
+	int npop_all;
+
+//	npop_all = cfg->npop + cfg->nsplt;
+	npop_all = cfg->npop_all;
+
+//	ev->type = type;
+	ev->t = t;
+//	ev->dn_off = evsize[type];
+//	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
+	dn_clear(npop_all, GET_DN(ev));
+}
 
 int add_event_ggro(struct config *cfg, double t, double alpha);
 int add_event_grow(struct config *cfg, double t, int pop, double alpha);

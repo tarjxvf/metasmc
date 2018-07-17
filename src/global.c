@@ -12,20 +12,6 @@
 #include "mutation.h"
 #include "evindex.h"
 
-void init_event(struct config *cfg, struct event *ev, int type, double t)
-{
-	int npop_all;
-
-//	npop_all = cfg->npop + cfg->nsplt;
-	npop_all = cfg->npop_all;
-
-//	ev->type = type;
-	ev->t = t;
-//	ev->dn_off = evsize[type];
-//	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
-	dn_clear(npop_all, GET_DN(ev));
-}
-
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
 struct event *alloc_event(struct config *cfg, int type, double t)
 {
