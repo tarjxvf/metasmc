@@ -348,7 +348,6 @@ static inline void remove_coal_node(struct genealogy *G, struct coal_node *nd, i
 	struct node *e;
 
 	e = nd->out[1 - iout];
-//	remove_event_rb(G, (struct event *)nd->ev);
 	remove_event_rb(G, (struct event *)GET_COAL_EVENT(nd));
 
 	/* Extend edges above the coalescent node to be removed. */
@@ -375,20 +374,16 @@ void erase_dangling2(struct genealogy *G, struct node *e)
 	ntop = e->in;
 	__remove_edge__(G, e->pop, e);
 	tsindex_clear(&G->tr_xover, e);
-//	while(ismigrnode(ntop)){
 	while(!iscoalnode(ntop)){
-//		if(ntop->ev->type == EVENT_JOIN){
 		if(ntop->type == NODE_JOIN){
 			join_set_remove(&AS_JOIN_NODE(ntop)->ev->ndls, ntop);
 			remove_event_rb_join(G, AS_JOIN_NODE(ntop)->ev);
 
-//		}else if(ntop->ev->type == EVENT_SPLT){
 		}else if(ntop->type == NODE_SPLT){
 			splt_set_remove(&AS_SPLT_NODE(ntop)->ev->ndls, ntop);
 			remove_event_rb_splt(G, AS_SPLT_NODE(ntop)->ev);
 
 		}else{
-//			remove_event_rb_josp(G, (struct event *)ntop->ev);
 			remove_event_rb(G, (struct event *)GET_MIGR_EVENT(ntop));
 		}
 
@@ -551,7 +546,6 @@ struct coal_node *__absorption(struct genealogy *G, struct node *e1, struct node
 	struct coal_event *ev;
 
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
-//	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev = GET_COAL_EVENT(nd);
 	init_event(G->cfg, (struct event *)ev, EVENT_COAL, t);
 
@@ -567,8 +561,6 @@ struct coal_node *__absorption(struct genealogy *G, struct node *e1, struct node
 
 	GET_DN(ev)[pop] = -1;
 	ev->pop = pop;
-//	nd->ev = ev;
-//	ev->nd = nd;
 
 	return nd;
 }
@@ -626,7 +618,6 @@ struct coal_node *__coalescent(struct genealogy *G, struct node *n1, struct node
 	struct coal_event *ev;
 
 	nd = (struct coal_node *)alloc_node(G, NODE_COAL, pop, t);
-//	ev = (struct coal_event *)alloc_event(G->cfg, EVENT_COAL, t);
 	ev = GET_COAL_EVENT(nd);
 	init_event(G->cfg, (struct event *)ev, EVENT_COAL, t);
 
@@ -638,8 +629,6 @@ struct coal_node *__coalescent(struct genealogy *G, struct node *n1, struct node
 
 	GET_DN(ev)[pop] = -1;
 	ev->pop = pop;
-//	nd->ev = ev;
-//	ev->nd = nd;
 
 	return nd;
 }
@@ -764,7 +753,6 @@ struct migr_node *__migration(struct genealogy *G, struct node *nf, int dpop, do
 #endif
 	nd = do_migrate(G, nf, dpop, spop, t);
 
-//	ev = (struct migr_event *)alloc_event(G->cfg, EVENT_MIGR, t);
 	ev = GET_MIGR_EVENT(nd);
 	init_event(G->cfg, (struct event *)ev, EVENT_MIGR, t);
 
@@ -772,9 +760,6 @@ struct migr_node *__migration(struct genealogy *G, struct node *nf, int dpop, do
 	GET_DN(ev)[dpop]--;
 	ev->dpop = dpop;
 	ev->spop = spop;
-
-//	nd->ev = ev;
-//	ev->nd = nd;
 
 #ifdef DEBUG
 	fprintf(stderr, "Finishing function %s\n\n", __func__);
@@ -849,7 +834,6 @@ void clear_tree(struct genealogy *G)
 #ifdef DEBUG
 				fprintf(stderr, "%s: %d: e=%x(%.6f), nd=%x(%.6f)\n", __func__, __LINE__, e, e->t, nd, nd->t);
 #endif
-//				while(ismigrnode(nd)){
 				while(!iscoalnode(nd)){
 #ifdef DEBUG
 					fprintf(stderr, "%s: %d: ", __func__, __LINE__);
@@ -859,18 +843,15 @@ void clear_tree(struct genealogy *G)
 					if(!isvisited(e))
 						free_node(G, e);
 
-//					if(nd->ev->type == EVENT_JOIN){
 					if(nd->type == NODE_JOIN){
 						join_set_remove(&AS_JOIN_NODE(nd)->ev->ndls, nd);
 						remove_event_join_decrease(G, AS_JOIN_NODE(nd)->ev);
 
-//					}else if(nd->ev->type == EVENT_SPLT){
 					}else if(nd->type == NODE_SPLT){
 						splt_set_remove(&AS_SPLT_NODE(nd)->ev->ndls, nd);
 						remove_event_splt_decrease(G, AS_SPLT_NODE(nd)->ev);
 
 					}else{
-//						__remove_event_s(G, nd->ev);
 						__remove_event_s(G, (struct event *)GET_MIGR_EVENT(nd));
 					}
 					e = nd;
@@ -896,7 +877,6 @@ void clear_tree(struct genealogy *G)
 	/* Remove coalescent nodes from remove_list. */
 	for(i = 0; i < nca; i++){
 		nd = remove_list[i];
-//		__remove_event_s(G, nd->ev);
 		__remove_event_s(G, (struct event *)GET_COAL_EVENT(nd));
 		if(visited_lr(nd) == (NODE_FLAG_VISITED_LEFT | NODE_FLAG_VISITED_RIGHT) - 1){	// Both edges are removed
 			free_node(G, nd);
@@ -1211,30 +1191,25 @@ void erase_dummy_path_rb(struct genealogy *G, struct node *edum)
 	poprm = ndum->pop;
 	while(erm->in){
 		nrm = erm->in;
-//		if(erm->ev->type == EVENT_JOIN){
 		if(erm->type == NODE_JOIN){
 			join_set_remove(&AS_JOIN_NODE(erm)->ev->ndls, erm);
 			remove_event_rb_join(G, AS_JOIN_NODE(erm)->ev);
 
-//		}else if(erm->ev->type == EVENT_SPLT){
 		}else if(erm->type == NODE_SPLT){
 			splt_set_remove(&AS_SPLT_NODE(erm)->ev->ndls, erm);
 			remove_event_rb_splt(G, AS_SPLT_NODE(erm)->ev);
 
 		}else{
-//			remove_event_rb_josp(G, (struct event *)erm->ev);
 			remove_event_rb(G, (struct event *)GET_MIGR_EVENT(erm));
 		}
 		remove_edge_r(G, erm->pop, erm);
 		erm = nrm;
 	}
 
-//	if(nrm->ev->type == EVENT_JOIN){
 	if(nrm->type == NODE_JOIN){
 		join_set_remove(&AS_JOIN_NODE(nrm)->ev->ndls, nrm);
 		remove_event_rb_join(G, AS_JOIN_NODE(nrm)->ev);
 
-//	}else if(nrm->ev->type == EVENT_SPLT){
 	}else if(nrm->type == NODE_SPLT){
 		splt_set_remove(&AS_SPLT_NODE(nrm)->ev->ndls, nrm);
 		remove_event_rb_splt(G, AS_SPLT_NODE(nrm)->ev);
@@ -1243,7 +1218,6 @@ void erase_dummy_path_rb(struct genealogy *G, struct node *edum)
 		remove_event_rb(G, (struct event *)GET_DUMMY_EVENT(nrm));
 
 	}else{
-//		remove_event_rb_josp(G, (struct event *)nrm->ev);
 		remove_event_rb(G, (struct event *)GET_MIGR_EVENT(nrm));
 	}
 
@@ -1265,30 +1239,25 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 	poprm = ndum->pop;
 	while(erm->in){
 		nrm = erm->in;
-//		if(erm->ev->type == EVENT_JOIN){
 		if(erm->type == NODE_JOIN){
 			join_set_remove(&AS_JOIN_NODE(erm)->ev->ndls, erm);
 			remove_event_join_decrease(G, AS_JOIN_NODE(erm)->ev);
 
-//		}else if(erm->ev->type == EVENT_SPLT){
 		}else if(erm->type == NODE_SPLT){
 			splt_set_remove(&AS_SPLT_NODE(erm)->ev->ndls, erm);
 			remove_event_splt_decrease(G, AS_SPLT_NODE(erm)->ev);
 
 		}else{
-//			remove_event_s_josp(G, (struct event *)erm->ev);
 			remove_event_s(G, (struct event *)GET_MIGR_EVENT(erm));
 		}
 		remove_edge_m(G, erm->pop, erm);
 		erm = nrm;
 	}
 
-//	if(nrm->ev->type == EVENT_JOIN){
 	if(nrm->type == NODE_JOIN){
 		join_set_remove(&AS_JOIN_NODE(nrm)->ev->ndls, nrm);
 		remove_event_join_decrease(G, AS_JOIN_NODE(nrm)->ev);
 
-//	}else if(nrm->ev->type == EVENT_SPLT){
 	}else if(nrm->type == NODE_SPLT){
 		splt_set_remove(&AS_SPLT_NODE(nrm)->ev->ndls, nrm);
 		remove_event_splt_decrease(G, AS_SPLT_NODE(nrm)->ev);
@@ -1300,7 +1269,6 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 		remove_event_s(G, (struct event *)GET_MIGR_EVENT(nrm));
 
 	}else{
-//		remove_event_s_josp(G, (struct event *)nrm->ev);
 		remove_event_s(G, (struct event *)GET_COAL_EVENT(nrm));
 	}
 
@@ -1394,7 +1362,6 @@ double merge_floating_r(struct genealogy *G, struct node_set *trunk, struct node
 				last = nd = (struct node *)coalescent(G, F, uvpop, t);
 				add_edge_r(G, uvpop, nd->out[0]);
 				add_edge_r(G, uvpop, nd->out[1]);
-//				evnew = nd->ev;
 				evnew = (struct event *)GET_COAL_EVENT(nd);
 
 			}else{	// Migration
@@ -1422,7 +1389,6 @@ finish_selection:
 				add_edge_r(G, nd->pop, nd);
 
 				last = (struct node *)nm;
-//				evnew = (struct event *)nm->ev;
 				evnew = (struct event *)GET_MIGR_EVENT(nm);
 				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nm);
 			}
@@ -1449,7 +1415,6 @@ finish_selection:
 					add_edge_r(G, nd->pop, nd);
 
 					node_set_add(&F[jev->popi], (struct node *)nj);
-//					nm->ev = (struct migr_event *)ev;
 					nj->ev = (struct join_event *)ev;
 					join_set_add(&jev->ndls, (struct node *)nj);
 					insert_event_rb_join(G, (struct join_event *)ev);
@@ -1471,7 +1436,6 @@ finish_selection:
 						add_edge_r(G, nd->pop, nd);
 
 						node_set_add(&F[sev->newpop], (struct node *)ns);
-//						nm->ev = (struct migr_event *)ev;
 						ns->ev = (struct splt_event *)ev;
 						splt_set_add(&sev->ndls, (struct node *)ns);
 						insert_event_rb_splt(G, (struct splt_event *)ev);
@@ -1506,12 +1470,10 @@ finish_selection:
 	G->root = e->in;
 	G->localMRCA = e;
 
-//	evnew = alloc_event(G->cfg, EVENT_DUMY, e->in->t);
 	evnew = (struct event *)GET_DUMMY_EVENT(e->in);
 	while((evindex_s_get(&G->evidx))->t < evnew->t)
 		evindex_s_forward(&G->evidx);
 	insert_event_rb(G, evnew);
-//	e->in->ev = evnew;
 
 #ifdef DEBUG
 	fprintf(stderr, "%d: Leaving %s", __LINE__, __func__);
@@ -1548,7 +1510,6 @@ double recombination(struct genealogy *G, double x)
 #ifdef DEBUG
 		fprintf(stderr, "%s: %d: Dummy recombination occur at time %.10f, position %.10f, localMRCA->t=%.10f, root->t=%.10f\n", __func__, __LINE__, t, x, G->localMRCA->t, G->root->t);
 #endif
-//		evindex_s_set(&G->evidx, G->localMRCA->ev);
 		evindex_s_set(&G->evidx, (struct event *)GET_COAL_EVENT(G->localMRCA));
 		evindex_s_seek(&G->evidx, t);
 
@@ -1649,7 +1610,6 @@ double recombination(struct genealogy *G, double x)
 					add_edge_r(G, pop, nd->out[1]);
 
 					nf = nd;
-//					evnew = nd->ev;
 					evnew = (struct event *)GET_COAL_EVENT(nd);
 					insert_event_rb(G, evnew);
 
@@ -1670,7 +1630,6 @@ double recombination(struct genealogy *G, double x)
 				nm = __migration(G, nf, pop, t);
 				add_edge_r(G, nf->pop, nf);
 				nf = (struct node *)nm;
-//				evnew = (struct event *)nm->ev;
 				evnew = (struct event *)GET_MIGR_EVENT(nm);
 				insert_event_rb(G, evnew);
 				pop = ((struct migr_event *)evnew)->spop;
@@ -1945,41 +1904,6 @@ int trunk_migr(struct genealogy *G, struct node_set *trunk, struct migr_event *e
 	return 1;
 }
 
-/*int __trunk_migr(struct genealogy *G, struct node_set *trunk, int dpop, int spop, struct event *ev, struct migr_node *nd)
-{
-	struct node *e, *in, *out;
-
-	in = (struct node *)nd;
-	out = nd->out;
-	edge_flag_setdeleted(in, isdeleted(out));
-	__node_set_remove(&trunk[dpop], out->set_id);
-	node_set_add(&trunk[spop], in);
-
-	if(isdeleted(out)){
-		remove_edge_m(G, dpop, out);
-		if(ev->type == EVENT_SPLT){
-			remove_event_splt_decrease(G, (struct splt_event *)ev);
-			migr_set_remove(&((struct splt_event *)ev)->ndls, (struct node *)nd);
-
-		}else if(ev->type == EVENT_JOIN){
-			remove_event_join_decrease(G, (struct join_event *)ev);
-			migr_set_remove(&((struct join_event *)ev)->ndls, (struct node *)nd);
-
-		}else{
-			__remove_event_s(G, ev);
-		}
-		return 0;
-	}
-
-	return 1;
-}*/
-
-/* Process migration event in trunk genealogy. */
-/*static inline void trunk_migr(struct genealogy *G, struct node_set *trunk, struct migr_event *mev)
-{
-	__trunk_migr(G, trunk, mev->dpop, mev->spop, (struct event *)mev, mev->nd);
-}*/
-
 double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_set *F)
 {
 	struct config *cfg;
@@ -2062,13 +1986,11 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 					last = (struct node *)absorption(G, trunk, nf, uvpop, t);
 					if(last)
 						evnew = (struct event *)GET_COAL_EVENT(last);
-//						evnew = last->ev;
 
 				}else{	// Coalescent
 					last = nd = (struct node *)coalescent(G, F, uvpop, t);
 					add_edge_m(G, uvpop, nd->out[0]);
 					add_edge_m(G, uvpop, nd->out[1]);
-//					evnew = nd->ev;
 					evnew = (struct event *)GET_COAL_EVENT(nd);
 				}
 
@@ -2096,7 +2018,6 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 				add_edge_m(G, nd->pop, nd);
 
 				last = (struct node *)nm;
-//				evnew = (struct event *)nm->ev;
 				evnew = (struct event *)GET_MIGR_EVENT(nm);
 				node_set_add(&F[((struct migr_event *)evnew)->spop], (struct node *)nm);
 			}
@@ -2281,13 +2202,11 @@ double merge_floating(struct genealogy *G, struct node_set *trunk, struct node_s
 		G->root = e->in;
 		G->localMRCA = e;
 
-//		evnew = alloc_event(G->cfg, EVENT_DUMY, e->in->t);
 		evnew = (struct event *)GET_DUMMY_EVENT(e->in);
 		// Change on 2018/05/23: This is necessary because the next event may be demographic events before G->troot (old TMRCA).
 		while((evindex_s_get(&G->evidx))->t < evnew->t)
 			evindex_s_forward(&G->evidx);
 		insert_event(G, evnew);
-//		e->in->ev = evnew;
 
 	}else if(t > G->localMRCA->t){
 		G->localMRCA = last;
@@ -2305,16 +2224,11 @@ void destroy_tree(struct genealogy *G, struct node *nd)
 		struct coal_node *n;
 
 		n = (struct coal_node *)nd;
-//		remove_event(G, (struct event *)n->ev);
 		remove_event(G, (struct event *)GET_COAL_EVENT(n));
 		destroy_tree(G, n->out[0]);
 		destroy_tree(G, n->out[1]);
 
 	}else if(ismigrnode(nd)){
-//		struct migr_node *n;
-
-//		n = (struct migr_node *)nd;
-//		remove_event_josp(G, (struct event *)n->ev);
 		remove_event(G, (struct event *)GET_MIGR_EVENT(nd));
 		destroy_tree(G, nd->out[0]);
 
@@ -2326,7 +2240,6 @@ void destroy_tree(struct genealogy *G, struct node *nd)
 		remove_event_splt_decrease(G, ((struct splt_node *)nd)->ev);
 		destroy_tree(G, nd->out[0]);
 
-//	}else if(isfloatnode(nd) || isdummynode(nd)){
 	}else if(isfloatnode(nd)){
 		remove_event(G, (struct event *)GET_FLOAT_EVENT(nd));
 		destroy_tree(G, nd->out[0]);
@@ -2373,14 +2286,10 @@ void clear_genealogy(struct genealogy *G)
 	}
 	cache_clear(G->node_cache[NODE_COAL]);
 	cache_clear(G->node_cache[NODE_MIGR]);
-//	cache_clear(G->node_cache[NODE_XOVER]);
 	cache_clear(G->node_cache[NODE_SAM]);
 	cache_clear(G->node_cache[NODE_FLOAT]);
 	cache_clear(G->node_cache[NODE_JOIN]);
 	cache_clear(G->node_cache[NODE_SPLT]);
-
-//	cache_clear(G->cfg->event_cache[EVENT_COAL]);
-//	cache_clear(G->cfg->event_cache[EVENT_MIGR]);
 
 	G->total = 0;
 
@@ -2414,10 +2323,8 @@ void clear_genealogy(struct genealogy *G)
 	while(G->evidx.idx->ls.front){
 		l = __list_pop(&G->evidx.idx->ls);
 		ev = (struct event *)GET_OBJ(l);
-//		if(ev->type == EVENT_DUMY || ev->type == EVENT_DXVR)
 		if(ev->type == EVENT_DXVR)
 			free_event(G->cfg, ev);
-//			free(l);
 	}
 
 	tsindex_reset(&G->tr_xover);
@@ -2452,15 +2359,11 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	G->cfg = cfg;
 	G->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
 	G->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
-//	G->node_cache[NODE_XOVER] = cache_create(sizeof(struct xover_node), cfg->maxfrag * 4);
 	G->node_cache[NODE_SAM] = cache_create(sizeof(struct sam_node), cfg->prof->nfrag);
 	G->node_cache[NODE_FLOAT] = cache_create(sizeof(struct dummy_node) + sizeof(struct event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
 	G->node_cache[NODE_DUMMY] = G->node_cache[NODE_FLOAT];
 	G->node_cache[NODE_JOIN] = cache_create(sizeof(struct join_node) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
 	G->node_cache[NODE_SPLT] = cache_create(sizeof(struct splt_node) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
-
-//	cfg->event_cache[EVENT_COAL] = cache_create(sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4);
-//	cfg->event_cache[EVENT_MIGR] = cache_create(sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2);
 
 	G->pops = malloc(sizeof(struct population) * (npop + nsplt));
 	memset(G->pops, 0, sizeof(struct population) * (npop + nsplt));
@@ -2485,7 +2388,6 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	G->R[0] = malloc(sizeof(int) * G->maxR);
 	G->R[1] = malloc(sizeof(int) * G->maxR);
 
-//	G->evidx = evindex_create(G, G->cfg);
 	evindex_init(G, G->cfg, &G->evidx);
 	evindex_seq_on(&G->evidx);
 	evindex_s_rewind(&G->evidx);
@@ -2516,7 +2418,6 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 		evindex_s_forward(&G->evidx);
 	}
 
-//	G->tr_xover = tsindex_alloc(cfg->maxfrag * 5);
 	tsindex_init(&G->tr_xover, cfg->maxfrag * 5);
 	G->trunk = malloc(sizeof(struct node_set) * npop_all);
 	for(i = 0; i < npop + nsplt; i++)
@@ -2532,7 +2433,6 @@ void destroy_genealogy(struct genealogy *G)
 	struct event *ev;
 	int pop, i;
 
-//	tsindex_free(G->tr_xover);
 	tsindex_destroy(&G->tr_xover);
 
 	cfg = G->cfg;
@@ -2572,14 +2472,10 @@ void destroy_genealogy(struct genealogy *G)
 
 	cache_destroy(G->node_cache[NODE_COAL]);
 	cache_destroy(G->node_cache[NODE_MIGR]);
-//	cache_destroy(G->node_cache[NODE_XOVER]);
 	cache_destroy(G->node_cache[NODE_SAM]);
 	cache_destroy(G->node_cache[NODE_FLOAT]);
 	cache_destroy(G->node_cache[NODE_JOIN]);
 	cache_destroy(G->node_cache[NODE_SPLT]);
-
-//	cache_destroy(G->cfg->event_cache[EVENT_COAL]);
-//	cache_destroy(G->cfg->event_cache[EVENT_MIGR]);
 
 	free(G->R[0]);
 	free(G->R[1]);

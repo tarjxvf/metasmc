@@ -65,7 +65,6 @@ struct coal_event {
 	unsigned char sumdn_off;
 
 	unsigned char pop;
-//	struct coal_node *nd;
 };
 
 struct migr_event {
@@ -78,7 +77,6 @@ struct migr_event {
 
 	unsigned char spop;
 	unsigned char dpop;
-//	struct migr_node *nd;
 };
 
 struct grow_event {
@@ -268,9 +266,6 @@ struct config {
 	double tdiv;	// Divergence time
 
 	/*** Demographic model. ***/
-//	int npop;	// Number of initial subpopulations
-//	int nsplt;	// Number of subpopulations created by splitting events.
-//	int npop_all;	// Maximum number of populations, including those created by splitting events
 
 	double *size;	// Initial subpopulation size (at time 0)
 	double **mmig;	// Initial migration matrix(at time 0)
@@ -352,7 +347,6 @@ struct coal_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-//	struct coal_event *ev;
 	struct node *in;
 	struct node *out[2];	//Edges below the node
 	char *seq;
@@ -373,7 +367,6 @@ struct xover_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-//	struct event *ev;
 	struct node *in_new;
 	struct node *out;
 	struct node *in;
@@ -393,7 +386,6 @@ struct migr_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-//	struct migr_event *ev;
 	struct node *in;
 	struct node *out;
 	int mgid;
@@ -432,7 +424,6 @@ struct dummy_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-//	struct event *ev;
 	struct node *in;
 	struct node *out;
 };

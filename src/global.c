@@ -37,10 +37,7 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-//	if(type == EVENT_COAL || type == EVENT_MIGR)
-//		ev = cache_alloc(cfg->event_cache[type]);
-//	else
-		ev = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
+	ev = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
 	init_event(cfg, ev, type, t);
 
 #ifdef DEBUG
@@ -51,10 +48,7 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 
 void free_event(struct config *cfg, struct event *ev)
 {
-//	if(ev->type == EVENT_COAL || ev->type == EVENT_MIGR)
-//		cache_free(cfg->event_cache[ev->type], GET_LIST(ev));
-//	else
-		free(ev);
+	free(ev);
 }
 
 void print_event(struct config *cfg, struct event *ev)
