@@ -466,6 +466,12 @@ struct splt_node {
 	int sid;
 };
 
+static size_t evsize[] = {sizeof(struct coal_event), sizeof(struct migr_event), sizeof(struct grow_event), sizeof(struct size_event), sizeof(struct rmig_event), sizeof(struct gmig_event), sizeof(struct gsiz_event), sizeof(struct ggro_event), sizeof(struct join_event), sizeof(struct splt_event), sizeof(struct event), sizeof(struct event), sizeof(struct samp_event)};
+
+static size_t nodesize[] = {sizeof(struct coal_node), sizeof(struct migr_node), sizeof(struct xover_node), sizeof(struct sam_node), sizeof(struct dummy_node), sizeof(struct dummy_node), sizeof(struct join_node), sizeof(struct splt_node)};
+
+static size_t nesize[] = {sizeof(struct coal_event), sizeof(struct migr_event), 0, sizeof(struct sam_node), sizeof(struct event), sizeof(struct event), 0, 0};
+
 #define NODE_FLAG_VISITED_LEFT 0x1
 #define NODE_FLAG_VISITED_RIGHT 0x2
 

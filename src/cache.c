@@ -24,6 +24,8 @@ void cache_resize(struct cache *nc, int add)
 	obj = objs;
 	for(i = nc->cache_size; i < new_size; i++){
 		nc->objs[i] = obj;
+		if(nc->obj_init)
+			nc->obj_init(obj, nc->data);
 		pid = (int *)(obj + nc->obj_size);
 		*pid = i;
 		obj += nc->obj_size + sizeof(int);
@@ -89,7 +91,7 @@ void cache_clear(struct cache *nc)
 	nc->maxnodes = 0;
 }
 
-struct cache *cache_create(size_t obj_size, int cache_size)
+struct cache *cache_create(size_t obj_size, int cache_size, void (*obj_init)(void *obj, void *data), void *data)
 {
 	struct cache *nc;
 
@@ -98,6 +100,15 @@ struct cache *cache_create(size_t obj_size, int cache_size)
 	nc->obj_size = obj_size;
 	nc->cache_size = nc->maxnodes = 0;
 	nc->objs = NULL;
+	if(data)
+		nc->data = data;
+	else
+		nc->data = NULL;
+
+	if(obj_init)
+		nc->obj_init = obj_init;
+	else
+		nc->obj_init = NULL;
 
 	list_init(&nc->chunk_list);
 	list_init(&nc->free_list);

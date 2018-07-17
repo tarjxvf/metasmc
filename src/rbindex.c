@@ -385,7 +385,7 @@ struct rbindex *rbindex_create(rb_comparison_func *compar, int cache_size)
 
 	eidx = malloc(sizeof(struct rbindex));
 
-	eidx->nc = cache_create(sizeof(struct rb_node), cache_size);
+	eidx->nc = cache_create(sizeof(struct rb_node), cache_size, NULL, NULL);
 
 	eidx->allocator.allocator_data = eidx->nc;
 	eidx->allocator.libavl_malloc = rbindex_alloc;

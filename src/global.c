@@ -12,18 +12,17 @@
 #include "mutation.h"
 #include "evindex.h"
 
-static size_t evsize[] = {sizeof(struct coal_event), sizeof(struct migr_event), sizeof(struct grow_event), sizeof(struct size_event), sizeof(struct rmig_event), sizeof(struct gmig_event), sizeof(struct gsiz_event), sizeof(struct ggro_event), sizeof(struct join_event), sizeof(struct splt_event), sizeof(struct event), sizeof(struct event), sizeof(struct samp_event)};
-
 void init_event(struct config *cfg, struct event *ev, int type, double t)
 {
 	int npop_all;
 
-	npop_all = cfg->npop + cfg->nsplt;
+//	npop_all = cfg->npop + cfg->nsplt;
+	npop_all = cfg->npop_all;
 
-	ev->type = type;
+//	ev->type = type;
 	ev->t = t;
-	ev->dn_off = evsize[type];
-	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
+//	ev->dn_off = evsize[type];
+//	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
 	dn_clear(npop_all, GET_DN(ev));
 }
 
@@ -38,7 +37,11 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
 	ev = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
-	init_event(cfg, ev, type, t);
+	ev->type = type;
+	ev->t = t;
+	ev->dn_off = evsize[type];
+	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
+	dn_clear(npop_all, GET_DN(ev));
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
