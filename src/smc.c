@@ -59,9 +59,9 @@ static inline void free_node(struct genealogy *G, struct node *nd)
 static inline struct node *alloc_node(struct genealogy *G, int type, int pop, double t)
 {
 	struct node *nd;
-	int npop_all;
+//	int npop_all;
 
-	npop_all = G->cfg->npop + G->cfg->nsplt;
+//	npop_all = G->cfg->npop + G->cfg->nsplt;
 	nd = cache_alloc(G->node_cache[type]);
 //	nd = malloc(nodesize[type] + sizeof(int) * 2 * npop_all);
 
@@ -79,9 +79,9 @@ static inline struct node *alloc_node(struct genealogy *G, int type, int pop, do
 struct node *copy_node(struct genealogy *G, struct node *old)
 {
 	struct node *new;
-	int npop_all;
+//	int npop_all;
 
-	npop_all = G->cfg->npop + G->cfg->nsplt;
+//	npop_all = G->cfg->npop + G->cfg->nsplt;
 	new = cache_alloc(G->node_cache[node_flag_gettype(old)]);
 //	new = malloc(nodesize[old->type] + sizeof(int) * 2 * npop_all);
 	new->t = old->t;
