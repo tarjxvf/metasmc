@@ -147,5 +147,6 @@ void rbindex_delete(struct rbindex *eidx, void *obj);
 void rbindex_rb_clear(struct rbindex *eidx);
 void rbindex_destroy(struct rbindex *eidx);
 struct rbindex *rbindex_create(rb_comparison_func *compar, int cache_size);
+void complete_binary_tree(int nnodes, int *map);
 
 #endif

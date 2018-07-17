@@ -65,7 +65,7 @@ struct coal_event {
 	unsigned char sumdn_off;
 
 	unsigned char pop;
-	struct coal_node *nd;
+//	struct coal_node *nd;
 };
 
 struct migr_event {
@@ -78,7 +78,7 @@ struct migr_event {
 
 	unsigned char spop;
 	unsigned char dpop;
-	struct migr_node *nd;
+//	struct migr_node *nd;
 };
 
 struct grow_event {
@@ -190,6 +190,7 @@ struct samp_event {
 #define GET_DN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->dn_off))
 #define GET_SUMDN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->sumdn_off))
 
+void init_event(struct config *cfg, struct event *ev, int type, double t);
 struct event *alloc_event(struct config *, int, double);
 void free_event(struct config *cfg, struct event *ev);
 void print_event(struct config *cfg, struct event *ev);
@@ -332,7 +333,7 @@ struct node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-	struct event *ev;
+//	struct event *ev;
 	struct node *in;
 	struct node *out[2];
 };
@@ -351,7 +352,7 @@ struct coal_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-	struct coal_event *ev;
+//	struct coal_event *ev;
 	struct node *in;
 	struct node *out[2];	//Edges below the node
 	char *seq;
@@ -372,7 +373,7 @@ struct xover_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-	struct event *ev;
+//	struct event *ev;
 	struct node *in_new;
 	struct node *out;
 	struct node *in;
@@ -392,7 +393,7 @@ struct migr_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-	struct migr_event *ev;
+//	struct migr_event *ev;
 	struct node *in;
 	struct node *out;
 	int mgid;
@@ -412,7 +413,7 @@ struct sam_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-	struct event *ev;
+//	struct event *ev;
 	struct node *in;
 	int fgid;
 };
@@ -431,9 +432,47 @@ struct dummy_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-	struct event *ev;
+//	struct event *ev;
 	struct node *in;
 	struct node *out;
+};
+
+struct join_node {
+	// type==NODE_JOIN
+	double t;
+	int xtid;
+	int idx;
+	int set_id;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char visited:2;
+		unsigned char pop;
+	};
+	struct node *in;
+	struct node *out;
+	struct join_event *ev;
+	int jid;
+};
+
+struct splt_node {
+	// type==NODE_SPLT
+	double t;
+	int xtid;
+	int idx;
+	int set_id;
+	struct{
+		unsigned char type:4;
+		unsigned char itop:1;
+		unsigned char deleted:1;
+		unsigned char visited:2;
+		unsigned char pop;
+	};
+	struct node *in;
+	struct node *out;
+	struct splt_event *ev;
+	int sid;
 };
 
 #define NODE_FLAG_VISITED_LEFT 0x1
@@ -445,6 +484,8 @@ struct dummy_node {
 #define NODE_SAM	3
 #define NODE_FLOAT	4
 #define NODE_DUMMY	5
+#define NODE_JOIN	6
+#define NODE_SPLT	7
 
 #define AS_COAL_NODE(n)	((struct coal_node *)(n))
 #define AS_MIGR_NODE(n)	((struct migr_node *)(n))
@@ -452,6 +493,18 @@ struct dummy_node {
 #define AS_SAM_NODE(n)	((struct sam_node *)(n))
 #define AS_FLOAT_NODE(n)	((struct dummy_node *)(n))
 #define AS_DUMMY_NODE(n)	((struct dummy_node *)(n))
+#define AS_JOIN_NODE(n)	((struct join_node *)(n))
+#define AS_SPLT_NODE(n)	((struct splt_node *)(n))
+
+#define GET_COAL_EVENT(nd) ((struct coal_event *)((char *)(nd) + sizeof(struct coal_node)))
+#define GET_MIGR_EVENT(nd) ((struct migr_event *)((char *)(nd) + sizeof(struct migr_node)))
+#define GET_FLOAT_EVENT(nd) ((struct event *)((char *)(nd) + sizeof(struct dummy_node)))
+#define GET_DUMMY_EVENT(nd) ((struct event *)((char *)(nd) + sizeof(struct dummy_node)))
+
+#define GET_COAL_NODE(nd) ((struct coal_node *)((char *)(nd) - sizeof(struct coal_node)))
+#define GET_MIGR_NODE(nd) ((struct migr_node *)((char *)(nd) - sizeof(struct migr_node)))
+#define GET_FLOAT_NODE(nd) ((struct float_node *)((char *)(nd) - sizeof(struct float_node)))
+#define GET_DUMMY_NODE(nd) ((struct dummy_node *)((char *)(nd) - sizeof(struct dummy_node)))
 
 static inline int iscoalnode(struct node *nd)
 {
@@ -481,6 +534,16 @@ static inline int isfloatnode(struct node *nd)
 static inline int isdummynode(struct node *nd)
 {
 	return nd->type == NODE_DUMMY;
+}
+
+static inline int isjoinnode(struct node *nd)
+{
+	return nd->type == NODE_JOIN;
+}
+
+static inline int isspltnode(struct node *nd)
+{
+	return nd->type == NODE_SPLT;
 }
 
 static int node_flag_gettype(struct node *nd)
@@ -538,22 +601,40 @@ static inline void edge_flag_setitop(struct node *e, char flag)
 //struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
 //struct node *alloc_node(struct config *cfg, int type, int pop, double t);
 
-static inline void migr_set_add(struct node_set *set, struct node *e)
+static inline void join_set_add(struct node_set *set, struct node *e)
 {
 	if(set->n >= set->maxn){
 		set->maxn *= 2;
 		set->nodes = realloc(set->nodes, sizeof(struct node *) * set->maxn);
 	}
-	AS_MIGR_NODE(e)->mgid = set->n;
+	AS_JOIN_NODE(e)->jid = set->n;
 	set->nodes[set->n++] = e;
 }
 
-static inline void migr_set_remove(struct node_set *set, struct node *e)
+static inline void join_set_remove(struct node_set *set, struct node *e)
 {
 	int i;
-	i = AS_MIGR_NODE(e)->mgid;
+	i = AS_JOIN_NODE(e)->jid;
 	set->nodes[i] = set->nodes[--(set->n)];
-	AS_MIGR_NODE(set->nodes[i])->mgid = i;
+	AS_JOIN_NODE(set->nodes[i])->jid = i;
+}
+
+static inline void splt_set_add(struct node_set *set, struct node *e)
+{
+	if(set->n >= set->maxn){
+		set->maxn *= 2;
+		set->nodes = realloc(set->nodes, sizeof(struct node *) * set->maxn);
+	}
+	AS_SPLT_NODE(e)->sid = set->n;
+	set->nodes[set->n++] = e;
+}
+
+static inline void splt_set_remove(struct node_set *set, struct node *e)
+{
+	int i;
+	i = AS_SPLT_NODE(e)->sid;
+	set->nodes[i] = set->nodes[--(set->n)];
+	AS_SPLT_NODE(set->nodes[i])->sid = i;
 }
 
 static inline void node_set_init(struct node_set *set, int maxn)

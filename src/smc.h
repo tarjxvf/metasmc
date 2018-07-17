@@ -30,7 +30,7 @@ struct population {
 struct genealogy {
 	struct population *pops;
 
-	struct cache *node_cache[6];
+	struct cache *node_cache[8];
 	struct config *cfg;
 
 	struct node *localMRCA;
@@ -125,25 +125,25 @@ void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev);
 static inline void remove_event_rb(struct genealogy *G, struct event *ev)
 {
 	evindex_rb_delete(&G->evidx, ev);
-	free_event(G->cfg, ev);
+//	free_event(G->cfg, ev);
 }
 
 static inline void __remove_event_s(struct genealogy *G, struct event *ev)
 {
 	__evindex_s_delete(&G->evidx, ev);
-	free_event(G->cfg, ev);
+//	free_event(G->cfg, ev);
 }
 
 static inline void remove_event_s(struct genealogy *G, struct event *ev)
 {
 	evindex_s_delete(&G->evidx, ev);
-	free_event(G->cfg, ev);
+//	free_event(G->cfg, ev);
 }
 
 static inline void remove_event(struct genealogy *G, struct event *ev)
 {
 	evindex_delete(&G->evidx, ev);
-	free_event(G->cfg, ev);
+//	free_event(G->cfg, ev);
 }
 
 static inline void remove_event_rb_josp(struct genealogy *G, struct event *ev)

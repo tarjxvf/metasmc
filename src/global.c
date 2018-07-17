@@ -14,10 +14,22 @@
 
 static size_t evsize[] = {sizeof(struct coal_event), sizeof(struct migr_event), sizeof(struct grow_event), sizeof(struct size_event), sizeof(struct rmig_event), sizeof(struct gmig_event), sizeof(struct gsiz_event), sizeof(struct ggro_event), sizeof(struct join_event), sizeof(struct splt_event), sizeof(struct event), sizeof(struct event), sizeof(struct samp_event)};
 
+void init_event(struct config *cfg, struct event *ev, int type, double t)
+{
+	int npop_all;
+
+	npop_all = cfg->npop + cfg->nsplt;
+
+	ev->type = type;
+	ev->t = t;
+	ev->dn_off = evsize[type];
+	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
+	dn_clear(npop_all, GET_DN(ev));
+}
+
 //struct event *alloc_event(struct config *cf, int type, int pop, double t)
 struct event *alloc_event(struct config *cfg, int type, double t)
 {
-	struct list_head *l;
 	struct event *ev;
 	int npop_all;
 
@@ -25,16 +37,11 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 #ifdef DEBUG
 	fprintf(stderr, "Entering function %s\n", __func__);
 #endif
-	if(type == EVENT_COAL || type == EVENT_MIGR)
-		ev = cache_alloc(cfg->event_cache[type]);
-	else
+//	if(type == EVENT_COAL || type == EVENT_MIGR)
+//		ev = cache_alloc(cfg->event_cache[type]);
+//	else
 		ev = malloc(evsize[type] + sizeof(int) * 2 * npop_all);
-
-	ev->type = type;
-	ev->t = t;
-	ev->dn_off = evsize[type];
-	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
-	dn_clear(npop_all, GET_DN(ev));
+	init_event(cfg, ev, type, t);
 
 #ifdef DEBUG
 	fprintf(stderr, "Allocated event %x at time %.6f with type %d\n", ev, ev->t, ev->type);
@@ -44,10 +51,10 @@ struct event *alloc_event(struct config *cfg, int type, double t)
 
 void free_event(struct config *cfg, struct event *ev)
 {
-	if(ev->type == EVENT_COAL || ev->type == EVENT_MIGR)
-		cache_free(cfg->event_cache[ev->type], GET_LIST(ev));
-	else
-		free(GET_LIST(ev));
+//	if(ev->type == EVENT_COAL || ev->type == EVENT_MIGR)
+//		cache_free(cfg->event_cache[ev->type], GET_LIST(ev));
+//	else
+		free(ev);
 }
 
 void print_event(struct config *cfg, struct event *ev)
@@ -59,6 +66,10 @@ void print_event(struct config *cfg, struct event *ev)
 	fprintf(stderr, "(%x, %x)[type=%d, t=%.6f, dn=(", l, ev, ev->type, ev->t);
 	for(i = 0; i < cfg->npop_all; i++)
 		fprintf(stderr, "%d, ", GET_DN(ev)[i]);
+	fprintf(stderr, ")");
+	fprintf(stderr, "sumdn=(", l, ev, ev->type, ev->t);
+	for(i = 0; i < cfg->npop_all; i++)
+		fprintf(stderr, "%d, ", GET_SUMDN(ev)[i]);
 	fprintf(stderr, ")");
 	if(ev->type == EVENT_COAL){
 		fprintf(stderr, ", pop=%d", ((struct coal_event *)ev)->pop);

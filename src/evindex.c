@@ -28,15 +28,7 @@ __print_event_tree(const struct evindex *evidx, struct rb_node *node, int level)
     }
 
   ev = node->rb_data;
-  fprintf (stderr, "[%.6f, %d, dn=(", ev->t, ev->type);
-
-  for(i = 0; i < evidx->npop_all; i++)
-	  fprintf(stderr, "%d, ", GET_DN(ev)[i]);
-  fprintf(stderr, "), sumdn=(");
-
-  for(i = 0; i < evidx->npop_all; i++)
-	  fprintf(stderr, "%d, ", GET_SUMDN(ev)[i]);
-  fprintf(stderr, ")](");
+  fprintf (stderr, "%x(", ev);
 
   for (i = 0; i <= 1; i++)
     {
