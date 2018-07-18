@@ -367,6 +367,11 @@ typedef size_t map_t;
 #define CELLSIZE 32
 #define NCELL_PER_MAP sizeof(map_t)
 
+struct seq_internal {
+	char *seq;
+	map_t *mapped;
+};
+
 struct node {
 	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
 	struct{
@@ -380,9 +385,9 @@ struct node {
 	int idx;
 	int set_id;
 	double t;
-
 	struct node *in;
 	struct node *out[2];
+	void *data;
 };
 
 // node representing coalescent event
@@ -401,8 +406,7 @@ struct coal_node {
 	double t;
 	struct node *in;
 	struct node *out[2];	//Edges below the node
-	char *seq;
-	map_t *mapped;
+	struct seq_internal *seq;
 };
 
 // Node representing recombination event. Not used in current implementation.
