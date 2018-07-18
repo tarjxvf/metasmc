@@ -65,7 +65,7 @@ static inline struct node *alloc_node(struct genealogy *G, int type, int pop, do
 	nd = cache_alloc(G->node_cache[type]);
 //	nd = malloc(nodesize[type] + sizeof(int) * 2 * npop_all);
 
-	*((unsigned char *)&nd->set_id + sizeof(int)) = type;
+	*((unsigned char *)nd) = type;
 	nd->pop = pop;
 	nd->t = t;
 	nd->xtid = nd->idx = 0;

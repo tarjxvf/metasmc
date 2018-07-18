@@ -369,10 +369,6 @@ typedef size_t map_t;
 
 struct node {
 	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -380,6 +376,11 @@ struct node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
+
 //	struct event *ev;
 	struct node *in;
 	struct node *out[2];
@@ -388,10 +389,6 @@ struct node {
 // node representing coalescent event
 struct coal_node {
 	// type==NODE_COAL
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -399,6 +396,10 @@ struct coal_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
 	struct node *in;
 	struct node *out[2];	//Edges below the node
 	char *seq;
@@ -408,10 +409,6 @@ struct coal_node {
 // Node representing recombination event. Not used in current implementation.
 struct xover_node {
 	// type==NODE_XOVER
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -419,6 +416,10 @@ struct xover_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
 	struct node *in_new;
 	struct node *out;
 	struct node *in;
@@ -427,10 +428,6 @@ struct xover_node {
 // Note representing migration event
 struct migr_node {
 	// type==NODE_MIGR
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -438,6 +435,10 @@ struct migr_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
 	struct node *in;
 	struct node *out;
 	int mgid;
@@ -446,10 +447,6 @@ struct migr_node {
 // Node representing sample.
 struct sam_node {
 	// type==NODE_SAM
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -457,7 +454,10 @@ struct sam_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
-//	struct event *ev;
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
 	struct node *in;
 	int fgid;
 };
@@ -465,10 +465,6 @@ struct sam_node {
 // Node representing tip of dummy lineage which represents trapped ancestral material. Recombination is allowed on this type of lineage but take no effect.
 struct dummy_node {
 	// type==NODE_DUMMY of type==NODE_FLOAT
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -476,16 +472,16 @@ struct dummy_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
 	struct node *in;
 	struct node *out;
 };
 
 struct join_node {
 	// type==NODE_JOIN
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -493,6 +489,10 @@ struct join_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
 	struct node *in;
 	struct node *out;
 	struct join_event *ev;
@@ -501,10 +501,6 @@ struct join_node {
 
 struct splt_node {
 	// type==NODE_SPLT
-	double t;
-	int xtid;
-	int idx;
-	int set_id;
 	struct{
 		unsigned char type:4;
 		unsigned char itop:1;
@@ -512,6 +508,10 @@ struct splt_node {
 		unsigned char visited:2;
 		unsigned char pop;
 	};
+	int xtid;
+	int idx;
+	int set_id;
+	double t;
 	struct node *in;
 	struct node *out;
 	struct splt_event *ev;
