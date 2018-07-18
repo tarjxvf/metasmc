@@ -738,7 +738,7 @@ void evindex_init(struct genealogy *G, struct config *cfg, struct evindex *evidx
 	struct event *ev;
 	int npop;
 
-	evidx->idx = rbindex_create(evindex_compar, cfg->maxfrag * 2);
+	evidx->idx = rbindex_create(evindex_compar, cfg->maxfrag * 4);
 	evidx->npop_all = npop = cfg->npop_all;
 	evidx->dn = malloc(sizeof(int) * npop);
 
