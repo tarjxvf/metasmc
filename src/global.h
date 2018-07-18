@@ -375,15 +375,16 @@ struct seq_internal {
 struct node {
 	// type: NODE_COAL, NODE_MIGR, NODE_SAM, NODE_FLOAT
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in;
 	struct node *out[2];
@@ -394,15 +395,16 @@ struct node {
 struct coal_node {
 	// type==NODE_COAL
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in;
 	struct node *out[2];	//Edges below the node
@@ -413,15 +415,16 @@ struct coal_node {
 struct xover_node {
 	// type==NODE_XOVER
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in_new;
 	struct node *out;
@@ -432,15 +435,16 @@ struct xover_node {
 struct migr_node {
 	// type==NODE_MIGR
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in;
 	struct node *out;
@@ -451,15 +455,16 @@ struct migr_node {
 struct sam_node {
 	// type==NODE_SAM
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in;
 	int fgid;
@@ -469,15 +474,16 @@ struct sam_node {
 struct dummy_node {
 	// type==NODE_DUMMY of type==NODE_FLOAT
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in;
 	struct node *out;
@@ -486,15 +492,16 @@ struct dummy_node {
 struct join_node {
 	// type==NODE_JOIN
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in;
 	struct node *out;
@@ -505,15 +512,16 @@ struct join_node {
 struct splt_node {
 	// type==NODE_SPLT
 	struct{
-		unsigned char type:4;
+		unsigned char pop;
 		unsigned char itop:1;
 		unsigned char deleted:1;
 		unsigned char visited:2;
-		unsigned char pop;
+		unsigned char padding:4;
+		unsigned char type;
 	};
+	int set_id;
 	int xtid;
 	int idx;
-	int set_id;
 	double t;
 	struct node *in;
 	struct node *out;

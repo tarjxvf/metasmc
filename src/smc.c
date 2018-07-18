@@ -65,10 +65,12 @@ static inline struct node *alloc_node(struct genealogy *G, int type, int pop, do
 	nd = cache_alloc(G->node_cache[type]);
 //	nd = malloc(nodesize[type] + sizeof(int) * 2 * npop_all);
 
-	*((unsigned char *)nd) = type;
-	nd->pop = pop;
+//	*((unsigned char *)nd) = type;
+	*((unsigned short *)nd) = pop;
+
+//	nd->pop = pop;
 	nd->t = t;
-	nd->xtid = nd->idx = 0;
+//	nd->xtid = nd->idx = 0;
 
 #ifdef DEBUG
 	fprintf(stderr, "%s:%d:Allocated node %x at time %.6f with type %d in subpopulation %d\n\n", __func__, __LINE__, nd, nd->t, nd->type, nd->pop);
@@ -86,7 +88,7 @@ static inline struct node *copy_node(struct genealogy *G, struct node *old)
 //	new = malloc(nodesize[old->type] + sizeof(int) * 2 * npop_all);
 	new->t = old->t;
 	new->pop = old->pop;
-	new->type = old->type;
+//	new->type = old->type;
 
 #ifdef DEBUG
 	fprintf(stderr, "%s:%d:Allocated node %x at time %.6f with type %d in subpopulation %d\n\n", __func__, __LINE__, new, new->t, new->type, new->pop);
@@ -2350,6 +2352,11 @@ void init_dn_off(struct node *nd, struct cache_data *data)
 	ev->sumdn_off = evsize[data->e_type] + sizeof(int) * data->npop;
 }
 
+void init_dn_off2(struct node *nd, struct cache_data *data)
+{
+	nd->type = data->n_type;
+}
+
 struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 {
 	int pop, npop, nsplt, i, npop_all;
@@ -2378,7 +2385,11 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	cd->e_type = EVENT_MIGR;
 	G->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2, init_dn_off, cd);
 
-	G->node_cache[NODE_SAM] = cache_create(sizeof(struct sam_node), cfg->prof->nfrag + 2, NULL, NULL);
+	cd = malloc(sizeof(struct cache_data));
+	cd->npop = cfg->npop_all;
+	cd->n_type = NODE_SAM;
+	cd->e_type = EVENT_DUMY;
+	G->node_cache[NODE_SAM] = cache_create(sizeof(struct sam_node), cfg->prof->nfrag + 2, init_dn_off2, cd);
 
 	cd = malloc(sizeof(struct cache_data));
 	cd->npop = cfg->npop_all;
@@ -2387,8 +2398,18 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	G->node_cache[NODE_FLOAT] = cache_create(sizeof(struct dummy_node) + sizeof(struct event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2, init_dn_off, cd);
 
 	G->node_cache[NODE_DUMMY] = G->node_cache[NODE_FLOAT];
-	G->node_cache[NODE_JOIN] = cache_create(sizeof(struct join_node) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2, NULL, NULL);
-	G->node_cache[NODE_SPLT] = cache_create(sizeof(struct splt_node) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2, NULL, NULL);
+
+	cd = malloc(sizeof(struct cache_data));
+	cd->npop = cfg->npop_all;
+	cd->n_type = NODE_JOIN;
+	cd->e_type = EVENT_JOIN;
+	G->node_cache[NODE_JOIN] = cache_create(sizeof(struct join_node) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2, init_dn_off2, cd);
+
+	cd = malloc(sizeof(struct cache_data));
+	cd->npop = cfg->npop_all;
+	cd->n_type = NODE_SPLT;
+	cd->e_type = EVENT_SPLT;
+	G->node_cache[NODE_SPLT] = cache_create(sizeof(struct splt_node) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2, init_dn_off2, cd);
 
 	G->pops = malloc(sizeof(struct population) * (npop + nsplt));
 	memset(G->pops, 0, sizeof(struct population) * (npop + nsplt));
@@ -2501,12 +2522,16 @@ void destroy_genealogy(struct genealogy *G)
 	free(G->node_cache[NODE_MIGR]->data);
 	cache_destroy(G->node_cache[NODE_MIGR]);
 
+	free(G->node_cache[NODE_SAM]->data);
 	cache_destroy(G->node_cache[NODE_SAM]);
 
 	free(G->node_cache[NODE_FLOAT]->data);
 	cache_destroy(G->node_cache[NODE_FLOAT]);
 
+	free(G->node_cache[NODE_JOIN]->data);
 	cache_destroy(G->node_cache[NODE_JOIN]);
+
+	free(G->node_cache[NODE_SPLT]->data);
 	cache_destroy(G->node_cache[NODE_SPLT]);
 
 	free(G->R[0]);
