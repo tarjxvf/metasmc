@@ -709,7 +709,8 @@ void generate_sequence_model_slow(struct reference *ref, struct genealogy *G, in
 }
 
 // Check whether the sequence of a coalescent node has already been generated in [off_lb, off_ub)
-int mapped(struct coal_node *n, int off_lb, int off_ub)
+//int mapped(struct coal_node *n, int off_lb, int off_ub)
+int mapped(struct seq_internal *n, int off_lb, int off_ub)
 {
 	int m1, m2, ncell, i, j;
 	size_t mask;
@@ -749,8 +750,11 @@ void evolve(struct mutation *mmut, struct coal_node *n2, struct coal_node *n1, i
 {
 	double dt, Pmut[SQNUCS];
 	int m1, m2, ncell, i, j, k;
+	struct seq_internal *ns1, *ns2;
 	size_t mask;
 
+	ns1 = n1->seq;
+	ns2 = n2->seq;
 	m1 = off_lb / CELLSIZE;
 	m2 = off_ub / CELLSIZE;
 #ifdef DEBUG
@@ -764,20 +768,20 @@ void evolve(struct mutation *mmut, struct coal_node *n2, struct coal_node *n1, i
 	j = m1 / NCELL_PER_MAP;
 	for(i = m1; i <= m2; i++){
 #ifdef DEBUG
-		fprintf(stderr, "%d: i=%d, j=%d, mapped[j]=%d, mask=%u\n", __LINE__, i, j, n1->mapped[j], mask);
+		fprintf(stderr, "%d: i=%d, j=%d, mapped[j]=%d, mask=%u\n", __LINE__, i, j, ns1->mapped[j], mask);
 #endif
 		if(mask == 0){
 			mask = 1;
 			j++;
 		}
-		if(!(n1->mapped[j] & mask)){
+		if(!(ns1->mapped[j] & mask)){
 			char *seq1, *seq2;
 
-			seq1 = n1->seq + CELLSIZE * i;
-			seq2 = n2->seq + CELLSIZE * i;
+			seq1 = ns1->seq + CELLSIZE * i;
+			seq2 = ns2->seq + CELLSIZE * i;
 			memcpy(seq1, seq2, sizeof(char) * CELLSIZE);
 			mutate(mmut, Pmut, seq1, CELLSIZE);
-			n1->mapped[j] |= mask;
+			ns1->mapped[j] |= mask;
 		}
 		mask <<= 1;
 	}
@@ -791,10 +795,10 @@ void clean_mapped(struct node *n)
 		nc = AS_COAL_NODE(n);
 		clean_mapped(nc->out[0]);
 		clean_mapped(nc->out[1]);
-		free(nc->seq);
-		free(nc->mapped);
-		nc->seq = NULL;
-		nc->mapped = NULL;
+		free(nc->seq->seq);
+		free(nc->seq->mapped);
+		nc->seq->seq = NULL;
+		nc->seq->mapped = NULL;
 
 	}else if(issamnode(n)){
 		return;
@@ -819,6 +823,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 	int *fgstart, *fgend, *fgid;
 	struct fginfo *fgi;
 	struct sam_node **nds;
+	struct seq_internal *ns1, *ns2;
 
 	cfg = G->cfg;
 	fgstart = cfg->prof->fgstart;
@@ -856,10 +861,10 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 #ifdef DEBUG
 		fprintf(stderr, "%d: root=%x\n", __LINE__, G->root);
 #endif
-		((struct coal_node *)G->root)->seq = seq;
-		((struct coal_node *)G->root)->mapped = malloc(sizeof(map_t) * nmap);
+		((struct coal_node *)G->root)->seq->seq = seq;
+		((struct coal_node *)G->root)->seq->mapped = malloc(sizeof(map_t) * nmap);
 		for(i = 0; i < nmap; i++)
-			((struct coal_node *)G->root)->mapped[i] = 0xFFFFFFFF;
+			((struct coal_node *)G->root)->seq->mapped[i] = 0xFFFFFFFF;
 
 		list_init(&stack);
 		// Trace from leaf node upward until a root or coalescent node which is already mapped
@@ -888,18 +893,20 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 					// Find nearest coalescent node (the node right above leaf may be migration node)
 					while((struct node *)n2 != G->root && !iscoalnode((struct node *)n2)) n2 = (struct coal_node *)n2->in;
 
-					while(!mapped(n2, off_lb, off_ub)){	// If the sequence of current coalescent has been generated in the region of interest, then stop tracing. Otherwise, push current node to stack and trace upward.
+					while(!mapped(ns2, off_lb, off_ub)){	// If the sequence of current coalescent has been generated in the region of interest, then stop tracing. Otherwise, push current node to stack and trace upward.
 						struct list_head *top;
 
+						ns2 = n2->seq;
+
 						// Push current coalescent node (n2) into the stack
-						if(n2->seq == NULL){
-							n2->seq = (char *)malloc(sizeof(char) * ncell * CELLSIZE);
-							memset(n2->seq, 0, sizeof(char) * ncell * CELLSIZE);
+						if(ns2->seq == NULL){
+							ns2->seq = (char *)malloc(sizeof(char) * ncell * CELLSIZE);
+							memset(ns2->seq, 0, sizeof(char) * ncell * CELLSIZE);
 						}
 
-						if(n2->mapped == NULL){
-							n2->mapped = malloc(sizeof(map_t) * nmap);
-							memset(n2->mapped, 0, sizeof(map_t) * nmap);
+						if(ns2->mapped == NULL){
+							ns2->mapped = malloc(sizeof(map_t) * nmap);
+							memset(ns2->mapped, 0, sizeof(map_t) * nmap);
 						}
 
 						top = malloc(sizeof(struct list_head) + sizeof(struct coal_node *));
@@ -921,6 +928,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 						n1 = *((struct node **)GET_OBJ(top));
 						evolve(G->pops[n1->pop].mmut, n2, (struct coal_node *)n1, off_lb, off_ub);
 						n2 = (struct coal_node *)n1;
+						ns2 = n2->seq;
 						free(top);
 					}
 
@@ -931,7 +939,7 @@ void generate_sequence_model_fast(struct reference *ref, struct genealogy *G, in
 					fprintf(stderr, "%d: n2=%x, n1=%x, rd->start=%d, lb=%d, rd->end=%d, ub=%d\n", __LINE__, n2, n1, rd->start, lb, rd->end, ub);
 #endif
 					for(j = lb; j < ub; j++)
-						rd->seq[j - rd->start] = n2->seq[j - from];
+						rd->seq[j - rd->start] = ns2->seq[j - from];
 					mutate(G->pops[nds[R[i]]->pop].mmut, Pmut, rd->seq + (lb - rd->start), ub - lb);
 				}
 			}
