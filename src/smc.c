@@ -1762,7 +1762,6 @@ struct node *trunk_coal(struct genealogy *G, struct node_set *trunk, struct coal
 //	n_trunk_coal++;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-//	in = cev->nd;
 	in = GET_COAL_NODE(cev);
 	pop = in->pop;
 	out1 = in->out[0];
