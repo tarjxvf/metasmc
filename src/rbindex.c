@@ -192,7 +192,7 @@ static inline void cbt_set(struct cbt_info *t, int root, int beg, int end, int h
 #define QUEUE_PUSH(i) queue[(*k)++] = i
 #define QUEUE_POP() queue[(*j)++]
 
-void __cbt_addchild(struct cbt_info *tree, int n, int *queue, int *j, int *k)
+static inline void __cbt_addchild(struct cbt_info *tree, int n, int *queue, int *j, int *k)
 {
 	int root, beg, end, r, h, half, quad, i, left, right;
 
@@ -225,7 +225,7 @@ void __cbt_addchild(struct cbt_info *tree, int n, int *queue, int *j, int *k)
 	}
 }
 
-void __complete_binary_tree(struct cbt_info *tree, int start)
+/*void __complete_binary_tree(struct cbt_info *tree, int start)
 {
 	int *queue, j, k, n;
 
@@ -272,7 +272,7 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 
 	free(tree);
 	free(queue);
-}
+}*/
 
 // Calculate indices of complete binary tree from an ordered array
 void complete_binary_tree(int nnodes, int *map)
