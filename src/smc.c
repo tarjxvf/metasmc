@@ -1205,16 +1205,16 @@ void erase_dummy_path_rb(struct genealogy *G, struct node *edum)
 		erm = nrm;
 	}
 
-	if(nrm->type == NODE_JOIN){
+	if(nrm->type == NODE_DUMMY){
+		remove_event_rb(G, (struct event *)GET_DUMMY_EVENT(nrm));
+
+	}else if(nrm->type == NODE_JOIN){
 		join_set_remove(&AS_JOIN_NODE(nrm)->ev->ndls, nrm);
 		remove_event_rb_join(G, AS_JOIN_NODE(nrm)->ev);
 
 	}else if(nrm->type == NODE_SPLT){
 		splt_set_remove(&AS_SPLT_NODE(nrm)->ev->ndls, nrm);
 		remove_event_rb_splt(G, AS_SPLT_NODE(nrm)->ev);
-
-	}else if(nrm->type == NODE_DUMMY){
-		remove_event_rb(G, (struct event *)GET_DUMMY_EVENT(nrm));
 
 	}else{
 		remove_event_rb(G, (struct event *)GET_MIGR_EVENT(nrm));
@@ -1253,7 +1253,10 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 		erm = nrm;
 	}
 
-	if(nrm->type == NODE_JOIN){
+	if(nrm->type == NODE_DUMMY){
+		remove_event_s(G, (struct event *)GET_DUMMY_EVENT(nrm));
+
+	}else if(nrm->type == NODE_JOIN){
 		join_set_remove(&AS_JOIN_NODE(nrm)->ev->ndls, nrm);
 		remove_event_join_decrease(G, AS_JOIN_NODE(nrm)->ev);
 
@@ -1261,14 +1264,8 @@ void erase_dummy_path_s(struct genealogy *G, struct node *edum)
 		splt_set_remove(&AS_SPLT_NODE(nrm)->ev->ndls, nrm);
 		remove_event_splt_decrease(G, AS_SPLT_NODE(nrm)->ev);
 
-	}else if(nrm->type == NODE_DUMMY){
-		remove_event_s(G, (struct event *)GET_DUMMY_EVENT(nrm));
-
-	}else if(nrm->type == NODE_MIGR){
-		remove_event_s(G, (struct event *)GET_MIGR_EVENT(nrm));
-
 	}else{
-		remove_event_s(G, (struct event *)GET_COAL_EVENT(nrm));
+		remove_event_s(G, (struct event *)GET_MIGR_EVENT(nrm));
 	}
 
 	free_node(G, nrm);
