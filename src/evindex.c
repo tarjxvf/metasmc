@@ -75,7 +75,7 @@ int evindex_compar(struct event *a, struct event *b)
 // Rebuild tree index from sorted list
 void evindex_rebuild_tree(struct evindex *evidx)
 {
-	int i, j, nnodes, h, half, *tree;
+	int i, j, nnodes, h, half, *tree, npop_all;
 	struct rb_node **nodes;
 	struct list_head *l;
 	struct event *ev, *left, *right;
@@ -89,12 +89,12 @@ void evindex_rebuild_tree(struct evindex *evidx)
 		cache_resize(eidx->nc, nnodes - eidx->nc->cache_size);
 	nodes = (struct rb_node **)eidx->nc->objs;
 
-	objs = malloc(sizeof(void *) * nnodes);
-	l = eidx->ls.front;
+//	objs = malloc(sizeof(void *) * nnodes);
+/*	l = eidx->ls.front;
 	for(i = 0; i < nnodes; i++){
 		objs[i] = GET_OBJ(l);
 		l = l->next;
-	}
+	}*/
 
 	// Build complete binary tree
 	tree = malloc(sizeof(int) * nnodes);
@@ -103,49 +103,58 @@ void evindex_rebuild_tree(struct evindex *evidx)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
+	*(eidx->ls.rear) = NULL;
+	l = eidx->ls.front;
+	i = 0;
+	while(l){
+		nodes[tree[i++]]->rb_data = GET_OBJ(l);
+		l = l->next;
+	}
+
+	npop_all = evidx->npop_all;
 	for(j = nnodes - 1; j >= half - 1; j--){
 		nodes[j]->rb_color = RB_RED;
-		nodes[j]->rb_data = ev = objs[tree[j]];
+		ev = nodes[j]->rb_data;
 		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+		dn_set(npop_all, GET_SUMDN(ev), GET_DN(ev));
 	}
 
 	for(; j > (nnodes - 1) / 2; j--){
 		nodes[j]->rb_color = RB_BLACK;
-		nodes[j]->rb_data = ev = objs[tree[j]];
+		ev = nodes[j]->rb_data;
 		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+		dn_set(npop_all, GET_SUMDN(ev), GET_DN(ev));
 	}
 
 	nodes[j]->rb_color = RB_BLACK;
-	nodes[j]->rb_data = ev = objs[tree[j]];
+	ev = nodes[j]->rb_data;
 	if(j == nnodes / 2){
 		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+		dn_set(npop_all, GET_SUMDN(ev), GET_DN(ev));
 
 	}else{
 		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
 		nodes[j]->rb_link[1] = NULL;
 		left = nodes[(j << 1) + 1]->rb_data;
-		dn_add2(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
+		dn_add2(npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
 	}
 	j--;
 
 	for(; j >= 0; j--){
 		nodes[j]->rb_color = RB_BLACK;
-		nodes[j]->rb_data = ev = objs[tree[j]];
+		ev = nodes[j]->rb_data;
 		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
 		nodes[j]->rb_link[1] = nodes[(j << 1) + 2];
 		left = nodes[(j << 1) + 1]->rb_data;
 		right = nodes[(j << 1) + 2]->rb_data;
-		dn_add3(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
+		dn_add3(npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
 	}
 
 	eidx->tree->rb_root = nodes[0];
 	nodes[0]->rb_color = RB_BLACK;
 	eidx->nc->maxnodes = nnodes;
 
-	free(objs);
+//	free(objs);
 	free(tree);
 }
 

@@ -247,7 +247,7 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 	int i, j, k, h0, *queue;
 
 	tree = malloc(sizeof(struct cbt_info) * nnodes);
-	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
+//	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
 	queue = malloc(sizeof(int) * nnodes);
 
 	h0 = 0;
@@ -268,7 +268,8 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 
 #pragma omp parallel for schedule(static,2) num_threads(2)
 	for(i = 0; i < nnodes; i++)
-		map[i] = tree[i].root;
+		map[tree[i].root] = i;
+//		map[i] = tree[i].root;
 
 	free(tree);
 	free(queue);
@@ -281,7 +282,7 @@ void complete_binary_tree(int nnodes, int *map)
 	int i, j, k, h0, *queue;
 
 	tree = malloc(sizeof(struct cbt_info) * nnodes);
-	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
+//	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
 	queue = malloc(sizeof(int) * nnodes);
 
 	h0 = 0;
@@ -296,7 +297,8 @@ void complete_binary_tree(int nnodes, int *map)
 	}while(k < nnodes);
 
 	for(i = 0; i < nnodes; i++)
-		map[i] = tree[i].root;
+		map[tree[i].root] = i;
+//		map[i] = tree[i].root;
 
 	free(tree);
 	free(queue);
