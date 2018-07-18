@@ -125,25 +125,21 @@ void remove_event_rb_splt(struct genealogy *G, struct splt_event *sev);
 static inline void remove_event_rb(struct genealogy *G, struct event *ev)
 {
 	evindex_rb_delete(&G->evidx, ev);
-//	free_event(G->cfg, ev);
 }
 
 static inline void __remove_event_s(struct genealogy *G, struct event *ev)
 {
 	__evindex_s_delete(&G->evidx, ev);
-//	free_event(G->cfg, ev);
 }
 
 static inline void remove_event_s(struct genealogy *G, struct event *ev)
 {
 	evindex_s_delete(&G->evidx, ev);
-//	free_event(G->cfg, ev);
 }
 
 static inline void remove_event(struct genealogy *G, struct event *ev)
 {
 	evindex_delete(&G->evidx, ev);
-//	free_event(G->cfg, ev);
 }
 
 static inline void remove_event_rb_josp(struct genealogy *G, struct event *ev)
@@ -174,14 +170,12 @@ static inline void remove_event_josp(struct genealogy *G, struct event *ev)
 		remove_event_s_josp(G, ev);
 }
 
-//int simulate(struct reference *, struct genealogy *, int, struct frag *);
 int simulate(struct genealogy *G, struct profile *prof);
 
 struct genealogy *alloc_genealogy(struct config *, struct profile *);
 void destroy_genealogy(struct genealogy *);
 void clear_genealogy(struct genealogy *);
 
-//struct event *rnd_select_point(struct genealogy *G, struct node **eo, int *popo, double *to);
 double rnd_select_point(struct genealogy *G, struct node **eo);
 struct event *trace_event(struct genealogy *G, double t);
 

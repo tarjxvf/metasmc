@@ -89,13 +89,6 @@ void evindex_rebuild_tree(struct evindex *evidx)
 		cache_resize(eidx->nc, nnodes - eidx->nc->cache_size);
 	nodes = (struct rb_node **)eidx->nc->objs;
 
-//	objs = malloc(sizeof(void *) * nnodes);
-/*	l = eidx->ls.front;
-	for(i = 0; i < nnodes; i++){
-		objs[i] = GET_OBJ(l);
-		l = l->next;
-	}*/
-
 	// Build complete binary tree
 	tree = malloc(sizeof(int) * nnodes);
 	complete_binary_tree(nnodes, tree);
@@ -164,7 +157,6 @@ void evindex_seq_off(struct evindex *evidx)
 //	int nsec;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-//	nnodes = evidx->idx->n;
 	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
 	evindex_rebuild_tree(evidx);
 

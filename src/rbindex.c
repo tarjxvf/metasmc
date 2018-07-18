@@ -247,7 +247,6 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 	int i, j, k, h0, *queue;
 
 	tree = malloc(sizeof(struct cbt_info) * nnodes);
-//	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
 	queue = malloc(sizeof(int) * nnodes);
 
 	h0 = 0;
@@ -282,7 +281,6 @@ void complete_binary_tree(int nnodes, int *map)
 	int i, j, k, h0, *queue;
 
 	tree = malloc(sizeof(struct cbt_info) * nnodes);
-//	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
 	queue = malloc(sizeof(int) * nnodes);
 
 	h0 = 0;

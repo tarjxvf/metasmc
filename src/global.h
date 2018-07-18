@@ -381,7 +381,6 @@ struct node {
 	int set_id;
 	double t;
 
-//	struct event *ev;
 	struct node *in;
 	struct node *out[2];
 };
@@ -644,11 +643,6 @@ static inline void edge_flag_setitop(struct node *e, char flag)
 {
 	e->itop = flag;
 }
-
-//void free_node(struct genealogy *G, struct node *nd);
-//void free_node(struct config *cfg, struct node *nd);
-//struct node *alloc_node(struct genealogy *G, int type, int pop, double t);
-//struct node *alloc_node(struct config *cfg, int type, int pop, double t);
 
 static inline void join_set_add(struct node_set *set, struct node *e)
 {
