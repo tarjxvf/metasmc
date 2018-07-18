@@ -76,7 +76,7 @@ static inline struct node *alloc_node(struct genealogy *G, int type, int pop, do
 	return nd;
 }
 
-struct node *copy_node(struct genealogy *G, struct node *old)
+static inline struct node *copy_node(struct genealogy *G, struct node *old)
 {
 	struct node *new;
 //	int npop_all;
@@ -454,13 +454,13 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 			cnd = GET_COAL_NODE(cev);
 			__node_set_remove(&trunk[cnd->pop], cnd->set_id);
 
-			if(cnd->pop == pop && cnd->out[0]->t < t && cnd->t > t){
+			if(cnd->pop == pop && cnd->out[0]->t < t){
 				if(c < u) c++;
 				else return cnd->out[0];
 			}
 			node_set_add(&trunk[cnd->pop], cnd->out[0]);
 
-			if(cnd->pop == pop && cnd->out[1]->t < t && cnd->t > t){
+			if(cnd->pop == pop && cnd->out[1]->t < t){
 				if(c < u) c++;
 				else return cnd->out[1];
 			}
@@ -471,7 +471,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 			mnd = GET_MIGR_NODE(mev);
 			__node_set_remove(&trunk[mnd->pop], mnd->set_id);
 
-			if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
+			if(mnd->out->pop == pop && mnd->out->t < t){
 				if(c < u) c++;
 				else return mnd->out;
 			}
@@ -483,7 +483,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 				mnd = (struct migr_node *)node_set_get(&jev->ndls, i);
 				__node_set_remove(&trunk[mnd->pop], mnd->set_id);
 
-				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
+				if(mnd->out->pop == pop && mnd->out->t < t){
 					if(c < u) c++;
 					else return mnd->out;
 				}
@@ -496,7 +496,7 @@ struct node *trunk_search(struct genealogy *G, struct node_set *trunk, int pop, 
 				mnd = (struct migr_node *)node_set_get(&sev->ndls, i);
 				__node_set_remove(&G->trunk[mnd->pop], mnd->set_id);
 
-				if(mnd->out->pop == pop && mnd->out->t < t && mnd->t > t){
+				if(mnd->out->pop == pop && mnd->out->t < t){
 					if(c < u) c++;
 					else return mnd->out;
 				}
