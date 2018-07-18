@@ -2387,7 +2387,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	cd->e_type = EVENT_MIGR;
 	G->node_cache[NODE_MIGR] = cache_create(sizeof(struct migr_node) + sizeof(struct migr_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 2, init_dn_off, cd);
 
-	G->node_cache[NODE_SAM] = cache_create(sizeof(struct sam_node), cfg->prof->nfrag, NULL, NULL);
+	G->node_cache[NODE_SAM] = cache_create(sizeof(struct sam_node), cfg->prof->nfrag + 2, NULL, NULL);
 
 	cd = malloc(sizeof(struct cache_data));
 	cd->npop = cfg->npop_all;
