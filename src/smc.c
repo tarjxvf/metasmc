@@ -66,8 +66,8 @@ static inline struct node *alloc_node(struct genealogy *G, int type, int pop, do
 //	nd = malloc(nodesize[type] + sizeof(int) * 2 * npop_all);
 
 //	*((unsigned char *)nd) = type;
+//	nd->type = type;
 	*((unsigned short *)nd) = pop;
-
 //	nd->pop = pop;
 	nd->t = t;
 //	nd->xtid = nd->idx = 0;
@@ -2377,7 +2377,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	cd->npop = cfg->npop_all;
 	cd->n_type = NODE_COAL;
 	cd->e_type = EVENT_COAL;
-	G->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 4, init_dn_off, cd);
+	G->node_cache[NODE_COAL] = cache_create(sizeof(struct coal_node) + sizeof(struct coal_event) + sizeof(int) * 2 * npop_all, cfg->maxfrag * 5, init_dn_off, cd);
 
 	cd = malloc(sizeof(struct cache_data));
 	cd->npop = cfg->npop_all;

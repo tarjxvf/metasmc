@@ -227,6 +227,8 @@ struct samp_event {
 	unsigned char sumdn_off;
 };
 
+static size_t evsize[] = {sizeof(struct coal_event), sizeof(struct migr_event), sizeof(struct grow_event), sizeof(struct size_event), sizeof(struct rmig_event), sizeof(struct gmig_event), sizeof(struct gsiz_event), sizeof(struct ggro_event), sizeof(struct join_event), sizeof(struct splt_event), sizeof(struct event), sizeof(struct event), sizeof(struct samp_event)};
+
 #define GET_DN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->dn_off))
 #define GET_SUMDN(ev) ((int *)((char *)(ev) + ((struct event *)(ev))->sumdn_off))
 
@@ -345,8 +347,10 @@ static inline void init_event(struct config *cfg, struct event *ev, int type, do
 	int npop_all;
 
 	npop_all = cfg->npop_all;
-
+//	ev->type = type;
 	ev->t = t;
+//	ev->dn_off = evsize[type];
+//	ev->sumdn_off = evsize[type] + sizeof(int) * npop_all;
 	dn_clear(npop_all, GET_DN(ev));
 }
 
@@ -528,8 +532,6 @@ struct splt_node {
 	struct splt_event *ev;
 	int sid;
 };
-
-static size_t evsize[] = {sizeof(struct coal_event), sizeof(struct migr_event), sizeof(struct grow_event), sizeof(struct size_event), sizeof(struct rmig_event), sizeof(struct gmig_event), sizeof(struct gsiz_event), sizeof(struct ggro_event), sizeof(struct join_event), sizeof(struct splt_event), sizeof(struct event), sizeof(struct event), sizeof(struct samp_event)};
 
 static size_t nodesize[] = {sizeof(struct coal_node), sizeof(struct migr_node), sizeof(struct xover_node), sizeof(struct sam_node), sizeof(struct dummy_node), sizeof(struct dummy_node), sizeof(struct join_node), sizeof(struct splt_node)};
 
