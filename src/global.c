@@ -373,6 +373,7 @@ struct profile *load_profile(FILE *filp, int genseq)
 		prof->fgid[i] = fgid[fgorder[i]];
 		prof->info[i] = fgi[fgorder[i]];
 	}
+	prof->fgstart[nfrag] = prof->info[nfrag].end = INT_MAX;
 
 	if(genseq){
 		prof->rdset = malloc(sizeof(struct read *) * (nfrag + 1));
