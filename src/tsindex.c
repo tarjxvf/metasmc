@@ -287,7 +287,7 @@ void tsindex_dump(struct tsindex *tr)
 	while(l){
 		pidx = l->id;
 		fprintf(stderr, "%d->", pidx);
-		l = l->l.next;
+		l = (struct intlist *)l->l.next;
 	}
 	fprintf(stderr, "\n");
 

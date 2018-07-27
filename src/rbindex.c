@@ -192,7 +192,7 @@ static inline void cbt_set(struct cbt_info *t, int root, int beg, int end, int h
 #define QUEUE_PUSH(i) queue[(*k)++] = i
 #define QUEUE_POP() queue[(*j)++]
 
-void __cbt_addchild(struct cbt_info *tree, int n, int *queue, int *j, int *k)
+static inline void __cbt_addchild(struct cbt_info *tree, int n, int *queue, int *j, int *k)
 {
 	int root, beg, end, r, h, half, quad, i, left, right;
 
@@ -225,7 +225,7 @@ void __cbt_addchild(struct cbt_info *tree, int n, int *queue, int *j, int *k)
 	}
 }
 
-void __complete_binary_tree(struct cbt_info *tree, int start)
+/*void __complete_binary_tree(struct cbt_info *tree, int start)
 {
 	int *queue, j, k, n;
 
@@ -247,7 +247,6 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 	int i, j, k, h0, *queue;
 
 	tree = malloc(sizeof(struct cbt_info) * nnodes);
-	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
 	queue = malloc(sizeof(int) * nnodes);
 
 	h0 = 0;
@@ -268,11 +267,12 @@ void complete_binary_tree_parallel(int nnodes, int *map)
 
 #pragma omp parallel for schedule(static,2) num_threads(2)
 	for(i = 0; i < nnodes; i++)
-		map[i] = tree[i].root;
+		map[tree[i].root] = i;
+//		map[i] = tree[i].root;
 
 	free(tree);
 	free(queue);
-}
+}*/
 
 // Calculate indices of complete binary tree from an ordered array
 void complete_binary_tree(int nnodes, int *map)
@@ -281,7 +281,6 @@ void complete_binary_tree(int nnodes, int *map)
 	int i, j, k, h0, *queue;
 
 	tree = malloc(sizeof(struct cbt_info) * nnodes);
-	memset(tree, 0, sizeof(struct cbt_info) * nnodes);
 	queue = malloc(sizeof(int) * nnodes);
 
 	h0 = 0;
@@ -296,7 +295,8 @@ void complete_binary_tree(int nnodes, int *map)
 	}while(k < nnodes);
 
 	for(i = 0; i < nnodes; i++)
-		map[i] = tree[i].root;
+		map[tree[i].root] = i;
+//		map[i] = tree[i].root;
 
 	free(tree);
 	free(queue);
@@ -385,7 +385,7 @@ struct rbindex *rbindex_create(rb_comparison_func *compar, int cache_size)
 
 	eidx = malloc(sizeof(struct rbindex));
 
-	eidx->nc = cache_create(sizeof(struct rb_node), cache_size);
+	eidx->nc = cache_create(sizeof(struct rb_node), cache_size, NULL, NULL);
 
 	eidx->allocator.allocator_data = eidx->nc;
 	eidx->allocator.libavl_malloc = rbindex_alloc;

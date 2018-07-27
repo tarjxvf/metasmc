@@ -28,15 +28,7 @@ __print_event_tree(const struct evindex *evidx, struct rb_node *node, int level)
     }
 
   ev = node->rb_data;
-  fprintf (stderr, "[%.6f, %d, dn=(", ev->t, ev->type);
-
-  for(i = 0; i < evidx->npop_all; i++)
-	  fprintf(stderr, "%d, ", GET_DN(ev)[i]);
-  fprintf(stderr, "), sumdn=(");
-
-  for(i = 0; i < evidx->npop_all; i++)
-	  fprintf(stderr, "%d, ", GET_SUMDN(ev)[i]);
-  fprintf(stderr, ")](");
+  fprintf (stderr, "%x(", ev);
 
   for (i = 0; i <= 1; i++)
     {
@@ -83,7 +75,7 @@ int evindex_compar(struct event *a, struct event *b)
 // Rebuild tree index from sorted list
 void evindex_rebuild_tree(struct evindex *evidx)
 {
-	int i, j, nnodes, h, half, *tree;
+	int i, j, nnodes, h, half, *tree, npop_all;
 	struct rb_node **nodes;
 	struct list_head *l;
 	struct event *ev, *left, *right;
@@ -97,13 +89,6 @@ void evindex_rebuild_tree(struct evindex *evidx)
 		cache_resize(eidx->nc, nnodes - eidx->nc->cache_size);
 	nodes = (struct rb_node **)eidx->nc->objs;
 
-	objs = malloc(sizeof(void *) * nnodes);
-	l = eidx->ls.front;
-	for(i = 0; i < nnodes; i++){
-		objs[i] = GET_OBJ(l);
-		l = l->next;
-	}
-
 	// Build complete binary tree
 	tree = malloc(sizeof(int) * nnodes);
 	complete_binary_tree(nnodes, tree);
@@ -111,99 +96,73 @@ void evindex_rebuild_tree(struct evindex *evidx)
 	while(1 << h <= nnodes) h++;
 	half = 1 << (h - 1);
 
+	*(eidx->ls.rear) = NULL;
+	l = eidx->ls.front;
+	i = 0;
+	while(l){
+		nodes[tree[i++]]->rb_data = GET_OBJ(l);
+		l = l->next;
+	}
+
+	npop_all = evidx->npop_all;
 	for(j = nnodes - 1; j >= half - 1; j--){
 		nodes[j]->rb_color = RB_RED;
-		nodes[j]->rb_data = ev = objs[tree[j]];
+		ev = nodes[j]->rb_data;
 		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+		dn_set(npop_all, GET_SUMDN(ev), GET_DN(ev));
 	}
 
 	for(; j > (nnodes - 1) / 2; j--){
 		nodes[j]->rb_color = RB_BLACK;
-		nodes[j]->rb_data = ev = objs[tree[j]];
+		ev = nodes[j]->rb_data;
 		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+		dn_set(npop_all, GET_SUMDN(ev), GET_DN(ev));
 	}
 
 	nodes[j]->rb_color = RB_BLACK;
-	nodes[j]->rb_data = ev = objs[tree[j]];
+	ev = nodes[j]->rb_data;
 	if(j == nnodes / 2){
 		nodes[j]->rb_link[0] = nodes[j]->rb_link[1] = NULL;
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
+		dn_set(npop_all, GET_SUMDN(ev), GET_DN(ev));
 
 	}else{
 		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
 		nodes[j]->rb_link[1] = NULL;
 		left = nodes[(j << 1) + 1]->rb_data;
-		dn_add2(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
+		dn_add2(npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
 	}
 	j--;
 
 	for(; j >= 0; j--){
 		nodes[j]->rb_color = RB_BLACK;
-		nodes[j]->rb_data = ev = objs[tree[j]];
+		ev = nodes[j]->rb_data;
 		nodes[j]->rb_link[0] = nodes[(j << 1) + 1];
 		nodes[j]->rb_link[1] = nodes[(j << 1) + 2];
 		left = nodes[(j << 1) + 1]->rb_data;
 		right = nodes[(j << 1) + 2]->rb_data;
-		dn_add3(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
+		dn_add3(npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
 	}
 
 	eidx->tree->rb_root = nodes[0];
 	nodes[0]->rb_color = RB_BLACK;
 	eidx->nc->maxnodes = nnodes;
 
-	free(objs);
+//	free(objs);
 	free(tree);
 }
 
 void evindex_seq_off(struct evindex *evidx)
 {
-//	struct event *ev, *left, *right;
-//	struct rb_node **nodes;
-//	int nnodes, i, j;
-
 //	struct timespec beg, end;
 //	int nsec;
 //	clock_gettime(CLOCK_MONOTONIC, &beg);
 
-//	nnodes = evidx->idx->n;
 	rbindex_clearflag(evidx->idx, RBINDEX_SEQUENTIAL);
 	evindex_rebuild_tree(evidx);
 
 //	clock_gettime(CLOCK_MONOTONIC, &end);
 //	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
 //	t_ev_tree += nsec;
-
-//	nodes = (struct rb_node **)evidx->idx->nc->objs;
-
-//	clock_gettime(CLOCK_MONOTONIC, &beg);
-
-/*	for(i = nnodes - 1; i > (nnodes - 1) / 2; i--){
-		ev = nodes[i]->rb_data;
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
-	}
-
-	ev = nodes[i]->rb_data;
-	if(i == nnodes / 2){
-		dn_set(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev));
-
-	}else{
-		left = nodes[(i << 1) + 1]->rb_data;
-		dn_add2(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left));
-	}
-	i--;
-
-	for(; i >= 0; i--){
-		ev = nodes[i]->rb_data;
-		left = nodes[(i << 1) + 1]->rb_data;
-		right = nodes[(i << 1) + 2]->rb_data;
-		dn_add3(evidx->npop_all, GET_SUMDN(ev), GET_DN(ev), GET_SUMDN(left), GET_SUMDN(right));
-	}*/
-
-//	clock_gettime(CLOCK_MONOTONIC, &end);
-//	nsec = (end.tv_sec - beg.tv_sec) * MAXNSEC + (end.tv_nsec - beg.tv_nsec);
-//	t_ev_summary += nsec;
 }
 
 /* Calculate number of lineages at time t. */
@@ -780,7 +739,7 @@ void evindex_init(struct genealogy *G, struct config *cfg, struct evindex *evidx
 	struct event *ev;
 	int npop;
 
-	evidx->idx = rbindex_create(evindex_compar, cfg->maxfrag * 2);
+	evidx->idx = rbindex_create(evindex_compar, cfg->maxfrag * 4);
 	evidx->npop_all = npop = cfg->npop_all;
 	evidx->dn = malloc(sizeof(int) * npop);
 
