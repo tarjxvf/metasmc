@@ -1,3 +1,9 @@
+---
+title: User's Guide of MetaSMC
+author: Ki-Hok Liao (fjliao@gmail.com)
+
+---
+
 Introduction
 ============
 

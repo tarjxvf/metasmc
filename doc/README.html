@@ -27,12 +27,10 @@ $ make install</code></pre>
 <p>By default, MetaSMC use mt19937-64 to generate random numbers. To change random number generator, modify src/rand.c and modify the source file of mt19937-64 in src/Makefile.am. Seed of random number can be specified using <strong>-s</strong> switch (See below). If <strong>-s</strong> switch is not used, seed is automatically assigned using <strong>time(NULL)</strong>.</p>
 <h1 id="file-formats">File Formats</h1>
 <h2 id="format-of-read-profile">Format of read profile</h2>
-<p>A read profile begin by three lines of header. The first line is the path to FASTA file containing reference genome. The second line consists of two integer separated by a ','. The first number is the length of reference genome and the second one is number of fragments n. The third line consists of a sequence of numbers. The first is an integer <span class="math inline"><em>p</em></span> indicating number of subpopulations. If p &gt; 1$, <span class="math inline"><em>p</em></span> is followed by a sequence of <span class="math inline"><em>p</em> − 1</span> real number seperated by ',', which indicates size of each subpopulation relative to subpopulation <span class="math inline">1</span> (Note that size of first subpopulation is always <span class="math inline">1</span>).</p>
-<p>The header is followed by <span class="math inline"><em>n</em></span> lines describing fragments. Each line consists of fields separated by TAB characters. The first field is fragment id,the second is subpopulation number from which the fragment is sampled. The following two fields are start position and end position of this fragment. The next field is the number of reads <span class="math inline"><em>m</em></span> contained by this fragment. This is followed by <span class="math inline"><em>m</em></span> pairs of fields describing start and end position of each read.</p>
-<p>The following is a profile of 15 reads. All fragments contains only one read with position the same as that of the fragment. All reads are sampled from the same subpopulation. The length of reference genome is <span class="math inline">25</span>.</p>
-<pre><code>reference.fasta
-25,15
-1
+<p>A read profile begin by two lines of header. The first line is the path to FASTA file containing reference genome, followed by the 0-based index of chromosome in the file. The second line begin with a number of subpopulations, followed by number of fragments of each subpopulation. The numbers are separated by ','. The header is followed by <span class="math inline"><em>n</em></span> lines describing fragments. Each line consists of fields separated by TAB characters. The first field is fragment id,the second is subpopulation number from which the fragment is sampled. The following two fields are start position and end position of this fragment. The next field is the number of reads <span class="math inline"><em>m</em></span> contained by this fragment. This is followed by <span class="math inline"><em>m</em></span> pairs of fields describing start and end position of each read.</p>
+<p>The following is a profile of 15 reads. All fragments contains only one read with position the same as that of the fragment. All reads are sampled from the same subpopulation.</p>
+<pre><code>reference.fasta,0
+1,15
 1   0   8   16  1   8   16
 2   0   0   8   1   0   8
 3   0   8   16  1   8   16
@@ -48,10 +46,9 @@ $ make install</code></pre>
 13  0   17  25  1   17  25
 14  0   17  25  1   17  25
 15  0   17  25  1   17  25</code></pre>
-<p>The following is a profile of another 15 fragments. These reads are sampled from two subpopulations. The size of second subpopulation is half of first subpopulation. Fragment 7-11 are sampled from second subpopulation (subpopulation 1) and other reads are sampled from first subpopulation (subpopulation 0). The first 8 fragments are sequenced by two reads. For example, the first fragment contains two reads, one ranges from 8 to 14 and another ranges from 10 to 16.</p>
-<pre><code>reference.fasta
-25,15
-2,0.5
+<p>The following is a profile of another 15 fragments. These reads are sampled from two subpopulations. Fragment 7-11 are sampled from second subpopulation (subpopulation 1) and other reads are sampled from first subpopulation (subpopulation 0). The first 8 fragments are sequenced by two reads. For example, the first fragment contains two reads, one ranges from 8 to 14 and another ranges from 10 to 16.</p>
+<pre><code>reference.fasta,0
+2,9,6
 1   0   8   16  2   8   14  10  16
 2   0   0   8   2   0   6   2   8
 3   0   8   16  2   8   14  10  16
@@ -74,15 +71,15 @@ TCATTGCGACAATGGG ...</code></pre>
 <h1 id="usage-of-command-line-programs">Usage of Command-Line Programs</h1>
 <h2 id="attached-read-sampler">Attached Read Sampler</h2>
 <p>MetaSMC take as input a read profile describing start positions and end positions of reads. Our package contains a default read sampler which generates reads of fixed lengths. Basic command line of read sampler is</p>
-<pre><code>$ sampler nfrags [Options]</code></pre>
-<p>where <strong>nfrags</strong> is the number of fragments to be simulated.</p>
+<pre><code>$ sampler [Options]</code></pre>
 <h3 id="options-of-read-sampler">Options of Read Sampler</h3>
 <p>The following two switches are mandatory:</p>
 <p><strong>-g fasta_file</strong>: Set path to FASTA file containing reference genome.</p>
+<p><strong>-c chr_num</strong>: 0-based index of chromosome in genome_file. Default is 0.</p>
 <p><strong>-f fragment_size</strong>: Set fragment size.</p>
+<p><strong>-r nfrag_1,nfrag_2,...</strong>: Number of reads of each subpopulations.</p>
 <p>The following switches are optional</p>
 <p><strong>-n npop</strong>: Number of populations. Default value is 1.</p>
-<p><strong>-s size_1 size_2 ...</strong>: Relative size of population 1, 2...</p>
 <p><strong>-p</strong>: If this switch is used, sampler will generate paired-end reads.</p>
 <p><strong>-l read_length</strong>: If -p switch is used, user should specify read size using this switch. Otherwise, read length will equal to fragment length</p>
 <h2 id="coalescent-simulator">Coalescent Simulator</h2>
@@ -104,6 +101,7 @@ TCATTGCGACAATGGG ...</code></pre>
 <p>The following are used to specify demographic model. Some switches have effect on specific population which is designated by 0-based index. For example, the first population specified in read profile has index 0, the second population has index 1, and so on.</p>
 <p><strong>-G alpha</strong>: Set exponential growth rate of all populations to <strong>alpha</strong> at time 0</p>
 <p><strong>-g i alpha</strong>: Set exponential growth rate of population <strong>i</strong> that exist at time 0.</p>
+<p><strong>-S size_1,size_2,...</strong>: Size of each subpopulation at time 0. All sizes are set to 1 if this switch is ignored.</p>
 <p><strong>-M m_12,m_13,...,m_21,m_23,...</strong>: Migration matrix at time 0.</p>
 <p>The following switches are used to set demographic events. <em>t</em> indicates the time when the event occurs.</p>
 <p><strong>-es t i proportion</strong>: Split population <strong>i</strong>. This generated a new population numbered according to the order appear in command line. For example, assume 2 population is specified in read profile and there are two another <strong>-es</strong> switch before current one, the newly generated population is numbered 4. <strong>proportion</strong> is probability that each lineage stays in population i.</p>
@@ -119,21 +117,21 @@ TCATTGCGACAATGGG ...</code></pre>
 -->
 <h2 id="example">Example</h2>
 <p>To simulate 100 single-end reads from single population with per-base mutation rate 0.01, type</p>
-<pre><code>$ sampler 100 -g reference.fasta -f 500 &gt;profile.txt
+<pre><code>$ sampler -r 100 -g reference.fasta -f 500 &gt;profile.txt
 $ metasmc -i profile.txt -t 0.01 &gt;read.fasta</code></pre>
 <p>The desired reads can be found in read.fasta and all reads have length 500.</p>
 <p>To simulate two populations with migration rate 0.1 from population 1 to 2 and 0.2 from 2 to 1, type</p>
-<pre><code>$ sampler 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
+<pre><code>$ sampler -r 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
 $ metasmc -i profile.txt -t 0.01 -M 0.1,0.2 &gt;reads.fasta</code></pre>
 <p>If user wish to simulate two populations with different mutation models, type</p>
-<pre><code>$ sampler 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
+<pre><code>$ sampler -r 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
 $ metasmc -i profile.txt -t 0.01 -M 0.1,0.2 -t 0.01 -m JC69,GTR -R :0.1,1,0.2,1,2,4 &gt;reads.fasta</code></pre>
 <p>In this example, both populations have mutation rate 0.01, but first population mutates according to Jukes-Cantor model whereas second population mutates according to Generalised time-reversible model. <strong>-R</strong> is used to assign model parameters and parameter lists for different populations are separated by ':'.</p>
 <p>To simulate completely isolation of two populations at time 0.1, type</p>
-<pre><code>$ sampler 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
+<pre><code>$ sampler -r 100 -g reference.fasta -f 500 -n 2 &gt; profile.txt
 $ metasmc -i profile.txt -t 0.01 -M 0,0 -ej 0.1 0,1 &gt;reads.fasta</code></pre>
 <p>An interesting application of MetaSMC is to simulate change of mutation rate. This can be achieved by combining heterogeneous mutation rate and population splitting:</p>
-<pre><code>$ sampler 100 -g reference.fasta -f 500 &gt; profile.txt
+<pre><code>$ sampler -r 100 -g reference.fasta -f 500 &gt; profile.txt
 $ metasmc -i profile.txt -t 0.01,0.02 -m JC69 -es 0.1 0 0 &gt;reads.fasta</code></pre>
 <p>Initially, there is only 1 population (population 0) with mutation rate 0.01. At time 0.01, a splitting event causes all lineages moving to population 1 (the population index is automatically assigned) with mutation rate 0.02. Since migration between two populations is disallowed, population 0 is essentially replaced by population 1.</p>
 <h1 id="library-interface">Library Interface</h1>
