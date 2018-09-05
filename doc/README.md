@@ -59,15 +59,19 @@ File Formats
 Format of read profile
 ----------------------
 
-A read profile begin by two lines of header. The first line is the path to FASTA file containing reference genome, followed by the 0-based index of chromosome in the file.
+A read profile begin by two lines of header.
+The first line is the path to FASTA file containing reference genome, followed by the 0-based index of chromosome in the file.
 The second line begin with a number of subpopulations, followed by number of fragments of each subpopulation.
 The numbers are separated by ','.
-The header is followed by $n$ lines describing fragments. Each line consists of fields separated by TAB characters.
-The first field is fragment id,the second is subpopulation number from which the fragment is sampled. The following two
-fields are start position and end position of this fragment. The next field is the number of reads $m$ contained by this
-fragment. This is followed by $m$ pairs of fields describing start and end position of each read.
+The header is followed by $n$ lines of fragment descriptor, where $n$ is the number of fragments.
+Each line consists of fields separated by TAB characters.
+The first field of fragment descriptor is fragment id and the second is subpopulation number from which the fragment is sampled.
+The following two fields are start position and end position of the fragment.
+The next is the number of nonoverlapping sequenced segments of the fragment, followed by start and end position of these segments.
+The fields of fragment descriptor are separated by TAB characters.
 
-The following is a profile of 15 reads. All fragments contains only one read with position the same as that of the fragment.
+The following is a profile of 15 reads.
+All fragments contains only one sequenced segment with position the same as that of the fragment.
 All reads are sampled from the same subpopulation.
 
 ```
@@ -90,10 +94,11 @@ reference.fasta,0
 15	0	17	25	1	17	25
 ```
 
-The following is a profile of another 15 fragments. These reads are sampled from two subpopulations.
-Fragment 7-11 are sampled from second subpopulation (subpopulation 1) and other reads are sampled from first subpopulation (subpopulation 0).
-The first 8 fragments are sequenced by two reads.
-For example, the first fragment contains two reads, one ranges from 8 to 14 and another ranges from 10 to 16.
+The following is a profile of another 15 fragments.
+The reads are sampled from two subpopulations.
+Fragment 7 to fragment 12 are sampled from second subpopulation (subpopulation 1) and other reads are sampled from first subpopulation (subpopulation 0).
+The first 8 fragments contains 2 sequenced segments.
+For example, the first fragment contains two sequenced segments, one ranges from 8 to 14 and another ranges from 10 to 16.
 
 ```
 reference.fasta,0
@@ -127,8 +132,88 @@ TCATTGCGACAATGGG ...
 Usage of Command-Line Programs
 ==============================
 
-Attached Read Sampler
----------------------
+Metagenomics Read Profile Generator
+-----------------------------------
+
+Although MetaSMC is originally designed to simulate intraspecies heterogeneity, we provide a metagenomics read profile generator for simulating metagenomics datasets.
+The sampler take a abundance profile and a reference database as input, and generates read profiles for species specified in the abundance profile.
+Because a species may consists of many subpopulations, a species may be referred multiple times in the abundance profile.
+The following is the step-by-step instruction of metagenomics read profile generator.
+
+### Preparing reference database
+
+A reference database consists of an index file and FASTA files of all genomes.
+One line of the index file consists of taxonomy id, species/strain name, and the path to FASTA file.
+Fields are separated by a TAB character.
+The following is an example:
+
+```
+438753	Azorhizobium caulinodans ORS 571	/home/genomes/ref/GCF_000010525.1_ASM1052v1_genomic.fna
+198804	Buchnera aphidicola str. Sg (Schizaphis graminum)	/home/genomes/ref/GCF_000007365.1_ASM736v1_genomic.fna
+224915	Buchnera aphidicola str. Bp (Baizongia pistaciae)	/home/genomes/ref/GCF_000007725.1_ASM772v1_genomic.fna
+107806	Buchnera aphidicola str. APS (Acyrthosiphon pisum)	/home/genomes/ref/GCF_000009605.1_ASM960v1_genomic.fna
+561501	Buchnera aphidicola str. Tuc7 (Acyrthosiphon pisum)	/home/genomes/ref/GCF_000021065.1_ASM2106v1_genomic.fna
+```
+
+Reference database can be constructed from RefSeq database.
+Raw RefSeq summary file can be downloaded at ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/assembly_summary.txt for bacteria and ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/fungi/assembly_summary.txt for fungi.
+After these files are downloaded, the index file can be constructed as follows.
+
+```
+$ awk -v pwd="$PWD" -F "\t" '$12=="Complete Genome" && $11=="latest"{path=$20; sub(/.*\//, "ref/", path); print $6 "\t" $8 "\t" pwd "/" path "_genomic.fna"}' assembly_summary.txt >database.txt
+```
+The URL of FASTA files can be extract from assembly_summary.txt as follows.
+
+```
+$ awk -F "\t" '$12=="Complete Genome" && $11=="latest"{print $20}' assembly_summary.txt | awk 'BEGIN{FS=OFS="/";filesuffix="genomic.fna.gz"}{ftpdir=$0;asm=$10;file=asm"_"filesuffix;print ftpdir,file}' > ftpfilepaths
+```
+
+Finally, download all FASTA files from RefSeq database and uncompress.
+
+```
+$ mkdir -p ref/
+$ wget -P ref -i ftpfilepaths
+$ cd ref
+$ gzip -d *.gz
+```
+
+All downloaded FASTA files can be founded in ref/ directory.
+
+### Construct abundance profile
+
+The abundance profile is simply a table of species and abundance values.
+Each line consists of taxonomy id and abundance value, separated by a TAB character.
+To speciefy population structure within a species, we allow a taxonomy id to be specified multiple times.
+The following is an example:
+
+```
+438753	100
+198804	200
+198804	100
+318586	300
+318586	100
+1005057	200
+1005057	400
+```
+
+### Generate per-species read profiles
+
+The following is the command line arguments of metagenomics read profile generator.
+
+```
+$ metaprof -d dbpath -a abpath -o outdir -x prefix -f fraglen -n <Number of fragments> [-p -r readlen]
+-d dbpath: Path to database index file.
+-a abpath: Path to abundance profile.
+-o outdir: Output directory.
+-x prefix: Prefix of output file.
+-f fraglen: Length of the fragments.
+-n nfrag: Total numbr of fragments. The number of fragment of each subpopulation is drawn from multinomial distribution.
+-p: Generate paired-end reads.
+-r readlen: If -p is open, this option must be used to specify length of paired-end reads.
+```
+
+Single-Species Read Sampler
+---------------------------
 
 MetaSMC take as input a read profile describing start positions and end positions of reads. 
 Our package contains a default read sampler which generates reads of fixed lengths. Basic command line of read sampler is

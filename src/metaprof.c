@@ -34,7 +34,7 @@ struct abdfile {
 void usage(char *prog)
 {
 	fprintf(stderr, "%s -d dbpath -a abpath -o outdir -x prefix -P <platform> -f fraglen -n <Number of fragments> [-p -r readlen -t ntrunk]\n", prog);
-	fprintf(stderr, "-d dbpath: Path to database file.\n");
+	fprintf(stderr, "-d dbpath: Path to database index file.\n");
 	fprintf(stderr, "-a abpath: Path to abundance profile.\n");
 	fprintf(stderr, "-o outdir: Output directory.\n");
 	fprintf(stderr, "-x prefix: Prefix of output file.\n");
