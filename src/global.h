@@ -337,7 +337,7 @@ void dump_config(struct config *cfg);
 int register_mutation_model(struct config *cfg, int pop, struct mutation *mmut);
 
 //void print_fragment(FILE *outfp, struct frag *fg, struct read *rd);
-void print_fragment(FILE *outfp, int fgstart, int fgid, struct fginfo *fgi, struct read *rdset);
+void print_fragment(FILE *outfp, int chrnum, int fgstart, int fgid, struct fginfo *fgi, struct read *rdset);
 
 int set_growth_rates(struct config *cfg, double *grate);
 int set_migration_matrix(struct config *cfg, double *mmig);

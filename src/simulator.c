@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 						int pop;
 
 						case 's':	/* Split a population. */
-							pop = strtol(argv[++i], &endptr, 10);
+							pop = strtol(argv[++i], &endptr, 10) - 1;
 							if(endptr == argv[i]){
 								fprintf(stderr, "Invalid parameter for -es\n");
 								goto abnormal;
@@ -585,13 +585,13 @@ int main(int argc, char *argv[])
 							break;
 
 						case 'm':	/* Modify migration rate from subpopulation i to subpopulation j. */
-							popi = strtol(argv[++i], &endptr, 10);
+							popi = strtol(argv[++i], &endptr, 10) - 1;
 							if(endptr == argv[i]){
 								fprintf(stderr, "Invalid parameter for -em\n");
 								goto abnormal;
 							}
 
-							popj = strtol(argv[++i], &endptr, 10);
+							popj = strtol(argv[++i], &endptr, 10) - 1;
 							if(endptr == argv[i]){
 								fprintf(stderr, "Invalid parameter for -em\n");
 								goto abnormal;
@@ -617,13 +617,13 @@ int main(int argc, char *argv[])
 							break;
 
 						case 'j':	/* Merge subpopulation i into subpopulation j. */
-							popi = strtol(argv[++i], &endptr, 10);
+							popi = strtol(argv[++i], &endptr, 10) - 1;
 							if(endptr == argv[i]){
 								fprintf(stderr, "Invalid parameter for -ej\n");
 								goto abnormal;
 							}
 
-							popj = strtol(argv[++i], &endptr, 10);
+							popj = strtol(argv[++i], &endptr, 10) - 1;
 							if(endptr == argv[i]){
 								fprintf(stderr, "Invalid parameter for -ej\n");
 								goto abnormal;
@@ -701,6 +701,7 @@ int main(int argc, char *argv[])
 	/* Print reads */
 	for(i = 0; i < prof->nfrag; i++){
 //		print_fragment(stdout, &prof->fgset[i], &prof->rdset[i]);
+		print_fragment(stdout, prof->chrnum, prof->fgstart[i], prof->fgid[i], &prof->info[i], prof->rdset[i]);
 	}
 
 	free(mmut);
