@@ -162,6 +162,8 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 	for(i = 0; i < npop; i++)
 		nfrag += nfrags[i] + ntrunks[i];
 
+	prof->rdset = malloc(sizeof(struct read *) * nfrag);
+
 	fgstart = malloc(sizeof(int) * nfrag);
 	fgi = malloc(sizeof(struct fginfo) * nfrag);
 
@@ -197,7 +199,7 @@ struct profile *generate_profile(char *reffile, int chrnum, int npop, int *nfrag
 		fgorder[i] = i;
 
 	// Sort fragments by position
-	qsort_r(fgorder, nfrag, sizeof(int), fgcompar_r, prof->fgstart);
+	qsort_r(fgorder, nfrag, sizeof(int), fgcompar_r, fgstart);
 
 	prof->fgstart = malloc(sizeof(int) * nfrag);
 	prof->fgid = malloc(sizeof(int) * nfrag);
