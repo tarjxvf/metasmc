@@ -420,7 +420,7 @@ void print_fragment(FILE *outfp, int chrnum, int fgstart, int fgid, struct fginf
 #endif
 	for(i = 0; i < fgi->nread; i++){
 		rd = &rdset[i];
-		fprintf(outfp, ">%d:%d %d %d %d-%d %d-%d\n", fgid, i + 1, fgi->pop, chrnum, fgstart, fgi->end, rd->start, rd->end);
+		fprintf(outfp, ">%d:%d:%d:%d:%d-%d:%d-%d\n", fgid, i + 1, fgi->pop, chrnum, fgstart, fgi->end, rd->start, rd->end);
 		fprintf(outfp, "%s\n", rd->seq);
 	}
 #ifdef DEBUG
