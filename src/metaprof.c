@@ -43,6 +43,7 @@ void usage(char *prog)
 	fprintf(stderr, "-p: Generate paired-end reads.\n");
 	fprintf(stderr, "-r readlen: If -p is open, this option must be used to specify length of paired-end reads.\n");
 	fprintf(stderr, "-t ntrunk: Number of complete chromosomes in trunk genealogy.\n");
+	fprintf(stderr, "-s seed: Random number seed.\n");
 }
 
 int dbcompar(struct dbentry *a, struct dbentry *b)
@@ -228,7 +229,8 @@ int main(int argc, char *argv[])
 	int ntax, npop, nfrags, *nfrag_pop, *nf, i, j, fraglen, rdlen, paired, tax, sd, proflen, nread, *ntrunks;
 	char *profpath;
 
-	db = abdf = NULL;
+	sd = time(NULL);
+	db = abdf = weights = NULL;
 	paired = fraglen = rdlen = 0;
 	nread = 1;
 	i = 1;
@@ -277,6 +279,10 @@ int main(int argc, char *argv[])
 					i++;
 					break;
 
+				case 's':
+					sd = atoi(argv[++i]);
+					break;
+
 				default:
 					fprintf(stderr, "Unknown switch -%c\n", *ptr);
 					goto abnormal;
@@ -317,7 +323,6 @@ int main(int argc, char *argv[])
 
 	if(paired == 0)
 		rdlen = fraglen;
-	sd = time(NULL);
 //	sd = 1525493755;
 //	srand(sd);
 	init_rand(sd);
