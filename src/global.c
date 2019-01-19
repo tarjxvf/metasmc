@@ -854,7 +854,7 @@ void load_chr(struct reference *ref, int chrnum, char **strp)
 	str = malloc(sizeof(char) * (reflen + 1));
 	curr = 0;
 	while(curr < reflen){
-		while(!isalpha(ch = fgetc(ref->filp)) && ch > 0) curr++;
+		while(!isalpha(ch = fgetc(ref->filp)) && ch > 0) ;
 		str[curr++] = ch;
 	}
 
