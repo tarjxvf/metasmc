@@ -19,7 +19,7 @@ void usage(char *prog)
 	fprintf(stderr, "-i read_profile : read profile consisting of path to reference genome, number of fragments and position of each fragment. If this switch is not used, the input are read from stdandard input\n");
 	fprintf(stderr, "-s seed : Seed of pseudorandom number generator.\n");
 	fprintf(stderr, "-F maxfrag : Maximum number of clones per reigion.\n");
-	fprintf(stderr, "-t theta1,theta2,... : per-locus mutation rate\n");
+	fprintf(stderr, "-t theta1,theta2,... : genome-wide mutation rate\n");
 	fprintf(stderr, "-r rho : per-locus recombination rate\n");
 	fprintf(stderr, "-T tree_file: Print coalescent trees in Newick format to tree_file.\n");
 	fprintf(stderr, "-o read_file: Print reads in FASTA format to read_file.\n");
@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
 	double *grate, *mmig;
 	char file[1000], *treefile;
 	FILE *filp, *treefp, *readfp;
+	int reflen;
 
 	/* Parse parameters. */
 	filp = treefp = readfp = NULL;	// This will be replaced by stdin if -T switch is used.
@@ -668,13 +669,15 @@ int main(int argc, char *argv[])
 	set_migration_matrix(cfg, mmig);
 	free(mmig);
 	grate = mmig = NULL;
+	reflen = prof->ref->chrlen[prof->chrnum];
 
 	for(i = 0; i < npop + nsplt; i++){
+		mmut[i].theta = mmut[i].theta / reflen;
 		register_mutation_model(cfg, i, &mmut[i]);
 		init_mutation_model(&mmut[i]);
 	}
 
-	cfg->devents = realloc(cfg->devents, sizeof(struct event *) * cfg->ndevents);
+/*	cfg->devents = realloc(cfg->devents, sizeof(struct event *) * cfg->ndevents);
 	l = cfg->evlist.front;
 	for(i = 0; i < cfg->ndevents; i++){
 //	while(l){
@@ -684,7 +687,7 @@ int main(int argc, char *argv[])
 		tmp = l->next;
 		__list_remove(&cfg->evlist, l);
 		l = tmp;
-	}
+	}*/
 
 	G = alloc_genealogy(cfg, prof);
 

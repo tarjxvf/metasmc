@@ -2368,6 +2368,18 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	nsplt = cfg->nsplt;
 	npop_all = npop + nsplt;
 
+	cfg->devents = realloc(cfg->devents, sizeof(struct event *) * cfg->ndevents);
+	l = cfg->evlist.front;
+	for(i = 0; i < cfg->ndevents; i++){
+//	while(l){
+		struct list_head *tmp;
+
+		cfg->devents[i] = (struct event *)GET_OBJ(l);
+		tmp = l->next;
+		__list_remove(&cfg->evlist, l);
+		l = tmp;
+	}
+
 	G = malloc(sizeof(struct genealogy));
 	memset(G, 0, sizeof(struct genealogy));
 
@@ -2437,6 +2449,7 @@ struct genealogy *alloc_genealogy(struct config *cfg, struct profile *prof)
 	evindex_init(G, G->cfg, &G->evidx);
 	evindex_seq_on(&G->evidx);
 	evindex_s_rewind(&G->evidx);
+
 	for(i = 0; i < cfg->ndevents; i++)
 		evindex_s_insert(&G->evidx, cfg->devents[i]);
 
