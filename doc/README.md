@@ -201,7 +201,7 @@ The following is an example:
 The following is the command line arguments of metagenomics read profile generator.
 
 ```
-$ metaprof -d dbpath -a abpath -o outdir -x prefix -f fraglen -n <Number of fragments> [-p -r readlen]
+$ metaprof -d dbpath -a abpath -o outdir -x prefix -f fraglen -n <Number of fragments> [-p -r readlen -s seed]
 -d dbpath: Path to database index file.
 -a abpath: Path to abundance profile.
 -o outdir: Output directory.
@@ -210,6 +210,7 @@ $ metaprof -d dbpath -a abpath -o outdir -x prefix -f fraglen -n <Number of frag
 -n nfrag: Total numbr of fragments. The number of fragment of each subpopulation is drawn from multinomial distribution.
 -p: Generate paired-end reads.
 -r readlen: If -p is open, this option must be used to specify length of paired-end reads.
+-s seed: Random number seed.
 ```
 
 Single-Species Read Sampler
